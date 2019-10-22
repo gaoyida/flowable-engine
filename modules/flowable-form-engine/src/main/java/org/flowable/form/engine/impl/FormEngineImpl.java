@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  */
 public class FormEngineImpl implements FormEngine {
 
-    private static Logger log = LoggerFactory.getLogger(FormEngineImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FormEngineImpl.class);
 
     protected String name;
     protected FormManagementService managementService;
@@ -40,39 +40,50 @@ public class FormEngineImpl implements FormEngine {
         this.managementService = engineConfiguration.getFormManagementService();
         this.repositoryService = engineConfiguration.getFormRepositoryService();
         this.formService = engineConfiguration.getFormService();
+        
+        if (engineConfiguration.getSchemaManagementCmd() != null) {
+            engineConfiguration.getCommandExecutor().execute(engineConfiguration.getSchemaCommandConfig(), engineConfiguration.getSchemaManagementCmd());
+        }
 
         if (name == null) {
-            log.info("default flowable FormEngine created");
+            LOGGER.info("default flowable FormEngine created");
         } else {
-            log.info("FormEngine {} created", name);
+            LOGGER.info("FormEngine {} created", name);
         }
 
         FormEngines.registerFormEngine(this);
     }
 
+    @Override
     public void close() {
         FormEngines.unregister(this);
+        engineConfiguration.close();
     }
 
     // getters and setters
     // //////////////////////////////////////////////////////
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public FormManagementService getFormManagementService() {
         return managementService;
     }
 
+    @Override
     public FormRepositoryService getFormRepositoryService() {
         return repositoryService;
     }
 
+    @Override
     public FormService getFormService() {
         return formService;
     }
 
+    @Override
     public FormEngineConfiguration getFormEngineConfiguration() {
         return engineConfiguration;
     }

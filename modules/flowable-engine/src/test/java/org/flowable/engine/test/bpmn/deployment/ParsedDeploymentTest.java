@@ -19,19 +19,26 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 
+import org.flowable.common.engine.impl.context.Context;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
 import org.flowable.engine.impl.bpmn.deployer.ParsedDeployment;
 import org.flowable.engine.impl.bpmn.deployer.ParsedDeploymentBuilder;
 import org.flowable.engine.impl.bpmn.deployer.ParsedDeploymentBuilderFactory;
 import org.flowable.engine.impl.bpmn.deployer.ResourceNameUtil;
-import org.flowable.engine.impl.context.Context;
 import org.flowable.engine.impl.persistence.entity.DeploymentEntity;
 import org.flowable.engine.impl.persistence.entity.DeploymentEntityImpl;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.flowable.engine.impl.persistence.entity.ResourceEntity;
 import org.flowable.engine.impl.persistence.entity.ResourceEntityImpl;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ParsedDeploymentTest extends PluggableFlowableTestCase {
 
@@ -40,28 +47,34 @@ public class ParsedDeploymentTest extends PluggableFlowableTestCase {
 
     private static final String ID1_ID = "id1";
     private static final String ID2_ID = "id2";
-    private static final String IDR_PROCESS_XML = aseembleXmlResourceString(
+    private static final String IDR_PROCESS_XML = assembleXmlResourceString(
             "<process id='" + ID1_ID + "' name='Insurance Damage Report 1' />",
             "<process id='" + ID2_ID + "' name='Insurance Damager Report 2' />");
     private static final String IDR_XML_NAME = "idr." + ResourceNameUtil.BPMN_RESOURCE_SUFFIXES[0];
 
     private static final String EN1_ID = "en1";
     private static final String EN2_ID = "en2";
-    private static final String EN_PROCESS_XML = aseembleXmlResourceString(
+    private static final String EN_PROCESS_XML = assembleXmlResourceString(
             "<process id='" + EN1_ID + "' name='Expense Note 1' />",
             "<process id='" + EN2_ID + "' name='Expense Note 2' />");
     private static final String EN_XML_NAME = "en." + ResourceNameUtil.BPMN_RESOURCE_SUFFIXES[1];
 
-    @Override
+    @BeforeEach
     public void setUp() {
-        Context.setCommandContext(processEngineConfiguration.getCommandContextFactory().createCommandContext(null));
+        CommandContext commandContext = processEngineConfiguration.getCommandContextFactory().createCommandContext(null);
+        if (commandContext.getEngineConfigurations() == null) {
+            commandContext.setEngineConfigurations(new HashMap<>());
+        }
+        commandContext.getEngineConfigurations().put(EngineConfigurationConstants.KEY_PROCESS_ENGINE_CONFIG, processEngineConfiguration);
+        Context.setCommandContext(commandContext);
     }
 
-    @Override
+    @AfterEach
     public void tearDown() {
         Context.removeCommandContext();
     }
 
+    @Test
     public void testCreateAndQuery() throws UnsupportedEncodingException {
         DeploymentEntity entity = assembleUnpersistedDeploymentEntity();
 
@@ -111,12 +124,12 @@ public class ParsedDeploymentTest extends PluggableFlowableTestCase {
     private ResourceEntity buildResource(String name, String text) throws UnsupportedEncodingException {
         ResourceEntityImpl result = new ResourceEntityImpl();
         result.setName(name);
-        result.setBytes(text.getBytes("UTF8"));
+        result.setBytes(text.getBytes(StandardCharsets.UTF_8));
 
         return result;
     }
 
-    private static String aseembleXmlResourceString(String... definitions) {
+    private static String assembleXmlResourceString(String... definitions) {
         StringBuilder builder = new StringBuilder("<definitions ");
         builder = builder.append(NAMESPACE).append(" ").append(TARGET_NAMESPACE).append(">\n");
 

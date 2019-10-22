@@ -12,6 +12,8 @@
  */
 package org.flowable.rest.service.api.form;
 
+import io.swagger.annotations.ApiModelProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,8 +30,9 @@ public class RestFormProperty {
     protected boolean writable;
     protected boolean required;
     protected String datePattern;
-    protected List<RestEnumFormProperty> enumValues = new ArrayList<RestEnumFormProperty>();
+    protected List<RestEnumFormProperty> enumValues = new ArrayList<>();
 
+    @ApiModelProperty(example = "room")
     public String getId() {
         return id;
     }
@@ -38,6 +41,7 @@ public class RestFormProperty {
         this.id = id;
     }
 
+    @ApiModelProperty(example = "Room")
     public String getName() {
         return name;
     }
@@ -46,6 +50,7 @@ public class RestFormProperty {
         this.name = name;
     }
 
+    @ApiModelProperty(example = "string")
     public String getType() {
         return type;
     }

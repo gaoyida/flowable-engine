@@ -18,19 +18,6 @@ import java.io.Reader;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import javax.el.ArrayELResolver;
-import javax.el.BeanELResolver;
-import javax.el.CompositeELResolver;
-import javax.el.ELContext;
-import javax.el.ELException;
-import javax.el.ELResolver;
-import javax.el.ExpressionFactory;
-import javax.el.FunctionMapper;
-import javax.el.ListELResolver;
-import javax.el.MapELResolver;
-import javax.el.ResourceBundleELResolver;
-import javax.el.ValueExpression;
-import javax.el.VariableMapper;
 import javax.script.AbstractScriptEngine;
 import javax.script.Bindings;
 import javax.script.Compilable;
@@ -41,14 +28,27 @@ import javax.script.ScriptEngineFactory;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
-import org.flowable.engine.common.api.FlowableException;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.de.odysseus.el.util.SimpleResolver;
+import org.flowable.common.engine.impl.el.DynamicBeanPropertyELResolver;
+import org.flowable.common.engine.impl.el.ExpressionFactoryResolver;
+import org.flowable.common.engine.impl.el.JsonNodeELResolver;
+import org.flowable.common.engine.impl.javax.el.ArrayELResolver;
+import org.flowable.common.engine.impl.javax.el.BeanELResolver;
+import org.flowable.common.engine.impl.javax.el.CompositeELResolver;
+import org.flowable.common.engine.impl.javax.el.CouldNotResolvePropertyELResolver;
+import org.flowable.common.engine.impl.javax.el.ELContext;
+import org.flowable.common.engine.impl.javax.el.ELException;
+import org.flowable.common.engine.impl.javax.el.ELResolver;
+import org.flowable.common.engine.impl.javax.el.ExpressionFactory;
+import org.flowable.common.engine.impl.javax.el.FunctionMapper;
+import org.flowable.common.engine.impl.javax.el.ListELResolver;
+import org.flowable.common.engine.impl.javax.el.MapELResolver;
+import org.flowable.common.engine.impl.javax.el.ResourceBundleELResolver;
+import org.flowable.common.engine.impl.javax.el.ValueExpression;
+import org.flowable.common.engine.impl.javax.el.VariableMapper;
+import org.flowable.common.engine.impl.util.ReflectUtil;
 import org.flowable.engine.impl.bpmn.data.ItemInstance;
-import org.flowable.engine.impl.el.DynamicBeanPropertyELResolver;
-import org.flowable.engine.impl.el.ExpressionFactoryResolver;
-import org.flowable.engine.impl.el.JsonNodeELResolver;
-import org.flowable.engine.impl.util.ReflectUtil;
-
-import de.odysseus.el.util.SimpleResolver;
 
 /**
  * ScriptEngine that used JUEL for script evaluation and compilation (JSR-223).
@@ -72,25 +72,30 @@ public class JuelScriptEngine extends AbstractScriptEngine implements Compilable
         this(null);
     }
 
+    @Override
     public CompiledScript compile(String script) throws ScriptException {
         ValueExpression expr = parse(script, context);
         return new JuelCompiledScript(expr);
     }
 
+    @Override
     public CompiledScript compile(Reader reader) throws ScriptException {
         // Create a String based on the reader and compile it
         return compile(readFully(reader));
     }
 
+    @Override
     public Object eval(String script, ScriptContext scriptContext) throws ScriptException {
         ValueExpression expr = parse(script, scriptContext);
         return evaluateExpression(expr, scriptContext);
     }
 
+    @Override
     public Object eval(Reader reader, ScriptContext scriptContext) throws ScriptException {
         return eval(readFully(reader), scriptContext);
     }
 
+    @Override
     public ScriptEngineFactory getFactory() {
         synchronized (this) {
             if (scriptEngineFactory == null) {
@@ -100,6 +105,7 @@ public class JuelScriptEngine extends AbstractScriptEngine implements Compilable
         return scriptEngineFactory;
     }
 
+    @Override
     public Bindings createBindings() {
         return new SimpleBindings();
     }
@@ -121,6 +127,7 @@ public class JuelScriptEngine extends AbstractScriptEngine implements Compilable
         compositeResolver.add(new ResourceBundleELResolver());
         compositeResolver.add(new DynamicBeanPropertyELResolver(ItemInstance.class, "getFieldValue", "setFieldValue"));
         compositeResolver.add(new BeanELResolver());
+        compositeResolver.add(new CouldNotResolvePropertyELResolver());
         return new SimpleResolver(compositeResolver);
     }
 
@@ -247,11 +254,13 @@ public class JuelScriptEngine extends AbstractScriptEngine implements Compilable
             this.valueExpression = valueExpression;
         }
 
+        @Override
         public ScriptEngine getEngine() {
             // Return outer class instance
             return JuelScriptEngine.this;
         }
 
+        @Override
         public Object eval(ScriptContext ctx) throws ScriptException {
             return evaluateExpression(valueExpression, ctx);
         }
@@ -299,7 +308,7 @@ public class JuelScriptEngine extends AbstractScriptEngine implements Compilable
      * 
      * @author Frederik Heremans
      */
-    private class ScriptContextFunctionMapper extends FunctionMapper {
+    private static class ScriptContextFunctionMapper extends FunctionMapper {
 
         private ScriptContext scriptContext;
 

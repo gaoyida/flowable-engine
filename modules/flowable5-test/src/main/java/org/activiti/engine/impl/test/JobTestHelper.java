@@ -18,10 +18,10 @@ import java.util.TimerTask;
 import java.util.concurrent.Callable;
 
 import org.activiti.engine.test.ActivitiRule;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.impl.asyncexecutor.AsyncExecutor;
+import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 
 /**
  * @author Joram Barrez
@@ -29,7 +29,7 @@ import org.flowable.engine.impl.asyncexecutor.AsyncExecutor;
  * @author Saeid Mirzaei
  */
 
-// This helper class helps sharing the same code for jobExector test helpers, between Junit3 and junit 4 test support classes
+// This helper class helps sharing the same code for jobExecutor test helpers, between Junit3 and junit 4 test support classes
 public class JobTestHelper {
 
     public static void waitForJobExecutorToProcessAllJobs(ActivitiRule activitiRule, long maxMillisToWait, long intervalMillis) {
@@ -51,7 +51,7 @@ public class JobTestHelper {
 
         try {
             Timer timer = new Timer();
-            InteruptTask task = new InteruptTask(Thread.currentThread());
+            InterruptTask task = new InterruptTask(Thread.currentThread());
             timer.schedule(task, maxMillisToWait);
             boolean areJobsAvailable = true;
             try {
@@ -93,7 +93,7 @@ public class JobTestHelper {
 
         try {
             Timer timer = new Timer();
-            InteruptTask task = new InteruptTask(Thread.currentThread());
+            InterruptTask task = new InterruptTask(Thread.currentThread());
             timer.schedule(task, maxMillisToWait);
             boolean areJobsAvailable = true;
             try {
@@ -135,7 +135,7 @@ public class JobTestHelper {
 
         try {
             Timer timer = new Timer();
-            InteruptTask task = new InteruptTask(Thread.currentThread());
+            InterruptTask task = new InterruptTask(Thread.currentThread());
             timer.schedule(task, maxMillisToWait);
             boolean conditionIsViolated = true;
             try {
@@ -170,7 +170,7 @@ public class JobTestHelper {
 
         try {
             Timer timer = new Timer();
-            InteruptTask task = new InteruptTask(Thread.currentThread());
+            InterruptTask task = new InterruptTask(Thread.currentThread());
             timer.schedule(task, maxMillisToWait);
             try {
                 while (!task.isTimeLimitExceeded()) {
@@ -192,7 +192,12 @@ public class JobTestHelper {
     }
 
     public static boolean areJobsAvailable(ManagementService managementService) {
-        return !managementService.createJobQuery().list().isEmpty();
+        boolean emptyJobs = managementService.createJobQuery().list().isEmpty();
+        if (emptyJobs) {
+            return !managementService.createTimerJobQuery().executable().list().isEmpty();
+        } else {
+            return true;
+        }
     }
 
     public static boolean areJobsAvailable(org.activiti.engine.ManagementService managementService) {
@@ -208,12 +213,12 @@ public class JobTestHelper {
         }
     }
 
-    private static class InteruptTask extends TimerTask {
+    private static class InterruptTask extends TimerTask {
 
         protected boolean timeLimitExceeded;
         protected Thread thread;
 
-        public InteruptTask(Thread thread) {
+        public InterruptTask(Thread thread) {
             this.thread = thread;
         }
 

@@ -19,8 +19,9 @@ import java.util.List;
 
 import org.flowable.form.api.FormDefinition;
 import org.flowable.form.api.FormDeployment;
-import org.flowable.form.model.FormModel;
-import org.junit.Test;
+import org.flowable.form.api.FormInfo;
+import org.flowable.form.model.SimpleFormModel;
+import org.junit.jupiter.api.Test;
 
 public class DeploymentTest extends AbstractFlowableFormTest {
 
@@ -46,7 +47,8 @@ public class DeploymentTest extends AbstractFlowableFormTest {
         assertEquals("form1", formDefinition.getKey());
         assertEquals(1, formDefinition.getVersion());
 
-        FormModel formModel = repositoryService.getFormModelByKey("form1");
+        FormInfo formInfo = repositoryService.getFormModelByKey("form1");
+        SimpleFormModel formModel = (SimpleFormModel) formInfo.getFormModel();
         assertEquals(1, formModel.getFields().size());
         assertEquals("input1", formModel.getFields().get(0).getId());
         assertEquals("Input1", formModel.getFields().get(0).getName());
@@ -63,7 +65,8 @@ public class DeploymentTest extends AbstractFlowableFormTest {
         assertEquals("form1", formDefinition.getKey());
         assertEquals(2, formDefinition.getVersion());
 
-        formModel = repositoryService.getFormModelByKey("form1");
+        formInfo = repositoryService.getFormModelByKey("form1");
+        formModel = (SimpleFormModel) formInfo.getFormModel();
         assertEquals(1, formModel.getFields().size());
         assertEquals("input2", formModel.getFields().get(0).getId());
         assertEquals("Input2", formModel.getFields().get(0).getName());
@@ -80,5 +83,43 @@ public class DeploymentTest extends AbstractFlowableFormTest {
 
         assertEquals("My date form", formDefinitions.get(0).getName());
         assertEquals("My first form", formDefinitions.get(1).getName());
+    }
+    
+    @Test
+    public void deploySingleFormWithParentDeploymentId() {
+        FormDeployment deployment = repositoryService.createDeployment()
+                .addClasspathResource("org/flowable/form/engine/test/deployment/simple.form")
+                .parentDeploymentId("someDeploymentId")
+                .deploy();
+        
+        FormDeployment newDeployment = repositoryService.createDeployment()
+                .addClasspathResource("org/flowable/form/engine/test/deployment/simple.form")
+                .deploy();
+        
+        try {
+            FormDefinition definition = repositoryService.createFormDefinitionQuery().deploymentId(deployment.getId()).singleResult();
+            assertNotNull(definition);
+            assertEquals("form1", definition.getKey());
+            assertEquals(1, definition.getVersion());
+            
+            FormDefinition newDefinition = repositoryService.createFormDefinitionQuery().deploymentId(newDeployment.getId()).singleResult();
+            assertNotNull(newDefinition);
+            assertEquals("form1", newDefinition.getKey());
+            assertEquals(2, newDefinition.getVersion());
+            
+            FormInfo formInfo = repositoryService.getFormModelByKeyAndParentDeploymentId("form1", "someDeploymentId");
+            assertEquals("form1", formInfo.getKey());
+            assertEquals(1, formInfo.getVersion());
+            
+            formEngineConfiguration.setAlwaysLookupLatestDefinitionVersion(true);
+            formInfo = repositoryService.getFormModelByKeyAndParentDeploymentId("form1", "someDeploymentId");
+            assertEquals("form1", formInfo.getKey());
+            assertEquals(2, formInfo.getVersion());
+        
+        } finally {
+            formEngineConfiguration.setAlwaysLookupLatestDefinitionVersion(false);
+            repositoryService.deleteDeployment(deployment.getId());
+            repositoryService.deleteDeployment(newDeployment.getId());
+        }
     }
 }

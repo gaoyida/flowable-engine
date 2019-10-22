@@ -13,7 +13,7 @@
 
 package org.flowable.idm.engine.impl.persistence.entity;
 
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.idm.api.event.FlowableIdmEventType;
 import org.flowable.idm.engine.IdmEngineConfiguration;
 import org.flowable.idm.engine.delegate.event.impl.FlowableIdmEventBuilder;
@@ -37,20 +37,22 @@ public class MembershipEntityManagerImpl extends AbstractEntityManager<Membershi
         return membershipDataManager;
     }
 
+    @Override
     public void createMembership(String userId, String groupId) {
         MembershipEntity membershipEntity = create();
         membershipEntity.setUserId(userId);
         membershipEntity.setGroupId(groupId);
         insert(membershipEntity, false);
 
-        if (getEventDispatcher().isEnabled()) {
+        if (getEventDispatcher() != null && getEventDispatcher().isEnabled()) {
             getEventDispatcher().dispatchEvent(FlowableIdmEventBuilder.createMembershipEvent(FlowableIdmEventType.MEMBERSHIP_CREATED, groupId, userId));
         }
     }
 
+    @Override
     public void deleteMembership(String userId, String groupId) {
         membershipDataManager.deleteMembership(userId, groupId);
-        if (getEventDispatcher().isEnabled()) {
+        if (getEventDispatcher() != null && getEventDispatcher().isEnabled()) {
             getEventDispatcher().dispatchEvent(FlowableIdmEventBuilder.createMembershipEvent(FlowableIdmEventType.MEMBERSHIP_DELETED, groupId, userId));
         }
     }

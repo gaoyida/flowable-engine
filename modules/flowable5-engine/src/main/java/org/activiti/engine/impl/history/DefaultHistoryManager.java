@@ -41,8 +41,9 @@ import org.activiti.engine.impl.persistence.entity.VariableInstanceEntity;
 import org.activiti.engine.impl.pvm.process.ActivityImpl;
 import org.activiti.engine.impl.pvm.runtime.InterpretableExecution;
 import org.activiti.engine.task.Event;
-import org.flowable.engine.delegate.Expression;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +55,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DefaultHistoryManager extends AbstractManager implements HistoryManager {
 
-    private static Logger log = LoggerFactory.getLogger(DefaultHistoryManager.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultHistoryManager.class.getName());
 
     private HistoryLevel historyLevel;
 
@@ -69,8 +70,8 @@ public class DefaultHistoryManager extends AbstractManager implements HistoryMan
      */
     @Override
     public boolean isHistoryLevelAtLeast(HistoryLevel level) {
-        if (log.isDebugEnabled()) {
-            log.debug("Current history level: {}, level required: {}", historyLevel, level);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Current history level: {}, level required: {}", historyLevel, level);
         }
         // Comparing enums actually compares the location of values declared in the enum
         return historyLevel.isAtLeast(level);
@@ -83,8 +84,8 @@ public class DefaultHistoryManager extends AbstractManager implements HistoryMan
      */
     @Override
     public boolean isHistoryEnabled() {
-        if (log.isDebugEnabled()) {
-            log.debug("Current history level: {}", historyLevel);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Current history level: {}", historyLevel);
         }
         return historyLevel != HistoryLevel.NONE;
     }
@@ -210,9 +211,9 @@ public class DefaultHistoryManager extends AbstractManager implements HistoryMan
                         ActivitiEventBuilder.createEntityEvent(FlowableEngineEventType.HISTORIC_PROCESS_INSTANCE_CREATED, historicProcessInstance));
             }
 
-            HistoricActivityInstanceEntity activitiyInstance = findActivityInstance(parentExecution);
-            if (activitiyInstance != null) {
-                activitiyInstance.setCalledProcessInstanceId(subProcessInstance.getProcessInstanceId());
+            HistoricActivityInstanceEntity activityInstance = findActivityInstance(parentExecution);
+            if (activityInstance != null) {
+                activityInstance.setCalledProcessInstanceId(subProcessInstance.getProcessInstanceId());
             }
 
             // Fix for ACT-1728: start-event not recorded for subprocesses
@@ -942,8 +943,8 @@ public class DefaultHistoryManager extends AbstractManager implements HistoryMan
     @Override
     public void updateProcessBusinessKeyInHistory(ExecutionEntity processInstance) {
         if (isHistoryEnabled()) {
-            if (log.isDebugEnabled()) {
-                log.debug("updateProcessBusinessKeyInHistory : {}", processInstance.getId());
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("updateProcessBusinessKeyInHistory : {}", processInstance.getId());
             }
             if (processInstance != null) {
                 HistoricProcessInstanceEntity historicProcessInstance = getDbSqlSession().selectById(HistoricProcessInstanceEntity.class, processInstance.getId());

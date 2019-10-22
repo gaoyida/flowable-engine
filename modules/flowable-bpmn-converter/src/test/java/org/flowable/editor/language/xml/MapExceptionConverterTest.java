@@ -1,3 +1,15 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.editor.language.xml;
 
 import static org.junit.Assert.assertEquals;
@@ -16,6 +28,7 @@ public class MapExceptionConverterTest extends AbstractConverterTest {
 
     String resourceName;
 
+    @Override
     protected String getResource() {
         return resourceName;
     }
@@ -24,7 +37,7 @@ public class MapExceptionConverterTest extends AbstractConverterTest {
     public void testMapExceptionWithInvalidHasChildren() throws Exception {
         resourceName = "mapException/mapExceptionInvalidHasChildrenModel.bpmn";
         try {
-            BpmnModel bpmnModel = readXMLFile();
+            readXMLFile();
             fail("No exception is thrown for mapExecution with invalid boolean for hasChildren");
         } catch (XMLException x) {
             assertTrue(x.getMessage().indexOf("is not valid boolean") != -1);
@@ -38,8 +51,7 @@ public class MapExceptionConverterTest extends AbstractConverterTest {
     public void testMapExceptionWithNoErrorCode() throws Exception {
         resourceName = "mapException/mapExceptionNoErrorCode.bpmn";
         try {
-
-            BpmnModel bpmnModel = readXMLFile();
+            readXMLFile();
             fail("No exception is thrown for mapExecution with no Error Code");
         } catch (XMLException x) {
             assertTrue(x.getMessage().indexOf("No errorCode defined") != -1);
@@ -66,7 +78,7 @@ public class MapExceptionConverterTest extends AbstractConverterTest {
     }
 
     @Test
-    public void connvertXMLToModel() throws Exception {
+    public void convertXMLToModel() throws Exception {
         resourceName = "mapException/mapExceptionModel.bpmn";
 
         BpmnModel bpmnModel = readXMLFile();

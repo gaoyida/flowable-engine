@@ -13,6 +13,11 @@
 
 package org.flowable.rest.service.api.identity;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -23,6 +28,7 @@ import org.apache.http.entity.StringEntity;
 import org.flowable.idm.api.User;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -35,6 +41,7 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting the collection of info for a user.
      */
+    @Test
     public void testGetUserInfoCollection() throws Exception {
         User savedUser = null;
         try {
@@ -86,6 +93,7 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting info for a user.
      */
+    @Test
     public void testGetUserInfo() throws Exception {
         User savedUser = null;
         try {
@@ -118,13 +126,15 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting the info for an unexisting user.
      */
+    @Test
     public void testGetInfoForUnexistingUser() throws Exception {
         closeResponse(executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_USER_INFO, "unexisting", "key1")), HttpStatus.SC_NOT_FOUND));
     }
 
     /**
-     * Test getting the info for a user who doesn't have that info set
+     * Test getting the info for a user who does not have that info set
      */
+    @Test
     public void testGetInfoForUserWithoutInfo() throws Exception {
         User savedUser = null;
         try {
@@ -149,6 +159,7 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     /**
      * Test deleting info for a user.
      */
+    @Test
     public void testDeleteUserInfo() throws Exception {
         User savedUser = null;
         try {
@@ -177,6 +188,7 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     /**
      * Test update info for a user.
      */
+    @Test
     public void testUpdateUserInfo() throws Exception {
         User savedUser = null;
         try {
@@ -217,6 +229,7 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     /**
      * Test update the info for an unexisting user.
      */
+    @Test
     public void testUpdateInfoForUnexistingUser() throws Exception {
         ObjectNode requestNode = objectMapper.createObjectNode();
         requestNode.put("value", "Updated value");
@@ -227,8 +240,9 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     }
 
     /**
-     * Test deleting the info for a user who doesn't have that info set
+     * Test deleting the info for a user who does not have that info set
      */
+    @Test
     public void testUpdateUnexistingInfo() throws Exception {
         User savedUser = null;
         try {
@@ -258,13 +272,15 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
     /**
      * Test deleting the info for an unexisting user.
      */
+    @Test
     public void testDeleteInfoForUnexistingUser() throws Exception {
         closeResponse(executeRequest(new HttpDelete(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_USER_INFO, "unexisting", "key1")), HttpStatus.SC_NOT_FOUND));
     }
 
     /**
-     * Test deleting the info for a user who doesn't have that info set
+     * Test deleting the info for a user who does not have that info set
      */
+    @Test
     public void testDeleteInfoForUserWithoutInfo() throws Exception {
         User savedUser = null;
         try {
@@ -286,6 +302,7 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
         }
     }
 
+    @Test
     public void testCreateUserInfo() throws Exception {
         User savedUser = null;
         try {
@@ -319,6 +336,7 @@ public class UserInfoResourceTest extends BaseSpringRestTestCase {
         }
     }
 
+    @Test
     public void testCreateUserInfoExceptions() throws Exception {
         User savedUser = null;
         try {

@@ -13,6 +13,10 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,6 +27,7 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -31,6 +36,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  */
 public class ExecutionActiveActivitiesCollectionResourceTest extends BaseSpringRestTestCase {
 
+    @Test
     @Deployment
     public void testGetActivities() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("processOne");
@@ -45,7 +51,7 @@ public class ExecutionActiveActivitiesCollectionResourceTest extends BaseSpringR
         assertTrue(responseNode.isArray());
         assertEquals(2, responseNode.size());
 
-        Set<String> states = new HashSet<String>();
+        Set<String> states = new HashSet<>();
         states.add(responseNode.get(0).textValue());
         states.add(responseNode.get(1).textValue());
 

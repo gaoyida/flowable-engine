@@ -12,18 +12,21 @@
  */
 package org.flowable.engine.test.api.runtime;
 
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.ExecutionListener;
 import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.history.HistoryLevel;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.junit.jupiter.api.Test;
 
 public class ProcessInstanceUpdateBusinessKeyTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testProcessInstanceUpdateBusinessKey() {
         runtimeService.startProcessInstanceByKey("businessKeyProcess");
@@ -31,12 +34,13 @@ public class ProcessInstanceUpdateBusinessKeyTest extends PluggableFlowableTestC
         ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().singleResult();
         assertEquals("bzKey", processInstance.getBusinessKey());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().singleResult();
             assertEquals("bzKey", historicProcessInstance.getBusinessKey());
         }
     }
 
+    @Test
     @Deployment
     public void testUpdateExistingBusinessKey() {
         runtimeService.startProcessInstanceByKey("businessKeyProcess", "testKey");
@@ -44,7 +48,7 @@ public class ProcessInstanceUpdateBusinessKeyTest extends PluggableFlowableTestC
         ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().singleResult();
         assertEquals("testKey", processInstance.getBusinessKey());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().singleResult();
             assertEquals("testKey", historicProcessInstance.getBusinessKey());
         }
@@ -54,7 +58,7 @@ public class ProcessInstanceUpdateBusinessKeyTest extends PluggableFlowableTestC
         processInstance = runtimeService.createProcessInstanceQuery().singleResult();
         assertEquals("newKey", processInstance.getBusinessKey());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().singleResult();
             assertEquals("newKey", historicProcessInstance.getBusinessKey());
         }
@@ -64,8 +68,9 @@ public class ProcessInstanceUpdateBusinessKeyTest extends PluggableFlowableTestC
 
         private static final long serialVersionUID = 1L;
 
+        @Override
         public void notify(DelegateExecution delegateExecution) {
-            Context.getCommandContext().getExecutionEntityManager().updateProcessInstanceBusinessKey((ExecutionEntity) delegateExecution, "bzKey");
+            CommandContextUtil.getExecutionEntityManager().updateProcessInstanceBusinessKey((ExecutionEntity) delegateExecution, "bzKey");
         }
     }
 

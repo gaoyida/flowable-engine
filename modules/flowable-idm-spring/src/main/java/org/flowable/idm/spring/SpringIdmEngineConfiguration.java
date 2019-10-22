@@ -15,11 +15,15 @@ package org.flowable.idm.spring;
 
 import javax.sql.DataSource;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.interceptor.CommandConfig;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.interceptor.CommandConfig;
+import org.flowable.common.engine.impl.interceptor.CommandInterceptor;
+import org.flowable.common.spring.SpringTransactionContextFactory;
+import org.flowable.common.spring.SpringTransactionInterceptor;
+import org.flowable.idm.engine.IdmEngine;
 import org.flowable.idm.engine.IdmEngineConfiguration;
+import org.flowable.idm.engine.IdmEngines;
 import org.flowable.idm.engine.impl.cfg.StandaloneIdmEngineConfiguration;
-import org.flowable.idm.engine.impl.interceptor.CommandInterceptor;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -41,6 +45,12 @@ public class SpringIdmEngineConfiguration extends IdmEngineConfiguration impleme
         this.transactionsExternallyManaged = true;
     }
 
+    @Override
+    public IdmEngine buildIdmEngine() {
+        IdmEngine idmEngine = super.buildIdmEngine();
+        IdmEngines.setInitialized(true);
+        return idmEngine;
+    }
     public void setTransactionSynchronizationAdapterOrder(Integer transactionSynchronizationAdapterOrder) {
         this.transactionSynchronizationAdapterOrder = transactionSynchronizationAdapterOrder;
     }
@@ -71,11 +81,11 @@ public class SpringIdmEngineConfiguration extends IdmEngineConfiguration impleme
     @Override
     public IdmEngineConfiguration setDataSource(DataSource dataSource) {
         if (dataSource instanceof TransactionAwareDataSourceProxy) {
-            return super.setDataSource(dataSource);
+            return (IdmEngineConfiguration) super.setDataSource(dataSource);
         } else {
             // Wrap datasource in Transaction-aware proxy
             DataSource proxiedDataSource = new TransactionAwareDataSourceProxy(dataSource);
-            return super.setDataSource(proxiedDataSource);
+            return (IdmEngineConfiguration) super.setDataSource(proxiedDataSource);
         }
     }
 

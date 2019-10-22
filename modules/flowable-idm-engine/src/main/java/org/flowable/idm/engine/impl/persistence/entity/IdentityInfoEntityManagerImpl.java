@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.idm.engine.IdmEngineConfiguration;
 import org.flowable.idm.engine.impl.persistence.entity.data.IdentityInfoDataManager;
 
@@ -64,10 +64,10 @@ public class IdentityInfoEntityManagerImpl extends AbstractEntityManager<Identit
             identityInfoDataManager.update(identityInfoEntity);
 
             if (accountDetails == null) {
-                accountDetails = new HashMap<String, String>();
+                accountDetails = new HashMap<>();
             }
 
-            Set<String> newKeys = new HashSet<String>(accountDetails.keySet());
+            Set<String> newKeys = new HashSet<>(accountDetails.keySet());
             List<IdentityInfoEntity> identityInfoDetails = identityInfoDataManager.findIdentityInfoDetails(identityInfoEntity.getId());
             for (IdentityInfoEntity identityInfoDetail : identityInfoDetails) {
                 String detailKey = identityInfoDetail.getKey();

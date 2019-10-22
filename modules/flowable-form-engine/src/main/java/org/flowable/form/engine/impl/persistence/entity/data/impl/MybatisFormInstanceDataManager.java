@@ -14,19 +14,18 @@ package org.flowable.form.engine.impl.persistence.entity.data.impl;
 
 import java.util.List;
 
-import org.flowable.engine.common.impl.Page;
 import org.flowable.form.api.FormInstance;
 import org.flowable.form.engine.FormEngineConfiguration;
 import org.flowable.form.engine.impl.FormInstanceQueryImpl;
 import org.flowable.form.engine.impl.persistence.entity.FormInstanceEntity;
 import org.flowable.form.engine.impl.persistence.entity.FormInstanceEntityImpl;
-import org.flowable.form.engine.impl.persistence.entity.data.AbstractDataManager;
+import org.flowable.form.engine.impl.persistence.entity.data.AbstractFormDataManager;
 import org.flowable.form.engine.impl.persistence.entity.data.FormInstanceDataManager;
 
 /**
  * @author Tijs Rademakers
  */
-public class MybatisFormInstanceDataManager extends AbstractDataManager<FormInstanceEntity> implements FormInstanceDataManager {
+public class MybatisFormInstanceDataManager extends AbstractFormDataManager<FormInstanceEntity> implements FormInstanceDataManager {
 
     public MybatisFormInstanceDataManager(FormEngineConfiguration formEngineConfiguration) {
         super(formEngineConfiguration);
@@ -44,13 +43,27 @@ public class MybatisFormInstanceDataManager extends AbstractDataManager<FormInst
 
     @Override
     public long findFormInstanceCountByQueryCriteria(FormInstanceQueryImpl formInstanceQuery) {
-        return (Long) getDbSqlSession().selectOne("selectFormInstanceCountByQueryCriteria", formInstanceQuery);
+        return (Long) getDbSqlSession().selectOne("selectFormInstancesCountByQueryCriteria", formInstanceQuery);
+    }
+    
+    @Override
+    public void deleteFormInstancesByFormDefinitionId(String formDefinitionId) {
+        getDbSqlSession().delete("deleteFormInstancesByFormDefinitionId", formDefinitionId, getManagedEntityClass());
+    }
+    
+    @Override
+    public void deleteFormInstancesByProcessDefinitionId(String processDefinitionId) {
+        getDbSqlSession().delete("deleteFormInstancesByProcessDefinitionId", processDefinitionId, getManagedEntityClass());
+    }
+    
+    @Override
+    public void deleteFormInstancesByScopeDefinitionId(String scopeDefinitionId) {
+        getDbSqlSession().delete("deleteFormInstancesByScopeDefinitionId", scopeDefinitionId, getManagedEntityClass());
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<FormInstance> findFormInstancesByQueryCriteria(FormInstanceQueryImpl formInstanceQuery, Page page) {
-        final String query = "selectFormInstancesByQueryCriteria";
-        return getDbSqlSession().selectList(query, formInstanceQuery, page);
+    public List<FormInstance> findFormInstancesByQueryCriteria(FormInstanceQueryImpl formInstanceQuery) {
+        return getDbSqlSession().selectList("selectFormInstancesByQueryCriteria", formInstanceQuery, getManagedEntityClass());
     }
 }

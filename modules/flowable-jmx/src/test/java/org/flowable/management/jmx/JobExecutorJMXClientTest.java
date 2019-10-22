@@ -15,15 +15,8 @@ package org.flowable.management.jmx;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
-
-import javax.management.AttributeNotFoundException;
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanException;
 import javax.management.MBeanServerConnection;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import javax.management.ReflectionException;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -38,8 +31,7 @@ import org.junit.Test;
 public class JobExecutorJMXClientTest {
 
     @Test
-    public void testJobExecutorJMXClient() throws InterruptedException, IOException, MalformedObjectNameException, AttributeNotFoundException, InstanceNotFoundException, MBeanException,
-            ReflectionException {
+    public void testJobExecutorJMXClient() throws Exception {
         String hostName = Utils.getHostName();
         JMXServiceURL url = new JMXServiceURL("service:jmx:rmi://" + hostName + ":10111/jndi/rmi://" + hostName + ":1099/jmxrmi/flowable");
 
@@ -66,7 +58,7 @@ public class JobExecutorJMXClientTest {
         // assertTrue(processEngineConfig.getJobExecutor().isActive());
         assertTrue((Boolean) mbsc.getAttribute(jobExecutorBeanName, "JobExecutorActivated"));
 
-        // agani disable and check it
+        // again disable and check it
         mbsc.invoke(jobExecutorBeanName, "setJobExecutorActivate", new Boolean[] { false }, new String[] { Boolean.class.getName() });
 
         // check if it has the effect and correctly reported

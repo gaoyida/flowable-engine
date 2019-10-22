@@ -31,12 +31,14 @@ import org.slf4j.LoggerFactory;
  */
 public class ServiceTaskParseHandler extends AbstractExternalInvocationBpmnParseHandler<ServiceTask> {
 
-    private static Logger logger = LoggerFactory.getLogger(ServiceTaskParseHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServiceTaskParseHandler.class);
 
+    @Override
     public Class<? extends BaseElement> getHandledType() {
         return ServiceTask.class;
     }
 
+    @Override
     protected void executeParse(BpmnParse bpmnParse, ServiceTask serviceTask) {
 
         ActivityImpl activity = createActivityOnCurrentScope(bpmnParse, serviceTask, BpmnXMLConstants.ELEMENT_TASK_SERVICE);
@@ -60,7 +62,7 @@ public class ServiceTaskParseHandler extends AbstractExternalInvocationBpmnParse
                 activity.setActivityBehavior(bpmnParse.getActivityBehaviorFactory().createShellActivityBehavior(serviceTask));
 
             } else {
-                logger.warn("Invalid service task type: '{}'  for service task {}", serviceTask.getType(), serviceTask.getId());
+                LOGGER.warn("Invalid service task type: '{}'  for service task {}", serviceTask.getType(), serviceTask.getId());
             }
 
             // activiti:class
@@ -80,7 +82,7 @@ public class ServiceTaskParseHandler extends AbstractExternalInvocationBpmnParse
                 StringUtils.isNotEmpty(serviceTask.getOperationRef())) {
 
             if (!bpmnParse.getOperations().containsKey(serviceTask.getOperationRef())) {
-                logger.warn("{} does not exist for service task {}", serviceTask.getOperationRef(), serviceTask.getId());
+                LOGGER.warn("{} does not exist for service task {}", serviceTask.getOperationRef(), serviceTask.getId());
             } else {
 
                 WebServiceActivityBehavior webServiceActivityBehavior = bpmnParse.getActivityBehaviorFactory().createWebServiceActivityBehavior(serviceTask);
@@ -104,7 +106,7 @@ public class ServiceTaskParseHandler extends AbstractExternalInvocationBpmnParse
                 activity.setActivityBehavior(webServiceActivityBehavior);
             }
         } else {
-            logger.warn("One of the attributes 'class', 'delegateExpression', 'type', 'operation', or 'expression' is mandatory on serviceTask {}", serviceTask.getId());
+            LOGGER.warn("One of the attributes 'class', 'delegateExpression', 'type', 'operation', or 'expression' is mandatory on serviceTask {}", serviceTask.getId());
         }
 
     }

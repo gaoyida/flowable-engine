@@ -31,7 +31,7 @@ public class BarURLHandler extends AbstractURLStreamHandlerService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BarURLHandler.class);
 
-    private static String SYNTAX = "bar: bar-xml-uri";
+    private static final String SYNTAX = "bar: bar-xml-uri";
 
     private URL barXmlURL;
 
@@ -74,6 +74,7 @@ public class BarURLHandler extends AbstractURLStreamHandlerService {
             final PipedInputStream pin = new PipedInputStream();
             final PipedOutputStream pout = new PipedOutputStream(pin);
             new Thread() {
+                @Override
                 public void run() {
                     try {
                         BarTransformer.transform(barXmlURL, pout);

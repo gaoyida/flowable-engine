@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+			 xmlns:flowable="http://flowable.org/bpmn"
 	xmlns:activiti="http://activiti.org/bpmn" targetNamespace="Examples">
 
 	<!-- Signals -->
@@ -68,6 +69,14 @@
 		<sequenceFlow id="flow2"
 			sourceRef="serviceTaskWithWrongResultVariableUsage" targetRef="userTask1" />
 
+		<!-- Service task with wrong usage of variable name and use local scope
+			(use local scope is ignored when result variable name is missing) -->
+		<serviceTask id="serviceTaskWithUseLocalScopeAndMissingResultVariableUsage"
+					 name="serviceTaskWithUseLocalScopeAndMissingResultVariableUsage"
+					 flowable:expression="#{true}"
+					 flowable:useLocalScopeForResultVariable ="true">
+		</serviceTask>
+
 		<!-- Service task without any implementation (class, expression, etc.) -->
 		<serviceTask id="serviceTask2" name="myService"></serviceTask>
 
@@ -88,6 +97,21 @@
 		<!-- Send task with wrong operation -->
 		<sendTask id="sendTask3" name="sendTask3" implementation="##WebService"
 			operationRef="tns:invalid"></sendTask>
+
+		<!-- Http task w/o request method -->
+		<serviceTask id="httpTask1" name="httpTask1" activiti:type="http">
+			<extensionElements>
+				<activiti:field name="requestUrl" expression="${requestUrl}" />
+			</extensionElements>
+		</serviceTask>
+		<!-- Http task w/o request url -->
+		<serviceTask id="httpTask2" name="httpTask2" activiti:type="http">
+			<extensionElements>
+				<activiti:field name="requestMethod" stringValue="GET" />
+			</extensionElements>
+		</serviceTask>
+		<!-- Http task w/o request method and url-->
+		<serviceTask id="httpTask3" name="httpTask3" activiti:type="http"></serviceTask>
 
 		<!-- Mail task w/o recipient -->
 		<serviceTask activiti:type="mail" id="mailTask1" name="mailTask1"></serviceTask>

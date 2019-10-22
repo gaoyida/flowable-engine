@@ -18,24 +18,25 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.api.repository.EngineDeployment;
+import org.flowable.common.engine.api.repository.EngineResource;
 import org.flowable.engine.impl.bpmn.parser.BpmnParse;
 import org.flowable.engine.impl.bpmn.parser.BpmnParser;
 import org.flowable.engine.impl.cmd.DeploymentSettings;
 import org.flowable.engine.impl.persistence.entity.DeploymentEntity;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
-import org.flowable.engine.impl.persistence.entity.ResourceEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ParsedDeploymentBuilder {
 
-    private static final Logger log = LoggerFactory.getLogger(ParsedDeploymentBuilder.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParsedDeploymentBuilder.class);
 
-    protected DeploymentEntity deployment;
+    protected EngineDeployment deployment;
     protected BpmnParser bpmnParser;
     protected Map<String, Object> deploymentSettings;
 
-    public ParsedDeploymentBuilder(DeploymentEntity deployment,
+    public ParsedDeploymentBuilder(EngineDeployment deployment,
             BpmnParser bpmnParser, Map<String, Object> deploymentSettings) {
         this.deployment = deployment;
         this.bpmnParser = bpmnParser;
@@ -43,13 +44,14 @@ public class ParsedDeploymentBuilder {
     }
 
     public ParsedDeployment build() {
-        List<ProcessDefinitionEntity> processDefinitions = new ArrayList<ProcessDefinitionEntity>();
-        Map<ProcessDefinitionEntity, BpmnParse> processDefinitionsToBpmnParseMap = new LinkedHashMap<ProcessDefinitionEntity, BpmnParse>();
-        Map<ProcessDefinitionEntity, ResourceEntity> processDefinitionsToResourceMap = new LinkedHashMap<ProcessDefinitionEntity, ResourceEntity>();
+        List<ProcessDefinitionEntity> processDefinitions = new ArrayList<>();
+        Map<ProcessDefinitionEntity, BpmnParse> processDefinitionsToBpmnParseMap = new LinkedHashMap<>();
+        Map<ProcessDefinitionEntity, EngineResource> processDefinitionsToResourceMap = new LinkedHashMap<>();
 
-        for (ResourceEntity resource : deployment.getResources().values()) {
+        DeploymentEntity deploymentEntity = (DeploymentEntity) deployment;
+        for (EngineResource resource : deploymentEntity.getResources().values()) {
             if (isBpmnResource(resource.getName())) {
-                log.debug("Processing BPMN resource {}", resource.getName());
+                LOGGER.debug("Processing BPMN resource {}", resource.getName());
                 BpmnParse parse = createBpmnParseFromResource(resource);
                 for (ProcessDefinitionEntity processDefinition : parse.getProcessDefinitions()) {
                     processDefinitions.add(processDefinition);
@@ -59,11 +61,11 @@ public class ParsedDeploymentBuilder {
             }
         }
 
-        return new ParsedDeployment(deployment, processDefinitions,
+        return new ParsedDeployment(deploymentEntity, processDefinitions,
                 processDefinitionsToBpmnParseMap, processDefinitionsToResourceMap);
     }
 
-    protected BpmnParse createBpmnParseFromResource(ResourceEntity resource) {
+    protected BpmnParse createBpmnParseFromResource(EngineResource resource) {
         String resourceName = resource.getName();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(resource.getBytes());
 
@@ -91,7 +93,12 @@ public class ParsedDeploymentBuilder {
             bpmnParse.setValidateProcess(false);
         }
 
-        bpmnParse.execute();
+        try {
+            bpmnParse.execute();
+        } catch (Exception e) {
+            LOGGER.error("Could not parse resource {}", resource.getName(), e);
+            throw e;
+        }
         return bpmnParse;
     }
 

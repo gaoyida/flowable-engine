@@ -15,7 +15,7 @@ package org.flowable.idm.api.event;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventType;
 
 /**
  * Enumeration containing all possible types of {@link FlowableIdmEvent}s.
@@ -86,7 +86,7 @@ public enum FlowableIdmEventType implements FlowableEventType {
      *             when one of the given string is not a valid type name
      */
     public static FlowableIdmEventType[] getTypesFromString(String string) {
-        List<FlowableIdmEventType> result = new ArrayList<FlowableIdmEventType>();
+        List<FlowableIdmEventType> result = new ArrayList<>();
         if (string != null && !string.isEmpty()) {
             String[] split = string.split(",");
             for (String typeName : split) {

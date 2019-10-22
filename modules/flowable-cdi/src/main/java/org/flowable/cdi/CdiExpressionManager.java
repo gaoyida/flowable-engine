@@ -12,23 +12,18 @@
  */
 package org.flowable.cdi;
 
-import javax.el.ArrayELResolver;
-import javax.el.BeanELResolver;
-import javax.el.CompositeELResolver;
-import javax.el.ELResolver;
-import javax.el.ListELResolver;
-import javax.el.MapELResolver;
+import java.util.List;
 
 import org.flowable.cdi.impl.el.CdiResolver;
-import org.flowable.engine.delegate.VariableScope;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.el.ExpressionManager;
-import org.flowable.engine.impl.el.VariableScopeElResolver;
+import org.flowable.common.engine.impl.el.DefaultExpressionManager;
+import org.flowable.common.engine.impl.javax.el.ArrayELResolver;
+import org.flowable.common.engine.impl.javax.el.ELResolver;
+import org.flowable.engine.impl.el.ProcessExpressionManager;
 
 /**
- * {@link ExpressionManager} for resolving Cdi-managed beans.
+ * {@link DefaultExpressionManager} for resolving Cdi-managed beans.
  * 
- * This {@link ExpressionManager} implementation performs lazy lookup of the Cdi-BeanManager and can thus be configured using the spring-based configuration of the process engine:
+ * This {@link DefaultExpressionManager} implementation performs lazy lookup of the Cdi-BeanManager and can thus be configured using the spring-based configuration of the process engine:
  * 
  * <pre>
  * &lt;property name="expressionManager"&gt;
@@ -38,24 +33,20 @@ import org.flowable.engine.impl.el.VariableScopeElResolver;
  * 
  * @author Daniel Meyer
  */
-public class CdiExpressionManager extends ExpressionManager {
-
-    public CdiExpressionManager(ProcessEngineConfigurationImpl processEngineConfiguration) {
-        super(processEngineConfiguration);
-    }
+public class CdiExpressionManager extends ProcessExpressionManager {
 
     @Override
-    protected ELResolver createElResolver(VariableScope variableScope) {
-        CompositeELResolver compositeElResolver = new CompositeELResolver();
-        compositeElResolver.add(new VariableScopeElResolver(variableScope));
-
-        compositeElResolver.add(new CdiResolver());
-
-        compositeElResolver.add(new ArrayELResolver());
-        compositeElResolver.add(new ListELResolver());
-        compositeElResolver.add(new MapELResolver());
-        compositeElResolver.add(new BeanELResolver());
-        return compositeElResolver;
+    protected void configureResolvers(List<ELResolver> elResolvers) {
+        int arrayElResolverIndex = -1;
+        for (int i=0; i<elResolvers.size(); i++) {
+            if (elResolvers.get(i) instanceof ArrayELResolver) {
+                arrayElResolverIndex = i;
+            }
+        }
+        
+        if (arrayElResolverIndex > 0) {
+            elResolvers.add(arrayElResolverIndex, new CdiResolver());
+        }
     }
 
 }

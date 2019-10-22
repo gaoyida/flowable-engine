@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,55 +25,82 @@ import org.flowable.bpmn.model.IOParameter;
 import org.flowable.bpmn.model.MapExceptionEntry;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.ValuedDataObject;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.api.scope.ScopeTypes;
+import org.flowable.common.engine.impl.el.ExpressionManager;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.common.api.FlowableException;
 import org.flowable.engine.delegate.DelegateExecution;
-import org.flowable.engine.delegate.Expression;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.context.Context;
 import org.flowable.engine.impl.delegate.SubProcessActivityBehavior;
-import org.flowable.engine.impl.el.ExpressionManager;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntityManager;
+import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
+import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.impl.util.EntityLinkUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
+import org.flowable.engine.interceptor.StartSubProcessInstanceAfterContext;
+import org.flowable.engine.interceptor.StartSubProcessInstanceBeforeContext;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of the BPMN 2.0 call activity (limited currently to calling a subprocess and not (yet) a global task).
- * 
+ *
  * @author Joram Barrez
  * @author Tijs Rademakers
  */
 public class CallActivityBehavior extends AbstractBpmnActivityBehavior implements SubProcessActivityBehavior {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CallActivityBehavior.class);
+
     private static final long serialVersionUID = 1L;
 
-    protected String processDefinitonKey;
-    protected Expression processDefinitionExpression;
+    public static final String CALLED_ELEMENT_TYPE_KEY = "key";
+    public static final String CALLED_ELEMENT_TYPE_ID = "id";
+
+    protected CallActivity callActivity;
+    protected String calledElement;
+    protected String calledElementType;
+    protected Expression calledElementExpression;
+    protected Boolean fallbackToDefaultTenant;
     protected List<MapExceptionEntry> mapExceptions;
 
-    public CallActivityBehavior(String processDefinitionKey, List<MapExceptionEntry> mapExceptions) {
-        this.processDefinitonKey = processDefinitionKey;
-        this.mapExceptions = mapExceptions;
+    public CallActivityBehavior(String processDefinitionKey, CallActivity callActivity) {
+        this.calledElement = processDefinitionKey;
+        this.callActivity = callActivity;
+        this.calledElementType = callActivity.getCalledElementType();
+        this.mapExceptions = callActivity.getMapExceptions();
+        this.fallbackToDefaultTenant = callActivity.getFallbackToDefaultTenant();
     }
 
-    public CallActivityBehavior(Expression processDefinitionExpression, List<MapExceptionEntry> mapExceptions) {
-        this.processDefinitionExpression = processDefinitionExpression;
-        this.mapExceptions = mapExceptions;
+    public CallActivityBehavior(Expression processDefinitionExpression, CallActivity callActivity) {
+        this.calledElementExpression = processDefinitionExpression;
+        this.callActivity = callActivity;
+        this.calledElementType = callActivity.getCalledElementType();
+        this.mapExceptions = callActivity.getMapExceptions();
+        this.fallbackToDefaultTenant = callActivity.getFallbackToDefaultTenant();
     }
 
+    @Override
     public void execute(DelegateExecution execution) {
 
-        String finalProcessDefinitonKey = null;
-        if (processDefinitionExpression != null) {
-            finalProcessDefinitonKey = (String) processDefinitionExpression.getValue(execution);
-        } else {
-            finalProcessDefinitonKey = processDefinitonKey;
-        }
+        ExecutionEntity executionEntity = (ExecutionEntity) execution;
+        CallActivity callActivity = (CallActivity) executionEntity.getCurrentFlowElement();
+        
+        CommandContext commandContext = CommandContextUtil.getCommandContext();
 
-        ProcessDefinition processDefinition = findProcessDefinition(finalProcessDefinitonKey, execution.getTenantId());
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
+
+        ProcessDefinition processDefinition = getProcessDefinition(execution, callActivity, processEngineConfiguration);
 
         // Get model from cache
         Process subProcess = ProcessDefinitionUtil.getProcess(processDefinition.getId());
@@ -91,15 +118,10 @@ public class CallActivityBehavior extends AbstractBpmnActivityBehavior implement
             throw new FlowableException("Cannot start process instance. Process definition " + processDefinition.getName() + " (id = " + processDefinition.getId() + ") is suspended");
         }
 
-        ProcessEngineConfigurationImpl processEngineConfiguration = Context.getProcessEngineConfiguration();
-        ExecutionEntityManager executionEntityManager = Context.getCommandContext().getExecutionEntityManager();
+        ExecutionEntityManager executionEntityManager = CommandContextUtil.getExecutionEntityManager(commandContext);
         ExpressionManager expressionManager = processEngineConfiguration.getExpressionManager();
 
-        ExecutionEntity executionEntity = (ExecutionEntity) execution;
-        CallActivity callActivity = (CallActivity) executionEntity.getCurrentFlowElement();
-
         String businessKey = null;
-
         if (!StringUtils.isEmpty(callActivity.getBusinessKey())) {
             Expression expression = expressionManager.createExpression(callActivity.getBusinessKey());
             businessKey = expression.getValue(execution).toString();
@@ -108,98 +130,248 @@ public class CallActivityBehavior extends AbstractBpmnActivityBehavior implement
             ExecutionEntity processInstance = executionEntityManager.findById(execution.getProcessInstanceId());
             businessKey = processInstance.getBusinessKey();
         }
+        
+        Map<String, Object> variables = new HashMap<>();
+        
+        StartSubProcessInstanceBeforeContext instanceBeforeContext = new StartSubProcessInstanceBeforeContext(businessKey, callActivity.getProcessInstanceName(), 
+                        variables, executionEntity, callActivity.getInParameters(), callActivity.isInheritVariables(), 
+                        initialFlowElement.getId(), initialFlowElement, subProcess, processDefinition);
+        
+        if (processEngineConfiguration.getStartProcessInstanceInterceptor() != null) {
+            processEngineConfiguration.getStartProcessInstanceInterceptor().beforeStartSubProcessInstance(instanceBeforeContext);
+        }
 
-        ExecutionEntity subProcessInstance = Context.getCommandContext().getExecutionEntityManager().createSubprocessInstance(
-                processDefinition, executionEntity, businessKey);
-        Context.getCommandContext().getHistoryManager().recordSubProcessInstanceStart(executionEntity, subProcessInstance, initialFlowElement);
+        ExecutionEntity subProcessInstance = CommandContextUtil.getExecutionEntityManager(commandContext).createSubprocessInstance(
+                        instanceBeforeContext.getProcessDefinition(), instanceBeforeContext.getCallActivityExecution(), 
+                        instanceBeforeContext.getBusinessKey(), instanceBeforeContext.getInitialActivityId());
 
-        boolean eventDispatcherEnabled = Context.getProcessEngineConfiguration().getEventDispatcher().isEnabled();
-        if (eventDispatcherEnabled) {
-            Context.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(
+        FlowableEventDispatcher eventDispatcher = processEngineConfiguration.getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(
                     FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.PROCESS_CREATED, subProcessInstance));
         }
 
         // process template-defined data objects
         subProcessInstance.setVariables(processDataObjects(subProcess.getDataObjects()));
 
-        Map<String, Object> variables = new HashMap<String, Object>();
-
-        if (callActivity.isInheritVariables()) {
+        if (instanceBeforeContext.isInheritVariables()) {
             Map<String, Object> executionVariables = execution.getVariables();
             for (Map.Entry<String, Object> entry : executionVariables.entrySet()) {
-                variables.put(entry.getKey(), entry.getValue());
+                instanceBeforeContext.getVariables().put(entry.getKey(), entry.getValue());
             }
         }
-
+        
         // copy process variables
-        for (IOParameter ioParameter : callActivity.getInParameters()) {
+        for (IOParameter inParameter : instanceBeforeContext.getInParameters()) {
+
             Object value = null;
-            if (StringUtils.isNotEmpty(ioParameter.getSourceExpression())) {
-                Expression expression = expressionManager.createExpression(ioParameter.getSourceExpression().trim());
+            if (StringUtils.isNotEmpty(inParameter.getSourceExpression())) {
+                Expression expression = expressionManager.createExpression(inParameter.getSourceExpression().trim());
                 value = expression.getValue(execution);
 
             } else {
-                value = execution.getVariable(ioParameter.getSource());
+                value = execution.getVariable(inParameter.getSource());
             }
-            variables.put(ioParameter.getTarget(), value);
+
+            String variableName = null;
+            if (StringUtils.isNotEmpty(inParameter.getTargetExpression())) {
+                Expression expression = expressionManager.createExpression(inParameter.getTargetExpression());
+                Object variableNameValue = expression.getValue(execution);
+                if (variableNameValue != null) {
+                    variableName = variableNameValue.toString();
+                } else {
+                    LOGGER.warn("In parameter target expression {} did not resolve to a variable name, this is most likely a programmatic error",
+                        inParameter.getTargetExpression());
+                }
+
+            } else if (StringUtils.isNotEmpty(inParameter.getTarget())){
+                variableName = inParameter.getTarget();
+
+            }
+
+            instanceBeforeContext.getVariables().put(variableName, value);
         }
 
-        if (!variables.isEmpty()) {
-            initializeVariables(subProcessInstance, variables);
+        if (!instanceBeforeContext.getVariables().isEmpty()) {
+            initializeVariables(subProcessInstance, instanceBeforeContext.getVariables());
         }
+        
+        // Process instance name is resolved after setting the variables on the process instance, so they can be used in the expression
+        String processInstanceName = null;
+        if (StringUtils.isNotEmpty(instanceBeforeContext.getProcessInstanceName())) {
+            Expression processInstanceNameExpression = expressionManager.createExpression(instanceBeforeContext.getProcessInstanceName());
+            processInstanceName = processInstanceNameExpression.getValue(subProcessInstance).toString();
+            subProcessInstance.setName(processInstanceName);
+        }
+
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_INITIALIZED, subProcessInstance));
+        }
+        
+        if (processEngineConfiguration.isEnableEntityLinks()) {
+            EntityLinkUtil.copyExistingEntityLinks(execution.getProcessInstanceId(), subProcessInstance.getId(), ScopeTypes.BPMN);
+            EntityLinkUtil.createNewEntityLink(execution.getProcessInstanceId(), subProcessInstance.getId(), ScopeTypes.BPMN);
+        }
+
+        if (StringUtils.isNotEmpty(callActivity.getProcessInstanceIdVariableName())) {
+            Expression expression = expressionManager.createExpression(callActivity.getProcessInstanceIdVariableName());
+            String idVariableName = (String) expression.getValue(execution);
+            if (StringUtils.isNotEmpty(idVariableName)) {
+                execution.setVariable(idVariableName, subProcessInstance.getId());
+            }
+        }
+
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordSubProcessInstanceStart(executionEntity, subProcessInstance);
 
         // Create the first execution that will visit all the process definition elements
         ExecutionEntity subProcessInitialExecution = executionEntityManager.createChildExecution(subProcessInstance);
-        subProcessInitialExecution.setCurrentFlowElement(initialFlowElement);
+        subProcessInitialExecution.setCurrentFlowElement(instanceBeforeContext.getInitialFlowElement());
 
-        Context.getAgenda().planContinueProcessOperation(subProcessInitialExecution);
+        CommandContextUtil.getAgenda().planContinueProcessOperation(subProcessInitialExecution);
 
-        if (eventDispatcherEnabled) {
-            Context.getProcessEngineConfiguration().getEventDispatcher()
-                    .dispatchEvent(FlowableEventBuilder.createProcessStartedEvent(subProcessInitialExecution, variables, false));
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            eventDispatcher.dispatchEvent(FlowableEventBuilder.createProcessStartedEvent(subProcessInitialExecution, instanceBeforeContext.getVariables(), false));
+        }
+        
+        if (processEngineConfiguration.getStartProcessInstanceInterceptor() != null) {
+            StartSubProcessInstanceAfterContext instanceAfterContext = new StartSubProcessInstanceAfterContext(subProcessInstance, subProcessInitialExecution, 
+                            instanceBeforeContext.getVariables(), instanceBeforeContext.getCallActivityExecution(), instanceBeforeContext.getInParameters(), 
+                            instanceBeforeContext.getInitialFlowElement(), instanceBeforeContext.getProcess(), instanceBeforeContext.getProcessDefinition());
+            
+            processEngineConfiguration.getStartProcessInstanceInterceptor().afterStartSubProcessInstance(instanceAfterContext);
         }
     }
 
+    protected ProcessDefinition getProcessDefinition(DelegateExecution execution, CallActivity callActivity, ProcessEngineConfigurationImpl processEngineConfiguration) {
+        ProcessDefinition processDefinition;
+        switch (StringUtils.isNotEmpty(calledElementType) ? calledElementType : CALLED_ELEMENT_TYPE_KEY) {
+            case CALLED_ELEMENT_TYPE_ID:
+                processDefinition = getProcessDefinitionById(execution);
+                break;
+            case CALLED_ELEMENT_TYPE_KEY:
+                processDefinition = getProcessDefinitionByKey(execution, callActivity.isSameDeployment(), processEngineConfiguration);
+                break;
+            default:
+                throw new FlowableException("Unrecognized calledElementType [" + calledElementType + "]");
+        }
+        return processDefinition;
+    }
+
+    @Override
     public void completing(DelegateExecution execution, DelegateExecution subProcessInstance) throws Exception {
         // only data. no control flow available on this execution.
 
-        ExpressionManager expressionManager = Context.getProcessEngineConfiguration().getExpressionManager();
+        ExpressionManager expressionManager = CommandContextUtil.getProcessEngineConfiguration().getExpressionManager();
 
         // copy process variables
         ExecutionEntity executionEntity = (ExecutionEntity) execution;
         CallActivity callActivity = (CallActivity) executionEntity.getCurrentFlowElement();
-        for (IOParameter ioParameter : callActivity.getOutParameters()) {
+
+        for (IOParameter outParameter : callActivity.getOutParameters()) {
+
             Object value = null;
-            if (StringUtils.isNotEmpty(ioParameter.getSourceExpression())) {
-                Expression expression = expressionManager.createExpression(ioParameter.getSourceExpression().trim());
+            if (StringUtils.isNotEmpty(outParameter.getSourceExpression())) {
+                Expression expression = expressionManager.createExpression(outParameter.getSourceExpression().trim());
                 value = expression.getValue(subProcessInstance);
 
             } else {
-                value = subProcessInstance.getVariable(ioParameter.getSource());
+                value = subProcessInstance.getVariable(outParameter.getSource());
             }
-            execution.setVariable(ioParameter.getTarget(), value);
+
+            String variableName = null;
+            if (StringUtils.isNotEmpty(outParameter.getTarget()))  {
+                variableName = outParameter.getTarget();
+
+            } else if (StringUtils.isNotEmpty(outParameter.getTargetExpression())) {
+                Expression expression = expressionManager.createExpression(outParameter.getTargetExpression());
+
+                Object variableNameValue = expression.getValue(subProcessInstance);
+                if (variableNameValue != null) {
+                    variableName = variableNameValue.toString();
+                } else {
+                    LOGGER.warn("Out parameter target expression {} did not resolve to a variable name, this is most likely a programmatic error",
+                        outParameter.getTargetExpression());
+                }
+
+            }
+
+            if (callActivity.isUseLocalScopeForOutParameters()) {
+                execution.setVariableLocal(variableName, value);
+            } else {
+                execution.setVariable(variableName, value);
+            }
         }
     }
 
+    @Override
     public void completed(DelegateExecution execution) throws Exception {
         // only control flow. no sub process instance data available
         leave(execution);
     }
 
-    // Allow subclass to determine which version of a process to start.
-    protected ProcessDefinition findProcessDefinition(String processDefinitionKey, String tenantId) {
-        if (tenantId == null || ProcessEngineConfiguration.NO_TENANT_ID.equals(tenantId)) {
-            return Context.getProcessEngineConfiguration().getDeploymentManager().findDeployedLatestProcessDefinitionByKey(processDefinitionKey);
-        } else {
-            return Context.getProcessEngineConfiguration().getDeploymentManager().findDeployedLatestProcessDefinitionByKeyAndTenantId(processDefinitionKey, tenantId);
+    protected ProcessDefinition getProcessDefinitionById(DelegateExecution execution) {
+        return CommandContextUtil.getProcessEngineConfiguration().getDeploymentManager()
+            .findDeployedProcessDefinitionById(getCalledElementValue(execution));
+    }
+
+    protected ProcessDefinition getProcessDefinitionByKey(DelegateExecution execution, boolean isSameDeployment, ProcessEngineConfigurationImpl processEngineConfiguration) {
+        String processDefinitionKey = getCalledElementValue(execution);
+        String tenantId = execution.getTenantId();
+
+        ProcessDefinitionEntityManager processDefinitionEntityManager = Context.getProcessEngineConfiguration().getProcessDefinitionEntityManager();
+        ProcessDefinitionEntity processDefinition;
+
+        if (isSameDeployment) {
+            String deploymentId = ProcessDefinitionUtil.getProcessDefinition(execution.getProcessDefinitionId()).getDeploymentId();
+            if (tenantId == null || ProcessEngineConfiguration.NO_TENANT_ID.equals(tenantId)) {
+                processDefinition = processDefinitionEntityManager.findProcessDefinitionByDeploymentAndKey(deploymentId, processDefinitionKey);
+            } else {
+                processDefinition = processDefinitionEntityManager.findProcessDefinitionByDeploymentAndKeyAndTenantId(deploymentId, processDefinitionKey, tenantId);
+            }
+
+            if (processDefinition != null) {
+                return processDefinition;
+            }
         }
+
+        if (tenantId == null || ProcessEngineConfiguration.NO_TENANT_ID.equals(tenantId)) {
+            processDefinition = processDefinitionEntityManager.findLatestProcessDefinitionByKey(processDefinitionKey);
+        } else {
+            processDefinition = processDefinitionEntityManager.findLatestProcessDefinitionByKeyAndTenantId(processDefinitionKey, tenantId);
+            if (processDefinition == null && ((this.fallbackToDefaultTenant != null && this.fallbackToDefaultTenant) || processEngineConfiguration.isFallbackToDefaultTenant())) {
+
+                String defaultTenant = processEngineConfiguration.getDefaultTenantProvider().getDefaultTenant(tenantId, ScopeTypes.BPMN, processDefinitionKey);
+                if (StringUtils.isNotEmpty(defaultTenant)) {
+                    processDefinition = processDefinitionEntityManager.findLatestProcessDefinitionByKeyAndTenantId(
+                                    processDefinitionKey, defaultTenant);
+                } else {
+                    processDefinition = processDefinitionEntityManager.findLatestProcessDefinitionByKey(processDefinitionKey);
+                }
+            }
+        }
+
+        if (processDefinition == null) {
+            throw new FlowableObjectNotFoundException("Process definition " + processDefinitionKey + " was not found in sameDeployment["+ isSameDeployment +
+                "] tenantId["+ tenantId+ "] fallbackToDefaultTenant["+ this.fallbackToDefaultTenant + "]");
+        }
+        return processDefinition;
+    }
+
+    protected String getCalledElementValue(DelegateExecution execution) {
+        String calledElementValue;
+        if (calledElementExpression != null) {
+            calledElementValue = (String) calledElementExpression.getValue(execution);
+        } else {
+            calledElementValue = calledElement;
+        }
+        return calledElementValue;
     }
 
     protected Map<String, Object> processDataObjects(Collection<ValuedDataObject> dataObjects) {
-        Map<String, Object> variablesMap = new HashMap<String, Object>();
+        Map<String, Object> variablesMap = new HashMap<>();
         // convert data objects to process variables
         if (dataObjects != null) {
-            variablesMap = new HashMap<String, Object>(dataObjects.size());
+            variablesMap = new HashMap<>(dataObjects.size());
             for (ValuedDataObject dataObject : dataObjects) {
                 variablesMap.put(dataObject.getName(), dataObject.getValue());
             }
@@ -212,11 +384,11 @@ public class CallActivityBehavior extends AbstractBpmnActivityBehavior implement
         subProcessInstance.setVariables(variables);
     }
 
-    public void setProcessDefinitonKey(String processDefinitonKey) {
-        this.processDefinitonKey = processDefinitonKey;
+    public void setCalledElement(String calledElement) {
+        this.calledElement = calledElement;
     }
 
-    public String getProcessDefinitonKey() {
-        return processDefinitonKey;
+    public String getCalledElement() {
+        return calledElement;
     }
 }

@@ -20,12 +20,14 @@ import java.util.Set;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.User;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tom Baeyens
  */
 public class IdentityTest extends PluggableFlowableTestCase {
 
+    @Test
     public void testAuthentication() {
         User user = identityService.newUser("johndoe");
         user.setPassword("xxx");
@@ -37,6 +39,7 @@ public class IdentityTest extends PluggableFlowableTestCase {
         identityService.deleteUser("johndoe");
     }
 
+    @Test
     public void testFindGroupsByUserAndType() {
         Group sales = identityService.newGroup("sales");
         sales.setType("hierarchy");
@@ -71,14 +74,14 @@ public class IdentityTest extends PluggableFlowableTestCase {
 
         List<Group> groups = identityService.createGroupQuery().groupMember("johndoe").groupType("security-role").list();
         Set<String> groupIds = getGroupIds(groups);
-        Set<String> expectedGroupIds = new HashSet<String>();
+        Set<String> expectedGroupIds = new HashSet<>();
         expectedGroupIds.add("user");
         expectedGroupIds.add("admin");
         assertEquals(expectedGroupIds, groupIds);
 
         groups = identityService.createGroupQuery().groupMember("joesmoe").groupType("security-role").list();
         groupIds = getGroupIds(groups);
-        expectedGroupIds = new HashSet<String>();
+        expectedGroupIds = new HashSet<>();
         expectedGroupIds.add("user");
         assertEquals(expectedGroupIds, groupIds);
 
@@ -94,6 +97,7 @@ public class IdentityTest extends PluggableFlowableTestCase {
         identityService.deleteUser("jackblack");
     }
 
+    @Test
     public void testUser() {
         User user = identityService.newUser("johndoe");
         user.setFirstName("John");
@@ -110,6 +114,7 @@ public class IdentityTest extends PluggableFlowableTestCase {
         identityService.deleteUser("johndoe");
     }
 
+    @Test
     public void testGroup() {
         Group group = identityService.newGroup("sales");
         group.setName("Sales division");
@@ -122,6 +127,7 @@ public class IdentityTest extends PluggableFlowableTestCase {
         identityService.deleteGroup("sales");
     }
 
+    @Test
     public void testMembership() {
         Group sales = identityService.newGroup("sales");
         identityService.saveGroup(sales);
@@ -168,13 +174,13 @@ public class IdentityTest extends PluggableFlowableTestCase {
     }
 
     private Object createStringSet(String... strings) {
-        Set<String> stringSet = new HashSet<String>();
+        Set<String> stringSet = new HashSet<>();
         Collections.addAll(stringSet, strings);
         return stringSet;
     }
 
     public Set<String> getGroupIds(List<Group> groups) {
-        Set<String> groupIds = new HashSet<String>();
+        Set<String> groupIds = new HashSet<>();
         for (Group group : groups) {
             groupIds.add(group.getId());
         }
@@ -182,7 +188,7 @@ public class IdentityTest extends PluggableFlowableTestCase {
     }
 
     public Set<String> getUserIds(List<User> users) {
-        Set<String> userIds = new HashSet<String>();
+        Set<String> userIds = new HashSet<>();
         for (User user : users) {
             userIds.add(user.getId());
         }

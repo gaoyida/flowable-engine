@@ -14,12 +14,15 @@ package org.flowable.engine.impl.cmd;
 
 import java.io.Serializable;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.compatibility.Flowable5CompatibilityHandler;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.impl.util.Flowable5Util;
 import org.flowable.engine.runtime.ProcessInstance;
 
 public class SetProcessInstanceNameCmd implements Command<Void>, Serializable {
@@ -40,12 +43,24 @@ public class SetProcessInstanceNameCmd implements Command<Void>, Serializable {
             throw new FlowableIllegalArgumentException("processInstanceId is null");
         }
 
-        ExecutionEntity execution = commandContext.getExecutionEntityManager().findById(processInstanceId);
-
+        ExecutionEntity execution = CommandContextUtil.getExecutionEntityManager(commandContext).findById(processInstanceId);
+        
         if (execution == null) {
+            
+            if (CommandContextUtil.getProcessEngineConfiguration(commandContext).isFlowable5CompatibilityEnabled()) {
+                Flowable5CompatibilityHandler compatibilityHandler = Flowable5Util.getFlowable5CompatibilityHandler();
+                if (compatibilityHandler != null) {
+                    ProcessInstance processInstance = compatibilityHandler.getProcessInstance(processInstanceId);
+                    if (processInstance != null) {
+                        compatibilityHandler.setProcessInstanceName(processInstance.getId(), name);
+                        return null;
+                    }
+                }
+            }
+            
             throw new FlowableObjectNotFoundException("process instance " + processInstanceId + " doesn't exist", ProcessInstance.class);
         }
-
+        
         if (!execution.isProcessInstanceType()) {
             throw new FlowableObjectNotFoundException("process instance " + processInstanceId + " doesn't exist, the given ID references an execution, though", ProcessInstance.class);
         }
@@ -58,7 +73,7 @@ public class SetProcessInstanceNameCmd implements Command<Void>, Serializable {
         execution.setName(name);
 
         // Record the change in history
-        commandContext.getHistoryManager().recordProcessInstanceNameChange(processInstanceId, name);
+        CommandContextUtil.getHistoryManager(commandContext).recordProcessInstanceNameChange(execution, name);
 
         return null;
     }

@@ -14,18 +14,24 @@ package org.flowable.engine.test.api.history;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.history.HistoricTaskInstance;
-import org.flowable.engine.history.HistoricTaskInstanceQuery;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.flowable.identitylink.api.IdentityLinkInfo;
+import org.flowable.identitylink.api.IdentityLinkType;
+import org.flowable.task.api.history.HistoricTaskInstance;
+import org.flowable.task.api.history.HistoricTaskInstanceQuery;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tijs Rademakers
@@ -34,6 +40,7 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
 
     private List<String> taskIds;
 
+    @BeforeEach
     public void setUp() throws Exception {
 
         identityService.saveUser(identityService.newUser("kermit"));
@@ -50,6 +57,7 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
         taskIds = generateTestTasks();
     }
 
+    @AfterEach
     public void tearDown() throws Exception {
         identityService.deleteGroup("accountancy");
         identityService.deleteGroup("management");
@@ -59,9 +67,10 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
         taskService.deleteTasks(taskIds, true);
     }
 
+    @Test
     @Deployment
     public void testQuery() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             HistoricTaskInstance task = historyService.createHistoricTaskInstanceQuery().includeTaskLocalVariables().taskAssignee("gonzo").singleResult();
             Map<String, Object> variableMap = task.getTaskLocalVariables();
             assertEquals(2, variableMap.size());
@@ -78,9 +87,16 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
             assertEquals(0, task.getProcessVariables().size());
             assertEquals(0, task.getTaskLocalVariables().size());
 
-            Map<String, Object> startMap = new HashMap<String, Object>();
+            Map<String, Object> startMap = new HashMap<>();
             startMap.put("processVar", true);
             runtimeService.startProcessInstanceByKey("oneTaskProcess", startMap);
+            String taskId = taskService.createTaskQuery().taskAssignee("kermit").singleResult().getId();
+            taskService.addGroupIdentityLink(
+                taskId,
+                "testGroup",
+                IdentityLinkType.PARTICIPANT
+            );
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             task = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().taskAssignee("kermit").singleResult();
             assertEquals(1, task.getProcessVariables().size());
@@ -89,6 +105,8 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
 
             taskService.setVariable(task.getId(), "anotherProcessVar", 123);
             taskService.setVariableLocal(task.getId(), "localVar", "test");
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             task = historyService.createHistoricTaskInstanceQuery().includeTaskLocalVariables().taskAssignee("kermit").singleResult();
             assertEquals(0, task.getProcessVariables().size());
@@ -143,6 +161,9 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
 
             task = historyService.createHistoricTaskInstanceQuery().taskAssignee("gonzo").singleResult();
             taskService.complete(task.getId());
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
+            
             task = (HistoricTaskInstance) historyService.createHistoricTaskInstanceQuery().includeTaskLocalVariables().finished().singleResult();
             variableMap = task.getTaskLocalVariables();
             assertEquals(2, variableMap.size());
@@ -151,12 +172,21 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
             assertEquals("someVariable", variableMap.get("testVar"));
             assertNotNull(variableMap.get("testVar2"));
             assertEquals(123, variableMap.get("testVar2"));
+
+            assertEquals(1L, historyService.createHistoricTaskInstanceQuery().taskInvolvedGroups(Collections.singleton("testGroup")).count());
+            assertEquals( taskId, historyService.createHistoricTaskInstanceQuery().taskInvolvedGroups(Collections.singleton("testGroup")).list().get(0).getId());
+            assertEquals( taskId, historyService.createHistoricTaskInstanceQuery().taskInvolvedGroups(Collections.singleton("testGroup")).singleResult().getId());
+            assertEquals(3L, historyService.createHistoricTaskInstanceQuery().
+                or().taskInvolvedGroups(Collections.singleton("testGroup")).taskInvolvedUser("kermit").endOr().count());
+            assertEquals(1L, historyService.createHistoricTaskInstanceQuery().
+                or().taskInvolvedGroups(Collections.singleton("testGroup")).processInstanceId("undefined").endOr().count());
         }
     }
 
+    @Test
     @Deployment
     public void testOrQuery() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             HistoricTaskInstance task = historyService.createHistoricTaskInstanceQuery()
                     .includeTaskLocalVariables()
                     .or()
@@ -179,9 +209,11 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
             assertEquals(0, task.getProcessVariables().size());
             assertEquals(0, task.getTaskLocalVariables().size());
 
-            Map<String, Object> startMap = new HashMap<String, Object>();
+            Map<String, Object> startMap = new HashMap<>();
             startMap.put("processVar", true);
             runtimeService.startProcessInstanceByKey("oneTaskProcess", startMap);
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             task = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().or().taskAssignee("kermit").taskVariableValueEquals("localVar", "nonExisting").endOr().singleResult();
             assertEquals(1, task.getProcessVariables().size());
@@ -207,6 +239,8 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
 
             taskService.setVariable(task.getId(), "anotherProcessVar", 123);
             taskService.setVariableLocal(task.getId(), "localVar", "test");
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             task = historyService.createHistoricTaskInstanceQuery().includeTaskLocalVariables().or().taskAssignee("kermit").taskVariableValueEquals("localVar", "nonExisting").endOr().singleResult();
             assertEquals(0, task.getProcessVariables().size());
@@ -296,6 +330,9 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
 
             task = historyService.createHistoricTaskInstanceQuery().taskAssignee("gonzo").singleResult();
             taskService.complete(task.getId());
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
+            
             task = historyService.createHistoricTaskInstanceQuery().includeTaskLocalVariables().or().finished().taskVariableValueEquals("localVar", "nonExisting").endOr().singleResult();
             variableMap = task.getTaskLocalVariables();
             assertEquals(2, variableMap.size());
@@ -307,16 +344,19 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
         }
     }
 
+    @Test
     @Deployment
     public void testOrQueryMultipleVariableValues() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
-            Map<String, Object> startMap = new HashMap<String, Object>();
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
+            Map<String, Object> startMap = new HashMap<>();
             startMap.put("processVar", true);
             startMap.put("anotherProcessVar", 123);
             runtimeService.startProcessInstanceByKey("oneTaskProcess", startMap);
 
             startMap.put("anotherProcessVar", 999);
             runtimeService.startProcessInstanceByKey("oneTaskProcess", startMap);
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             HistoricTaskInstanceQuery query0 = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().or();
             for (int i = 0; i < 20; i++) {
@@ -337,10 +377,14 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
         }
     }
 
+    @Test
     @Deployment
     public void testCandidate() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
+            
             List<HistoricTaskInstance> tasks = historyService.createHistoricTaskInstanceQuery().taskCandidateUser("kermit").list();
             assertEquals(3, tasks.size());
 
@@ -352,7 +396,7 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
 
             tasks = historyService.createHistoricTaskInstanceQuery().taskCandidateGroup("management").list();
             assertEquals(1, tasks.size());
-            List<String> groups = new ArrayList<String>();
+            List<String> groups = new ArrayList<>();
             groups.add("management");
             groups.add("accountancy");
             tasks = historyService.createHistoricTaskInstanceQuery().taskCandidateGroupIn(groups).list();
@@ -364,7 +408,7 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
             tasks = historyService.createHistoricTaskInstanceQuery().taskCandidateUser("gonzo").taskCandidateGroupIn(groups).list();
             assertEquals(1, tasks.size());
 
-            Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
             taskService.complete(task.getId());
 
             assertEquals(0, taskService.createTaskQuery().processInstanceId(processInstance.getId()).count());
@@ -394,9 +438,90 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
             assertEquals(1, tasks.size());
         }
     }
+    
+    @Test
+    @Deployment(resources = { "org/flowable/engine/test/api/history/HistoricTaskAndVariablesQueryTest.testCandidate.bpmn20.xml" })
+    public void testIgnoreAssigneeValue() {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
+            String taskId = taskService
+                    .createTaskQuery()
+                    .processInstanceId(processInstance.getProcessInstanceId())
+                    .list()
+                    .get(0)
+                    .getId();
+            taskService.setAssignee(taskId, "kermit");
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
+
+            List<HistoricTaskInstance> tasks = historyService
+                    .createHistoricTaskInstanceQuery()
+                    .taskCandidateUser("kermit")
+                    .list();
+            assertEquals(2, tasks.size());
+
+            tasks = historyService
+                    .createHistoricTaskInstanceQuery()
+                    .taskCandidateUser("kermit")
+                    .ignoreAssigneeValue()
+                    .list();
+            assertEquals(3, tasks.size());
+
+            tasks = historyService
+                    .createHistoricTaskInstanceQuery()
+                    .taskCandidateGroup("management")
+                    .list();
+            assertEquals(0, tasks.size());
+
+            tasks = historyService
+                    .createHistoricTaskInstanceQuery()
+                    .taskCandidateGroup("management")
+                    .ignoreAssigneeValue()
+                    .list();
+            assertEquals(1, tasks.size());
+        }
+    }
+
+    @Test
+    @Deployment(resources = {"org/flowable/engine/test/api/history/HistoricTaskAndVariablesQueryTest.testCandidate.bpmn20.xml"})
+    public void testIgnoreAssigneeValueOr() {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
+
+            String taskId = taskService
+                    .createTaskQuery()
+                    .processInstanceId(processInstance.getProcessInstanceId())
+                    .list()
+                    .get(0)
+                    .getId();
+            taskService.setAssignee(taskId, "kermit");
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
+
+            List<HistoricTaskInstance>  tasks = historyService.createHistoricTaskInstanceQuery()
+                    .or()
+                    .taskCandidateUser("kermit")
+                    .taskAssignee("gonzo")
+                    .ignoreAssigneeValue()
+                    .endOr()
+                    .list();
+
+            assertEquals(4, tasks.size());
+
+            tasks = historyService.createHistoricTaskInstanceQuery()
+                    .or()
+                    .taskCandidateUser("kermit")
+                    .taskAssignee("gonzo")
+                    .endOr()
+                    .list();
+            assertEquals(3, tasks.size());
+        }
+    }
+
+    @Test
     public void testQueryWithPagingAndVariables() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             List<HistoricTaskInstance> tasks = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().includeTaskLocalVariables().orderByTaskPriority().desc().listPage(0, 1);
             assertEquals(1, tasks.size());
             HistoricTaskInstance task = tasks.get(0);
@@ -426,19 +551,153 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
         }
     }
 
+    @Test
+    public void testQueryWithPagingVariablesAndIdentityLinks() {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
+            
+            List<HistoricTaskInstance> tasks = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().includeTaskLocalVariables().includeIdentityLinks().orderByTaskPriority().desc().listPage(0, 1);
+            assertEquals(1, tasks.size());
+            HistoricTaskInstance task = tasks.get(0);
+            Map<String, Object> variableMap = task.getTaskLocalVariables();
+            assertEquals(2, variableMap.size());
+            assertEquals("someVariable", variableMap.get("testVar"));
+            assertEquals(123, variableMap.get("testVar2"));
+            assertEquals(1, task.getIdentityLinks().size());
+            IdentityLinkInfo identityLink = task.getIdentityLinks().get(0);
+            assertNull(identityLink.getProcessInstanceId());
+            assertEquals("assignee", identityLink.getType());
+            assertNull(identityLink.getGroupId());
+            assertEquals("gonzo", identityLink.getUserId());
+            assertEquals(task.getId(), identityLink.getTaskId());
+
+            tasks = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().includeTaskLocalVariables().includeIdentityLinks().orderByTaskPriority().asc().listPage(1, 2);
+            assertEquals(2, tasks.size());
+            task = tasks.get(1);
+            variableMap = task.getTaskLocalVariables();
+            assertEquals(2, variableMap.size());
+            assertEquals("someVariable", variableMap.get("testVar"));
+            assertEquals(123, variableMap.get("testVar2"));
+            assertEquals(1, task.getIdentityLinks().size());
+            identityLink = task.getIdentityLinks().get(0);
+            assertNull(identityLink.getProcessInstanceId());
+            assertEquals("assignee", identityLink.getType());
+            assertNull(identityLink.getGroupId());
+            assertEquals("gonzo", identityLink.getUserId());
+            assertEquals(task.getId(), identityLink.getTaskId());
+
+            tasks = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().includeTaskLocalVariables().includeIdentityLinks().orderByTaskPriority().asc().listPage(2, 4);
+            assertEquals(1, tasks.size());
+            task = tasks.get(0);
+            variableMap = task.getTaskLocalVariables();
+            assertEquals(2, variableMap.size());
+            assertEquals("someVariable", variableMap.get("testVar"));
+            assertEquals(123, variableMap.get("testVar2"));
+            assertEquals(1, task.getIdentityLinks().size());
+            identityLink = task.getIdentityLinks().get(0);
+            assertNull(identityLink.getProcessInstanceId());
+            assertEquals("assignee", identityLink.getType());
+            assertNull(identityLink.getGroupId());
+            assertEquals("gonzo", identityLink.getUserId());
+            assertEquals(task.getId(), identityLink.getTaskId());
+
+            tasks = historyService.createHistoricTaskInstanceQuery().includeProcessVariables().includeTaskLocalVariables().includeIdentityLinks().orderByTaskPriority().asc().listPage(4, 2);
+            assertEquals(0, tasks.size());
+        }
+    }
+    
+    @Test
+    @Deployment(resources = { "org/flowable/engine/test/api/history/HistoricTaskAndVariablesQueryTest.testCandidate.bpmn20.xml" })
+    public void testQueryVariableExists() {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
+            HistoricTaskInstance task = historyService.createHistoricTaskInstanceQuery().taskVariableExists("testVar").singleResult();
+            assertNotNull(task);
+            
+            List<HistoricTaskInstance> tasks = historyService.createHistoricTaskInstanceQuery().taskVariableNotExists("testVar").list();
+            assertEquals(2, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().or().taskVariableNotExists("testVar").processDefinitionId("unexisting").list();
+            assertEquals(2, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().or().taskVariableExists("testVar").processDefinitionId("unexisting").list();
+            assertEquals(1, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().or().taskVariableNotExists("testVar").endOr().or().processDefinitionId("unexisting").list();
+            assertEquals(0, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().or().taskVariableExists("testVar").endOr().or().processDefinitionId("unexisting").list();
+            assertEquals(0, tasks.size());
+            
+            Map<String, Object> varMap = Collections.singletonMap("processVar", (Object) "test");
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess", varMap);
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 250);
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).processVariableExists("processVar").list();
+            assertEquals(1, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).processVariableNotExists("processVar").list();
+            assertEquals(0, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId())
+                            .or().processVariableExists("processVar").processDefinitionId("undexisting").endOr().list();
+            assertEquals(1, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId())
+                            .or().processVariableNotExists("processVar").processInstanceId(processInstance.getId()).endOr().list();
+            assertEquals(1, tasks.size());
+            
+            runtimeService.setVariable(processInstance.getId(), "processVar2", "test2");
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 250);
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId())
+                            .processVariableExists("processVar").processVariableValueEquals("processVar2", "test2").list();
+            assertEquals(1, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId())
+                            .processVariableNotExists("processVar").processVariableValueEquals("processVar2", "test2").list();
+            assertEquals(0, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId())
+                            .or().processVariableExists("processVar").processVariableValueEquals("processVar2", "test2").endOr().list();
+            assertEquals(1, tasks.size());
+            
+            tasks = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId())
+                            .or().processVariableNotExists("processVar").processVariableValueEquals("processVar2", "test2").endOr().list();
+            assertEquals(1, tasks.size());
+        }
+    }
+
+    @Test
+    @Deployment(resources = { "org/flowable/engine/test/api/history/HistoricTaskAndVariablesQueryTest.testCandidate.bpmn20.xml" })
+    public void testQueryVariableExistsForCompletedTasks() {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
+            taskService.createTaskQuery().list().forEach(
+                task -> taskService.complete(task.getId())
+            );
+            testQueryVariableExists();
+        }
+    }
+
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/task/TaskQueryTest.testProcessDefinition.bpmn20.xml" })
     public void testWithoutDueDateQuery() throws Exception {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
+            
             HistoricTaskInstance historicTask = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).withoutTaskDueDate().singleResult();
             assertNotNull(historicTask);
             assertNull(historicTask.getDueDate());
 
             // Set due-date on task
-            Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
             Date dueDate = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss").parse("01/02/2003 01:12:13");
             task.setDueDate(dueDate);
             taskService.saveTask(task);
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             assertEquals(0, historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).withoutTaskDueDate().count());
 
@@ -447,12 +706,15 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
             // Clear due-date on task
             task.setDueDate(null);
             taskService.saveTask(task);
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             assertEquals(1, historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstance.getId()).withoutTaskDueDate().count());
         }
     }
 
     // Unit test for https://activiti.atlassian.net/browse/ACT-4152
+    @Test
     public void testQueryWithIncludeTaskVariableAndTaskCategory() {
         List<HistoricTaskInstance> tasks = historyService.createHistoricTaskInstanceQuery().taskAssignee("gonzo").list();
         for (HistoricTaskInstance task : tasks) {
@@ -477,13 +739,13 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
      * Generates some test tasks. - 2 tasks where kermit is a candidate and 1 task where gonzo is assignee
      */
     private List<String> generateTestTasks() throws Exception {
-        List<String> ids = new ArrayList<String>();
+        List<String> ids = new ArrayList<>();
 
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss.SSS");
         // 2 tasks for kermit
         processEngineConfiguration.getClock().setCurrentTime(sdf.parse("01/01/2001 01:01:01.000"));
         for (int i = 0; i < 2; i++) {
-            Task task = taskService.newTask();
+            org.flowable.task.api.Task task = taskService.newTask();
             task.setName("testTask");
             task.setDescription("testTask description");
             task.setPriority(3);
@@ -495,7 +757,7 @@ public class HistoricTaskAndVariablesQueryTest extends PluggableFlowableTestCase
 
         processEngineConfiguration.getClock().setCurrentTime(sdf.parse("02/02/2002 02:02:02.000"));
         // 1 task for gonzo
-        Task task = taskService.newTask();
+        org.flowable.task.api.Task task = taskService.newTask();
         task.setName("gonzoTask");
         task.setDescription("gonzo description");
         task.setPriority(4);

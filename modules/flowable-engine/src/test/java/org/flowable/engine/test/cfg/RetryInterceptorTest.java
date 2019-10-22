@@ -16,19 +16,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableOptimisticLockingException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandInterceptor;
+import org.flowable.common.engine.impl.interceptor.RetryInterceptor;
 import org.flowable.engine.ProcessEngine;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableOptimisticLockingException;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.interceptor.CommandInterceptor;
-import org.flowable.engine.impl.interceptor.RetryInterceptor;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Daniel Meyer
@@ -40,18 +40,18 @@ public class RetryInterceptorTest {
 
     protected RetryInterceptor retryInterceptor;
 
-    @Before
+    @BeforeEach
     public void setupProcessEngine() {
         ProcessEngineConfigurationImpl processEngineConfiguration = (ProcessEngineConfigurationImpl) new StandaloneInMemProcessEngineConfiguration();
         processEngineConfiguration.setJdbcUrl("jdbc:h2:mem:retryInterceptorTest");
-        List<CommandInterceptor> interceptors = new ArrayList<CommandInterceptor>();
+        List<CommandInterceptor> interceptors = new ArrayList<>();
         retryInterceptor = new RetryInterceptor();
         interceptors.add(retryInterceptor);
         processEngineConfiguration.setCustomPreCommandInterceptors(interceptors);
         processEngine = processEngineConfiguration.buildProcessEngine();
     }
 
-    @After
+    @AfterEach
     public void shutdownProcessEngine() {
         processEngine.close();
     }
@@ -73,6 +73,7 @@ public class RetryInterceptorTest {
 
     protected class CommandThrowingOptimisticLockingException implements Command<Void> {
 
+        @Override
         public Void execute(CommandContext commandContext) {
 
             counter.incrementAndGet();

@@ -1,21 +1,38 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.engine.test.api.tenant;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.util.CollectionUtil;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.util.CollectionUtil;
 import org.flowable.engine.history.HistoricActivityInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.Model;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
+import org.flowable.job.api.Job;
 import org.junit.Assert;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * A test case for the various implications of the tenancy support (tenant id column to entities + query support)
@@ -26,21 +43,19 @@ public class TenancyTest extends PluggableFlowableTestCase {
 
     private static final String TEST_TENANT_ID = "myTenantId";
 
-    private List<String> autoCleanedUpDeploymentIds = new ArrayList<String>();
+    private List<String> autoCleanedUpDeploymentIds = new ArrayList<>();
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
         this.autoCleanedUpDeploymentIds.clear();
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
 
         if (!autoCleanedUpDeploymentIds.isEmpty()) {
             for (String deploymentId : autoCleanedUpDeploymentIds) {
-                repositoryService.deleteDeployment(deploymentId, true);
+                deleteDeployment(deploymentId);
             }
         }
     }
@@ -78,6 +93,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         return repositoryService.createProcessDefinitionQuery().deploymentId(id).singleResult().getId();
     }
 
+    @Test
     public void testDeploymentTenancy() {
 
         deployTestProcessWithTestTenant();
@@ -92,6 +108,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         assertEquals(0, repositoryService.createDeploymentQuery().deploymentWithoutTenantId().list().size());
     }
 
+    @Test
     public void testProcessDefinitionTenancy() {
 
         // Deploy a process with tenant and verify
@@ -128,6 +145,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
                 .singleResult().getId());
     }
 
+    @Test
     public void testProcessInstanceTenancy() {
 
         // Start a number of process instances with tenant
@@ -153,6 +171,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testExecutionTenancy() {
 
         // Start a number of process instances with tenant
@@ -186,6 +205,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         assertEquals(nrOfProcessInstancesWithTenant, runtimeService.createProcessInstanceQuery().processInstanceTenantIdLike("%en%").list().size());
     }
 
+    @Test
     public void testTaskTenancy() {
 
         // Generate 10 tasks with tenant
@@ -214,6 +234,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testJobTenancy() {
 
         // Deploy process with a timer and an async step AND with a tenant
@@ -258,6 +279,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         repositoryService.deleteDeployment(deploymentId2, true);
     }
 
+    @Test
     public void testModelTenancy() {
 
         // Create a few models with tenant
@@ -291,6 +313,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testChangeDeploymentTenantId() {
 
         // Generate 8 tasks with tenant
@@ -349,26 +372,18 @@ public class TenancyTest extends PluggableFlowableTestCase {
         assertEquals(2 * nrOfProcessInstancesNoTenant, taskService.createTaskQuery().taskWithoutTenantId().list().size());
 
         // Remove the tenant id and verify results
-        try {
-            repositoryService.changeDeploymentTenantId(deploymentId, "");
-            fail(); // should clash: there is already a process definition with
-                    // the same key
-        } catch (Exception e) {
-
-        }
+        // should clash: there is already a process definition with the same key
+        assertThatThrownBy(() -> repositoryService.changeDeploymentTenantId(deploymentId, ""));
     }
 
+    @Test
     public void testChangeDeploymentIdWithClash() {
         String processDefinitionIdWithTenant = deployTestProcessWithTestTenant("tenantA");
-        String processDefinitionIdNoTenant = deployOneTaskTestProcess();
+        deployOneTaskTestProcess();
 
         // Changing the one with tenant now back to one without should clash,
         // cause there already exists one
-        try {
-            repositoryService.changeDeploymentTenantId(processDefinitionIdWithTenant, "");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> repositoryService.changeDeploymentTenantId(processDefinitionIdWithTenant, ""));
 
         // Deploying another version should just up the version
         String processDefinitionIdNoTenant2 = deployOneTaskTestProcess();
@@ -376,6 +391,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testJobTenancyAfterTenantChange() {
 
         // Deploy process with a timer and an async step AND with a tenant
@@ -408,9 +424,10 @@ public class TenancyTest extends PluggableFlowableTestCase {
         repositoryService.deleteDeployment(deploymentId, true);
     }
 
+    @Test
     public void testHistoryTenancy() {
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
 
             // Generate 3 tasks with tenant
             String processDefinitionIdWithTenant = deployTestProcessWithTestTenant();
@@ -427,9 +444,11 @@ public class TenancyTest extends PluggableFlowableTestCase {
             }
 
             // Complete all tasks
-            for (Task task : taskService.createTaskQuery().list()) {
+            for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
                 taskService.complete(task.getId());
             }
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             // Verify process instances
             assertEquals(TEST_TENANT_ID, historyService.createHistoricProcessInstanceQuery().processDefinitionId(processDefinitionIdWithTenant).list().get(0).getTenantId());
@@ -453,15 +472,16 @@ public class TenancyTest extends PluggableFlowableTestCase {
                 assertEquals(TEST_TENANT_ID, historicActivityInstance.getTenantId());
             }
             assertEquals("", historyService.createHistoricActivityInstanceQuery().processDefinitionId(processDefinitionIdNoTenant).list().get(0).getTenantId());
-            assertEquals(3 * (nrOfProcessInstancesWithTenant + nrOfProcessInstancesNoTenant), historyService.createHistoricActivityInstanceQuery().list().size());
-            assertEquals(3 * nrOfProcessInstancesWithTenant, historyService.createHistoricActivityInstanceQuery().activityTenantId(TEST_TENANT_ID).list().size());
-            assertEquals(3 * nrOfProcessInstancesWithTenant, historyService.createHistoricActivityInstanceQuery().activityTenantIdLike("my%").list().size());
-            assertEquals(3 * nrOfProcessInstancesNoTenant, historyService.createHistoricActivityInstanceQuery().activityWithoutTenantId().list().size());
+            assertEquals(5 * (nrOfProcessInstancesWithTenant + nrOfProcessInstancesNoTenant), historyService.createHistoricActivityInstanceQuery().list().size());
+            assertEquals(5 * nrOfProcessInstancesWithTenant, historyService.createHistoricActivityInstanceQuery().activityTenantId(TEST_TENANT_ID).list().size());
+            assertEquals(5 * nrOfProcessInstancesWithTenant, historyService.createHistoricActivityInstanceQuery().activityTenantIdLike("my%").list().size());
+            assertEquals(5 * nrOfProcessInstancesNoTenant, historyService.createHistoricActivityInstanceQuery().activityWithoutTenantId().list().size());
 
         }
 
     }
 
+    @Test
     public void testProcessDefinitionKeyClashBetweenTenants() {
 
         String tentanA = "tenantA";
@@ -497,13 +517,8 @@ public class TenancyTest extends PluggableFlowableTestCase {
         assertEquals(0, repositoryService.createProcessDefinitionQuery().processDefinitionKey("oneTaskProcess").processDefinitionWithoutTenantId().list().size());
 
         // Now, start process instances by process definition key (no tenant)
-        try {
-            runtimeService.startProcessInstanceByKey("oneTaskProcess");
-            fail(); // shouldn't happen, there is no process definition with that
-                    // key that has no tenant, it has to give an exception as
-                    // such!
-        } catch (Exception e) {
-        }
+        // there is no process definition with that key that has no tenant, it has to give an exception
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByKey("oneTaskProcess"));
 
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId("oneTaskProcess", tentanA);
         assertEquals(procDefIdA, processInstance.getProcessDefinitionId());
@@ -512,6 +527,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         assertEquals(procDefIdB, processInstance.getProcessDefinitionId());
     }
 
+    @Test
     public void testSuspendProcessDefinitionTenancy() {
 
         // Deploy one process definition for tenant A, and two process
@@ -560,6 +576,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testSignalFromProcessTenancy() {
 
         // Deploy process both with and without tenant
@@ -596,6 +613,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testSignalThroughApiTenancy() {
 
         // Deploy process both with and without tenant
@@ -634,6 +652,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testSignalThroughApiTenancyReversed() { // cause reversing the
                                                         // order of calling DID
                                                         // leave to an error!
@@ -674,6 +693,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testSignalAsyncThroughApiTenancy() {
 
         // Deploy process both with and without tenant
@@ -727,6 +747,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testStartProcessInstanceBySignalTenancy() {
 
         // Deploy process both with and without tenant
@@ -766,6 +787,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testStartProcessInstanceByMessageTenancy() {
 
         // Deploy process both with and without tenant
@@ -799,6 +821,7 @@ public class TenancyTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testStartProcessInstanceByMessageTenancyReversed() { // same as
                                                                      // above,
                                                                      // but now
@@ -831,8 +854,9 @@ public class TenancyTest extends PluggableFlowableTestCase {
     }
 
     // Bug from http://forums.activiti.org/content/callactiviti-tenant-id
+    @Test
     public void testCallActivityWithTenant() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             String tenantId = "apache";
 
             // deploying both processes. Process 1 will call Process 2
@@ -840,33 +864,28 @@ public class TenancyTest extends PluggableFlowableTestCase {
             repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/api/tenant/TenancyTest.testCallActivityWithTenant-process02.bpmn20.xml").tenantId(tenantId).deploy();
 
             // Starting Process 1. Process 1 will be executed successfully but
-            // when the call to process 2 is made internally it will throw the
-            // exception
+            // when the call to process 2 is made internally it will throw the exception
             ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId("process1", null, CollectionUtil.singletonMap("sendFor", "test"), tenantId);
             Assert.assertNotNull(processInstance);
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             Assert.assertEquals(1, historyService.createHistoricProcessInstanceQuery().processDefinitionKey("process2").processInstanceTenantId(tenantId).count());
             Assert.assertEquals(1, historyService.createHistoricProcessInstanceQuery().processDefinitionKey("process2").count());
 
             // following line if executed will give activiti object not found
             // exception as the process1 is linked to a tenant id.
-            try {
-                processInstance = runtimeService.startProcessInstanceByKey("process1");
-                Assert.fail();
-            } catch (Exception e) {
-
-            }
+            assertThatThrownBy(() -> runtimeService.startProcessInstanceByKey("process1"));
 
             // Cleanup
-            for (Deployment deployment : repositoryService.createDeploymentQuery().list()) {
-                repositoryService.deleteDeployment(deployment.getId(), true);
-            }
+            deleteDeployments();
         }
     }
 
     /*
      * See https://activiti.atlassian.net/browse/ACT-4034
      */
+    @Test
     public void testGetLatestProcessDefinitionVersionForSameProcessDefinitionKey() {
         String tenant1 = "tenant1";
         String tenant2 = "tenant2";

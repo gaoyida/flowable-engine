@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,12 +30,12 @@ import org.activiti.engine.impl.jobexecutor.TimerExecuteNestedActivityJobHandler
 import org.activiti.engine.impl.jobexecutor.TimerStartEventJobHandler;
 import org.activiti.engine.impl.pvm.process.ActivityImpl;
 import org.apache.commons.lang3.StringUtils;
-import org.flowable.engine.delegate.Expression;
-import org.flowable.engine.delegate.VariableScope;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
-import org.flowable.engine.impl.calendar.BusinessCalendar;
-import org.flowable.engine.impl.calendar.CycleBusinessCalendar;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.impl.calendar.BusinessCalendar;
+import org.flowable.common.engine.impl.calendar.CycleBusinessCalendar;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.variable.api.delegate.VariableScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,7 @@ public class TimerJobEntity extends AbstractJobEntity {
 
     private static final long serialVersionUID = 1L;
 
-    private static Logger log = LoggerFactory.getLogger(TimerJobEntity.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TimerJobEntity.class);
 
     public TimerJobEntity() {
     }
@@ -77,7 +77,9 @@ public class TimerJobEntity extends AbstractJobEntity {
         this.processInstanceId = te.getProcessInstanceId();
         this.processDefinitionId = te.getProcessDefinitionId();
         this.exceptionMessage = te.getExceptionMessage();
+        this.createTime = te.getCreateTime();
         setExceptionStacktrace(te.getExceptionStacktrace());
+        setCustomValues(te.getCustomValues());
 
         // Inherit tenant
         this.tenantId = te.getTenantId();
@@ -89,8 +91,8 @@ public class TimerJobEntity extends AbstractJobEntity {
         restoreExtraData(commandContext, jobHandlerConfiguration);
 
         if (this.getDuedate() != null && !isValidTime(this.getDuedate())) {
-            if (log.isDebugEnabled()) {
-                log.debug("Timer {} fired. but the dueDate is after the endDate.  Deleting timer.", getId());
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Timer {} fired. but the dueDate is after the endDate.  Deleting timer.", getId());
             }
             delete();
             return;
@@ -105,8 +107,8 @@ public class TimerJobEntity extends AbstractJobEntity {
         JobHandler jobHandler = jobHandlers.get(jobHandlerType);
         jobHandler.execute(this, jobHandlerConfiguration, execution, commandContext);
 
-        if (log.isDebugEnabled()) {
-            log.debug("Timer {} fired. Deleting timer.", getId());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Timer {} fired. Deleting timer.", getId());
         }
         delete();
 
@@ -168,8 +170,9 @@ public class TimerJobEntity extends AbstractJobEntity {
                 .getDbSqlSession()
                 .delete(this);
 
-        // Also delete the job's exception byte array
+        // Also delete the job's exception and the custom values byte array
         exceptionByteArrayRef.delete();
+        customValuesByteArrayRef.delete();
 
         // remove link to execution
         if (executionId != null) {

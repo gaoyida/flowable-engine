@@ -18,13 +18,13 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.dmn.engine.DmnEngineConfiguration;
-import org.flowable.dmn.engine.impl.context.Context;
 import org.flowable.dmn.engine.impl.persistence.entity.DecisionTableEntity;
 import org.flowable.dmn.engine.impl.persistence.entity.DecisionTableEntityManager;
 import org.flowable.dmn.engine.impl.persistence.entity.DmnDeploymentEntity;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.flowable.dmn.engine.impl.util.CommandContextUtil;
 
 /**
  * Methods for working with deployments. Much of the actual work of {@link DmnDeployer} is done by orchestrating the different pieces of work this class does; by having them here, we allow other
@@ -39,7 +39,7 @@ public class DmnDeploymentHelper {
      *             if any two decision tables have the same key
      */
     public void verifyDecisionTablesDoNotShareKeys(Collection<DecisionTableEntity> decisionTables) {
-        Set<String> keySet = new LinkedHashSet<String>();
+        Set<String> keySet = new LinkedHashSet<>();
         for (DecisionTableEntity decisionTable : decisionTables) {
             if (keySet.contains(decisionTable.getKey())) {
                 throw new FlowableException(
@@ -84,7 +84,7 @@ public class DmnDeploymentHelper {
     public DecisionTableEntity getMostRecentVersionOfDecisionTable(DecisionTableEntity decisionTable) {
         String key = decisionTable.getKey();
         String tenantId = decisionTable.getTenantId();
-        DecisionTableEntityManager decisionTableEntityManager = Context.getCommandContext().getDmnEngineConfiguration().getDecisionTableEntityManager();
+        DecisionTableEntityManager decisionTableEntityManager = CommandContextUtil.getDmnEngineConfiguration().getDecisionTableEntityManager();
 
         DecisionTableEntity existingDefinition = null;
 
@@ -98,16 +98,16 @@ public class DmnDeploymentHelper {
     }
 
     /**
-     * Gets the persisted version of the already-deployed process definition. Note that this is different from {@link #getMostRecentVersionOfDecisionTable} as it looks specifically for a process
-     * definition that is already persisted and attached to a particular deployment, rather than the latest version across all deployments.
+     * Gets the persisted version of the already-deployed decision table. Note that this is different from {@link #getMostRecentVersionOfDecisionTable} as it looks specifically for a decision
+     * table that is already persisted and attached to a particular deployment, rather than the latest version across all deployments.
      */
     public DecisionTableEntity getPersistedInstanceOfDecisionTable(DecisionTableEntity decisionTable) {
         String deploymentId = decisionTable.getDeploymentId();
         if (StringUtils.isEmpty(decisionTable.getDeploymentId())) {
-            throw new FlowableIllegalArgumentException("Provided process definition must have a deployment id.");
+            throw new FlowableIllegalArgumentException("Provided decision table must have a deployment id.");
         }
 
-        DecisionTableEntityManager decisionTableEntityManager = Context.getCommandContext().getDmnEngineConfiguration().getDecisionTableEntityManager();
+        DecisionTableEntityManager decisionTableEntityManager = CommandContextUtil.getDmnEngineConfiguration().getDecisionTableEntityManager();
         DecisionTableEntity persistedDecisionTable = null;
         if (decisionTable.getTenantId() == null || DmnEngineConfiguration.NO_TENANT_ID.equals(decisionTable.getTenantId())) {
             persistedDecisionTable = decisionTableEntityManager.findDecisionTableByDeploymentAndKey(deploymentId, decisionTable.getKey());

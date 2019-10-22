@@ -16,6 +16,7 @@ import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.commons.lang3.StringUtils;
+import org.flowable.bpmn.constants.BpmnXMLConstants;
 import org.flowable.bpmn.converter.util.BpmnXMLUtil;
 import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.BpmnModel;
@@ -27,6 +28,7 @@ import org.flowable.bpmn.model.alfresco.AlfrescoStartEvent;
  */
 public class StartEventXMLConverter extends BaseBpmnXMLConverter {
 
+    @Override
     public Class<? extends BaseElement> getBpmnElementType() {
         return StartEvent.class;
     }
@@ -59,6 +61,8 @@ public class StartEventXMLConverter extends BaseBpmnXMLConverter {
 
         startEvent.setInterrupting(interrupting);
         startEvent.setFormKey(formKey);
+        String formValidation = BpmnXMLUtil.getAttributeValue(BpmnXMLConstants.ATTRIBUTE_FORM_FIELD_VALIDATION, xtr);
+        startEvent.setValidateFormFields(formValidation);
 
         parseChildElements(getXMLElementName(), startEvent, model, xtr);
 
@@ -70,6 +74,7 @@ public class StartEventXMLConverter extends BaseBpmnXMLConverter {
         StartEvent startEvent = (StartEvent) element;
         writeQualifiedAttribute(ATTRIBUTE_EVENT_START_INITIATOR, startEvent.getInitiator(), xtw);
         writeQualifiedAttribute(ATTRIBUTE_FORM_FORMKEY, startEvent.getFormKey(), xtw);
+        writeQualifiedAttribute(ATTRIBUTE_FORM_FIELD_VALIDATION, startEvent.getValidateFormFields(), xtw);
 
         if (startEvent.getEventDefinitions() != null && startEvent.getEventDefinitions().size() > 0) {
             writeDefaultAttribute(ATTRIBUTE_EVENT_START_INTERRUPTING, String.valueOf(startEvent.isInterrupting()), xtw);

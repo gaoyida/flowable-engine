@@ -19,7 +19,7 @@ import org.activiti.engine.delegate.event.impl.ActivitiEventBuilder;
 import org.activiti.engine.impl.interceptor.Command;
 import org.activiti.engine.impl.interceptor.CommandContext;
 import org.activiti.engine.impl.persistence.entity.JobEntity;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +30,7 @@ public class ExecuteAsyncJobCmd implements Command<Object>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private static Logger log = LoggerFactory.getLogger(ExecuteAsyncJobCmd.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExecuteAsyncJobCmd.class);
 
     protected JobEntity job;
 
@@ -38,6 +38,7 @@ public class ExecuteAsyncJobCmd implements Command<Object>, Serializable {
         this.job = job;
     }
 
+    @Override
     public Object execute(CommandContext commandContext) {
 
         if (job == null) {
@@ -52,13 +53,13 @@ public class ExecuteAsyncJobCmd implements Command<Object>, Serializable {
 
         JobEntity refetchedJob = commandContext.getJobEntityManager().findJobById(job.getId());
         if (refetchedJob == null) {
-            log.debug("Job does not exist anymore and will not be executed. It has most likely been deleted "
+            LOGGER.debug("Job does not exist anymore and will not be executed. It has most likely been deleted "
                     + "as part of another concurrent part of the process instance.");
             return null;
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("Executing async job {}", refetchedJob.getId());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Executing async job {}", refetchedJob.getId());
         }
 
         refetchedJob.execute(commandContext);

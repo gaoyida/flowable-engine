@@ -14,25 +14,33 @@ package org.flowable.engine.impl.cmd;
 
 import java.io.Serializable;
 
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
 
 public class GetTableNameCmd implements Command<String>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private Class<?> entityClass;
+    protected Class<?> entityClass;
+    protected boolean withPrefix = true;
 
     public GetTableNameCmd(Class<?> entityClass) {
         this.entityClass = entityClass;
     }
 
+    public GetTableNameCmd(Class<?> entityClass, boolean withPrefix) {
+        this.entityClass = entityClass;
+        this.withPrefix = withPrefix;
+    }
+
+    @Override
     public String execute(CommandContext commandContext) {
         if (entityClass == null) {
             throw new FlowableIllegalArgumentException("entityClass is null");
         }
-        return commandContext.getTableDataManager().getTableName(entityClass, true);
+        return CommandContextUtil.getTableDataManager(commandContext).getTableName(entityClass, withPrefix);
     }
 
 }

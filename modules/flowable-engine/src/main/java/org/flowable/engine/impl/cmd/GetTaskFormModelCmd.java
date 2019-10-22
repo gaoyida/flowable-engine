@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,125 +13,127 @@
 package org.flowable.engine.impl.cmd;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
-import org.flowable.content.api.ContentItem;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
-import org.flowable.engine.history.HistoricTaskInstance;
-import org.flowable.engine.history.HistoricVariableInstance;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.form.model.FormField;
-import org.flowable.form.model.FormFieldTypes;
-import org.flowable.form.model.FormModel;
+import org.flowable.form.api.FormFieldHandler;
+import org.flowable.form.api.FormInfo;
+import org.flowable.form.api.FormRepositoryService;
+import org.flowable.form.api.FormService;
+import org.flowable.task.api.TaskInfo;
+import org.flowable.task.api.history.HistoricTaskInstance;
 
 /**
  * @author Tijs Rademakers
  */
-public class GetTaskFormModelCmd implements Command<FormModel>, Serializable {
+public class GetTaskFormModelCmd implements Command<FormInfo>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
     protected String taskId;
+    protected boolean ignoreVariables;
 
-    public GetTaskFormModelCmd(String taskId) {
+    public GetTaskFormModelCmd(String taskId, boolean ignoreVariables) {
         this.taskId = taskId;
+        this.ignoreVariables = ignoreVariables;
     }
 
-    public FormModel execute(CommandContext commandContext) {
-        ProcessEngineConfigurationImpl processEngineConfiguration = commandContext.getProcessEngineConfiguration();
-        if (!processEngineConfiguration.isFormEngineInitialized()) {
+    @Override
+    public FormInfo execute(CommandContext commandContext) {
+        boolean historic = false;
+
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
+        FormService formService = CommandContextUtil.getFormService();
+        if (formService == null) {
             throw new FlowableIllegalArgumentException("Form engine is not initialized");
         }
 
-        HistoricTaskInstance task = processEngineConfiguration.getHistoricTaskInstanceEntityManager().findById(taskId);
+        TaskInfo task = CommandContextUtil.getTaskService(commandContext).getTask(taskId);
+        Date endTime = null;
+        if (task == null) {
+            historic = true;
+            task = CommandContextUtil.getHistoricTaskService(commandContext).getHistoricTask(taskId);
+            if (task != null) {
+                endTime = ((HistoricTaskInstance) task).getEndTime();
+            }
+        }
+
         if (task == null) {
             throw new FlowableObjectNotFoundException("Task not found with id " + taskId);
         }
 
-        Map<String, Object> variables = new HashMap<String, Object>();
-        if (task.getProcessInstanceId() != null) {
-            List<HistoricVariableInstance> variableInstances = processEngineConfiguration.getHistoryService()
-                    .createHistoricVariableInstanceQuery()
-                    .processInstanceId(task.getProcessInstanceId())
-                    .list();
+        Map<String, Object> variables = new HashMap<>();
+        if (!ignoreVariables && task.getProcessInstanceId() != null) {
 
-            for (HistoricVariableInstance historicVariableInstance : variableInstances) {
-                variables.put(historicVariableInstance.getVariableName(), historicVariableInstance.getValue());
+            if (!historic) {
+                processEngineConfiguration.getTaskService()
+                        .getVariableInstances(taskId).values()
+                        .stream()
+                        .forEach(variableInstance -> variables.putIfAbsent(variableInstance.getName(), variableInstance.getValue()));
+
+                processEngineConfiguration.getRuntimeService().getVariableInstances(task.getProcessInstanceId()).values()
+                        .stream()
+                        .forEach(variableInstance -> variables.putIfAbsent(variableInstance.getName(), variableInstance.getValue()));
+
+
+            } else {
+
+                processEngineConfiguration.getHistoryService()
+                        .createHistoricVariableInstanceQuery().taskId(taskId).list()
+                        .stream()
+                        .forEach(variableInstance -> variables.putIfAbsent(variableInstance.getVariableName(), variableInstance.getValue()));
+
+                processEngineConfiguration.getHistoryService()
+                        .createHistoricVariableInstanceQuery().processInstanceId(task.getProcessInstanceId()).list()
+                        .stream()
+                        .forEach(variableInstance -> variables.putIfAbsent(variableInstance.getVariableName(), variableInstance.getValue()));
+
             }
         }
 
         String parentDeploymentId = null;
         if (StringUtils.isNotEmpty(task.getProcessDefinitionId())) {
-            ProcessDefinition processDefinition = processEngineConfiguration.getRepositoryService()
-                    .getProcessDefinition(task.getProcessDefinitionId());
-            parentDeploymentId = processDefinition.getDeploymentId();
+            RepositoryService repositoryService = processEngineConfiguration.getRepositoryService();
+            ProcessDefinition processDefinition = repositoryService.getProcessDefinition(task.getProcessDefinitionId());
+            Deployment deployment = repositoryService.createDeploymentQuery().deploymentId(processDefinition.getDeploymentId()).singleResult();
+            parentDeploymentId = deployment.getParentDeploymentId();
         }
 
-        FormModel formModel = null;
-        if (task.getEndTime() != null) {
-            formModel = processEngineConfiguration.getFormEngineFormService()
-                    .getFormInstanceModelByKeyAndParentDeploymentId(task.getFormKey(), parentDeploymentId,
-                            taskId, task.getProcessInstanceId(), variables, task.getTenantId());
+        FormInfo formInfo = null;
+        if (ignoreVariables) {
+            FormRepositoryService formRepositoryService = CommandContextUtil.getFormRepositoryService();
+            formInfo = formRepositoryService.getFormModelByKeyAndParentDeploymentId(task.getFormKey(), parentDeploymentId,
+                    task.getTenantId(), processEngineConfiguration.isFallbackToDefaultTenant());
+
+        } else if (endTime != null) {
+            formInfo = formService.getFormInstanceModelByKeyAndParentDeploymentId(task.getFormKey(), parentDeploymentId,
+                    taskId, task.getProcessInstanceId(), variables, task.getTenantId(), processEngineConfiguration.isFallbackToDefaultTenant());
 
         } else {
-            formModel = processEngineConfiguration.getFormEngineFormService()
-                    .getFormModelWithVariablesByKeyAndParentDeploymentId(task.getFormKey(), parentDeploymentId,
-                            task.getProcessInstanceId(), variables, task.getTenantId());
+            formInfo = formService.getFormModelWithVariablesByKeyAndParentDeploymentId(task.getFormKey(), parentDeploymentId,
+                    taskId, variables, task.getTenantId(), processEngineConfiguration.isFallbackToDefaultTenant());
         }
 
         // If form does not exists, we don't want to leak out this info to just anyone
-        if (formModel == null) {
+        if (formInfo == null) {
             throw new FlowableObjectNotFoundException("Form model for task " + task.getTaskDefinitionKey() + " cannot be found for form key " + task.getFormKey());
         }
 
-        fetchRelatedContentInfoIfNeeded(formModel, processEngineConfiguration);
+        FormFieldHandler formFieldHandler = CommandContextUtil.getProcessEngineConfiguration(commandContext).getFormFieldHandler();
+        formFieldHandler.enrichFormFields(formInfo);
 
-        return formModel;
-    }
-
-    protected void fetchRelatedContentInfoIfNeeded(FormModel formModel, ProcessEngineConfigurationImpl processEngineConfiguration) {
-        if (!processEngineConfiguration.isContentEngineInitialized()) {
-            return;
-        }
-
-        if (formModel.getFields() != null) {
-            for (FormField formField : formModel.getFields()) {
-                if (FormFieldTypes.UPLOAD.equals(formField.getType())) {
-
-                    List<String> contentItemIds = null;
-                    if (formField.getValue() instanceof List) {
-                        contentItemIds = (List<String>) formField.getValue();
-
-                    } else if (formField.getValue() instanceof String) {
-                        String[] splittedString = ((String) formField.getValue()).split(",");
-                        contentItemIds = new ArrayList<String>();
-                        Collections.addAll(contentItemIds, splittedString);
-                    }
-
-                    if (contentItemIds != null) {
-                        Set<String> contentItemIdSet = new HashSet<>(contentItemIds);
-
-                        List<ContentItem> contentItems = processEngineConfiguration.getContentService()
-                                .createContentItemQuery()
-                                .ids(contentItemIdSet)
-                                .list();
-
-                        formField.setValue(contentItems);
-                    }
-                }
-            }
-        }
+        return formInfo;
     }
 
 }

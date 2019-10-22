@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ContentEngineImpl implements ContentEngine {
 
-    private static Logger log = LoggerFactory.getLogger(ContentEngineImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ContentEngineImpl.class);
 
     protected String name;
     protected ContentManagementService managementService;
@@ -38,34 +38,44 @@ public class ContentEngineImpl implements ContentEngine {
         this.managementService = engineConfiguration.getContentManagementService();
         this.contentService = engineConfiguration.getContentService();
 
+        if (engineConfiguration.getSchemaManagementCmd() != null) {
+            engineConfiguration.getCommandExecutor().execute(engineConfiguration.getSchemaCommandConfig(), engineConfiguration.getSchemaManagementCmd());
+        }
+        
         if (name == null) {
-            log.info("default flowable ContentEngine created");
+            LOGGER.info("default flowable ContentEngine created");
         } else {
-            log.info("ContentEngine {} created", name);
+            LOGGER.info("ContentEngine {} created", name);
         }
 
         ContentEngines.registerContentEngine(this);
     }
 
+    @Override
     public void close() {
         ContentEngines.unregister(this);
+        engineConfiguration.close();
     }
 
     // getters and setters
     // //////////////////////////////////////////////////////
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public ContentManagementService getContentManagementService() {
         return managementService;
     }
 
+    @Override
     public ContentService getContentService() {
         return contentService;
     }
 
+    @Override
     public ContentEngineConfiguration getContentEngineConfiguration() {
         return engineConfiguration;
     }

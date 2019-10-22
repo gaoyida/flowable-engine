@@ -18,10 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.activiti.engine.impl.test.PluggableFlowableTestCase;
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.HistoricProcessInstanceQuery;
-import org.flowable.engine.impl.history.HistoryLevel;
-import org.flowable.engine.task.Task;
 
 /**
  * @author Tijs Rademakers
@@ -31,7 +30,7 @@ public class HistoricProcessInstanceAndVariablesQueryTest extends PluggableFlowa
     private static final String PROCESS_DEFINITION_KEY = "oneTaskProcess";
     private static final String PROCESS_DEFINITION_KEY_2 = "oneTaskProcess2";
     private static final String PROCESS_DEFINITION_NAME_2 = "oneTaskProcess2Name";
-    private static final String PROCESS_DEFINITION_CATEGORY_2 = "org.activiti.enginge.test.api.runtime.2Category";
+    private static final String PROCESS_DEFINITION_CATEGORY_2 = "org.activiti.engine.test.api.runtime.2Category";
     private static final String PROCESS_DEFINITION_KEY_3 = "oneTaskProcess3";
 
     private List<String> processInstanceIds;
@@ -54,7 +53,7 @@ public class HistoricProcessInstanceAndVariablesQueryTest extends PluggableFlowa
         for (int i = 0; i < 4; i++) {
             processInstanceIds.add(runtimeService.startProcessInstanceByKey(PROCESS_DEFINITION_KEY, String.valueOf(i), startMap).getId());
             if (i == 0) {
-                Task task = taskService.createTaskQuery().processInstanceId(processInstanceIds.get(0)).singleResult();
+                org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstanceIds.get(0)).singleResult();
                 taskService.complete(task.getId());
             }
         }

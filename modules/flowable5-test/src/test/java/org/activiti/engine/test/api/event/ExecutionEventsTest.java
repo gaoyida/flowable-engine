@@ -13,9 +13,9 @@
 package org.activiti.engine.test.api.event;
 
 import org.activiti.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.common.api.delegate.event.FlowableEntityEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 
@@ -63,7 +63,7 @@ public class ExecutionEventsTest extends PluggableFlowableTestCase {
         assertEquals(processInstance.getId(), ((org.activiti.engine.runtime.Execution) event.getEntity()).getId());
         listener.clearEventsReceived();
 
-        // Check update event when process-definition is supended (should cascade suspend/activate all process instances)
+        // Check update event when process-definition is suspended (should cascade suspend/activate all process instances)
         repositoryService.suspendProcessDefinitionById(processInstance.getProcessDefinitionId(), true, null);
         repositoryService.activateProcessDefinitionById(processInstance.getProcessDefinitionId(), true, null);
 

@@ -20,8 +20,22 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang3.StringUtils;
+import org.flowable.batch.api.Batch;
+import org.flowable.batch.api.BatchPart;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.rest.resolver.ContentTypeResolver;
+import org.flowable.common.rest.util.RestUrlBuilder;
+import org.flowable.common.rest.variable.BooleanRestVariableConverter;
+import org.flowable.common.rest.variable.DateRestVariableConverter;
+import org.flowable.common.rest.variable.DoubleRestVariableConverter;
+import org.flowable.common.rest.variable.IntegerRestVariableConverter;
+import org.flowable.common.rest.variable.JsonObjectRestVariableConverter;
+import org.flowable.common.rest.variable.LongRestVariableConverter;
+import org.flowable.common.rest.variable.RestVariableConverter;
+import org.flowable.common.rest.variable.ShortRestVariableConverter;
+import org.flowable.common.rest.variable.StringRestVariableConverter;
 import org.flowable.dmn.api.DmnDecisionTable;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
 import org.flowable.engine.form.FormData;
 import org.flowable.engine.form.FormProperty;
 import org.flowable.engine.form.StartFormData;
@@ -29,42 +43,30 @@ import org.flowable.engine.form.TaskFormData;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricDetail;
 import org.flowable.engine.history.HistoricFormProperty;
-import org.flowable.engine.history.HistoricIdentityLink;
 import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.engine.history.HistoricTaskInstance;
-import org.flowable.engine.history.HistoricVariableInstance;
 import org.flowable.engine.history.HistoricVariableUpdate;
 import org.flowable.engine.impl.bpmn.deployer.ResourceNameUtil;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.Model;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.EventSubscription;
 import org.flowable.engine.runtime.Execution;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.task.Attachment;
 import org.flowable.engine.task.Comment;
 import org.flowable.engine.task.Event;
-import org.flowable.engine.task.IdentityLink;
-import org.flowable.engine.task.Task;
+import org.flowable.eventsubscription.api.EventSubscription;
 import org.flowable.form.api.FormDefinition;
+import org.flowable.identitylink.api.IdentityLink;
+import org.flowable.identitylink.api.history.HistoricIdentityLink;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.User;
-import org.flowable.rest.application.ContentTypeResolver;
+import org.flowable.job.api.Job;
 import org.flowable.rest.service.api.engine.AttachmentResponse;
 import org.flowable.rest.service.api.engine.CommentResponse;
 import org.flowable.rest.service.api.engine.EventResponse;
 import org.flowable.rest.service.api.engine.RestIdentityLink;
-import org.flowable.rest.variable.BooleanRestVariableConverter;
-import org.flowable.rest.variable.DateRestVariableConverter;
-import org.flowable.rest.variable.DoubleRestVariableConverter;
-import org.flowable.rest.variable.IntegerRestVariableConverter;
-import org.flowable.rest.variable.LongRestVariableConverter;
 import org.flowable.rest.service.api.engine.variable.QueryVariable;
 import org.flowable.rest.service.api.engine.variable.RestVariable;
-import org.flowable.rest.variable.RestVariableConverter;
-import org.flowable.rest.variable.ShortRestVariableConverter;
-import org.flowable.rest.variable.StringRestVariableConverter;
 import org.flowable.rest.service.api.engine.variable.RestVariable.RestVariableScope;
 import org.flowable.rest.service.api.form.FormDataResponse;
 import org.flowable.rest.service.api.form.RestEnumFormProperty;
@@ -74,11 +76,14 @@ import org.flowable.rest.service.api.history.HistoricDetailResponse;
 import org.flowable.rest.service.api.history.HistoricIdentityLinkResponse;
 import org.flowable.rest.service.api.history.HistoricProcessInstanceResponse;
 import org.flowable.rest.service.api.history.HistoricTaskInstanceResponse;
+import org.flowable.rest.service.api.history.HistoricTaskLogEntryResponse;
 import org.flowable.rest.service.api.history.HistoricVariableInstanceResponse;
 import org.flowable.rest.service.api.identity.GroupResponse;
 import org.flowable.rest.service.api.identity.MembershipResponse;
 import org.flowable.rest.service.api.identity.UserInfoResponse;
 import org.flowable.rest.service.api.identity.UserResponse;
+import org.flowable.rest.service.api.management.BatchPartResponse;
+import org.flowable.rest.service.api.management.BatchResponse;
 import org.flowable.rest.service.api.management.JobResponse;
 import org.flowable.rest.service.api.management.TableResponse;
 import org.flowable.rest.service.api.repository.DecisionTableResponse;
@@ -91,6 +96,12 @@ import org.flowable.rest.service.api.runtime.process.EventSubscriptionResponse;
 import org.flowable.rest.service.api.runtime.process.ExecutionResponse;
 import org.flowable.rest.service.api.runtime.process.ProcessInstanceResponse;
 import org.flowable.rest.service.api.runtime.task.TaskResponse;
+import org.flowable.task.api.Task;
+import org.flowable.task.api.history.HistoricTaskInstance;
+import org.flowable.task.api.history.HistoricTaskLogEntry;
+import org.flowable.variable.api.history.HistoricVariableInstance;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Default implementation of a {@link RestResponseFactory}.
@@ -115,15 +126,17 @@ public class RestResponseFactory {
     public static final String BYTE_ARRAY_VARIABLE_TYPE = "binary";
     public static final String SERIALIZABLE_VARIABLE_TYPE = "serializable";
 
-    protected List<RestVariableConverter> variableConverters = new ArrayList<RestVariableConverter>();
+    protected ObjectMapper objectMapper;
+    protected List<RestVariableConverter> variableConverters = new ArrayList<>();
 
-    public RestResponseFactory() {
+    public RestResponseFactory(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         initializeVariableConverters();
     }
 
     public List<TaskResponse> createTaskResponseList(List<Task> tasks) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<TaskResponse> responseList = new ArrayList<TaskResponse>();
+        List<TaskResponse> responseList = new ArrayList<>();
         for (Task instance : tasks) {
             responseList.add(createTaskResponse(instance, urlBuilder));
         }
@@ -170,7 +183,7 @@ public class RestResponseFactory {
 
     public List<DeploymentResponse> createDeploymentResponseList(List<Deployment> deployments) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<DeploymentResponse> responseList = new ArrayList<DeploymentResponse>();
+        List<DeploymentResponse> responseList = new ArrayList<>();
         for (Deployment instance : deployments) {
             responseList.add(createDeploymentResponse(instance, urlBuilder));
         }
@@ -188,7 +201,7 @@ public class RestResponseFactory {
     public List<DeploymentResourceResponse> createDeploymentResourceResponseList(String deploymentId, List<String> resourceList, ContentTypeResolver contentTypeResolver) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
         // Add additional metadata to the artifact-strings before returning
-        List<DeploymentResourceResponse> responseList = new ArrayList<DeploymentResourceResponse>();
+        List<DeploymentResourceResponse> responseList = new ArrayList<>();
         for (String resourceId : resourceList) {
             responseList.add(createDeploymentResourceResponse(deploymentId, resourceId, contentTypeResolver.resolveContentType(resourceId), urlBuilder));
         }
@@ -217,7 +230,7 @@ public class RestResponseFactory {
 
     public List<ProcessDefinitionResponse> createProcessDefinitionResponseList(List<ProcessDefinition> processDefinitions) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<ProcessDefinitionResponse> responseList = new ArrayList<ProcessDefinitionResponse>();
+        List<ProcessDefinitionResponse> responseList = new ArrayList<>();
         for (ProcessDefinition instance : processDefinitions) {
             responseList.add(createProcessDefinitionResponse(instance, urlBuilder));
         }
@@ -251,10 +264,18 @@ public class RestResponseFactory {
         }
         return response;
     }
+    
+    public String getFormModelString(FormModelResponse formModelResponse) {
+        try {
+            return objectMapper.writeValueAsString(formModelResponse);
+        } catch (Exception e) {
+            throw new FlowableException("Error writing form model response", e);
+        }
+    }
 
     public List<RestVariable> createRestVariables(Map<String, Object> variables, String id, int variableType, RestVariableScope scope) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<RestVariable> result = new ArrayList<RestVariable>();
+        List<RestVariable> result = new ArrayList<>();
 
         for (Entry<String, Object> pair : variables.entrySet()) {
             result.add(createRestVariable(pair.getKey(), pair.getValue(), scope, id, variableType, false, urlBuilder));
@@ -397,7 +418,7 @@ public class RestResponseFactory {
 
     public List<RestIdentityLink> createRestIdentityLinks(List<IdentityLink> links) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<RestIdentityLink> responseList = new ArrayList<RestIdentityLink>();
+        List<RestIdentityLink> responseList = new ArrayList<>();
         for (IdentityLink instance : links) {
             responseList.add(createRestIdentityLink(instance, urlBuilder));
         }
@@ -440,7 +461,7 @@ public class RestResponseFactory {
 
     public List<CommentResponse> createRestCommentList(List<Comment> comments) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<CommentResponse> responseList = new ArrayList<CommentResponse>();
+        List<CommentResponse> responseList = new ArrayList<>();
         for (Comment instance : comments) {
             responseList.add(createRestComment(instance, urlBuilder));
         }
@@ -473,7 +494,7 @@ public class RestResponseFactory {
 
     public List<EventResponse> createEventResponseList(List<Event> events) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<EventResponse> responseList = new ArrayList<EventResponse>();
+        List<EventResponse> responseList = new ArrayList<>();
         for (Event instance : events) {
             responseList.add(createEventResponse(instance, urlBuilder));
         }
@@ -533,7 +554,7 @@ public class RestResponseFactory {
 
     public List<ProcessInstanceResponse> createProcessInstanceResponseList(List<ProcessInstance> processInstances) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<ProcessInstanceResponse> responseList = new ArrayList<ProcessInstanceResponse>();
+        List<ProcessInstanceResponse> responseList = new ArrayList<>();
         for (ProcessInstance instance : processInstances) {
             responseList.add(createProcessInstanceResponse(instance, urlBuilder));
         }
@@ -547,13 +568,18 @@ public class RestResponseFactory {
     public ProcessInstanceResponse createProcessInstanceResponse(ProcessInstance processInstance, RestUrlBuilder urlBuilder) {
         ProcessInstanceResponse result = new ProcessInstanceResponse();
         result.setActivityId(processInstance.getActivityId());
+        result.setStartUserId(processInstance.getStartUserId());
+        result.setStartTime(processInstance.getStartTime());
         result.setBusinessKey(processInstance.getBusinessKey());
         result.setId(processInstance.getId());
+        result.setName(processInstance.getName());
         result.setProcessDefinitionId(processInstance.getProcessDefinitionId());
         result.setProcessDefinitionUrl(urlBuilder.buildUrl(RestUrls.URL_PROCESS_DEFINITION, processInstance.getProcessDefinitionId()));
         result.setEnded(processInstance.isEnded());
         result.setSuspended(processInstance.isSuspended());
         result.setUrl(urlBuilder.buildUrl(RestUrls.URL_PROCESS_INSTANCE, processInstance.getId()));
+        result.setCallbackId(processInstance.getCallbackId());
+        result.setCallbackType(processInstance.getCallbackType());
         result.setTenantId(processInstance.getTenantId());
 
         // Added by Ryan Johnston
@@ -582,13 +608,18 @@ public class RestResponseFactory {
         RestUrlBuilder urlBuilder = createUrlBuilder();
         ProcessInstanceResponse result = new ProcessInstanceResponse();
         result.setActivityId(processInstance.getActivityId());
+        result.setStartUserId(processInstance.getStartUserId());
+        result.setStartTime(processInstance.getStartTime());
         result.setBusinessKey(processInstance.getBusinessKey());
         result.setId(processInstance.getId());
+        result.setName(processInstance.getName());
         result.setProcessDefinitionId(processInstance.getProcessDefinitionId());
         result.setProcessDefinitionUrl(urlBuilder.buildUrl(RestUrls.URL_PROCESS_DEFINITION, processInstance.getProcessDefinitionId()));
         result.setEnded(processInstance.isEnded());
         result.setSuspended(processInstance.isSuspended());
         result.setUrl(urlBuilder.buildUrl(RestUrls.URL_PROCESS_INSTANCE, processInstance.getId()));
+        result.setCallbackId(processInstance.getCallbackId());
+        result.setCallbackType(processInstance.getCallbackType());
         result.setTenantId(processInstance.getTenantId());
 
         // Added by Ryan Johnston
@@ -625,7 +656,7 @@ public class RestResponseFactory {
 
     public List<ExecutionResponse> createExecutionResponseList(List<Execution> executions) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<ExecutionResponse> responseList = new ArrayList<ExecutionResponse>();
+        List<ExecutionResponse> responseList = new ArrayList<>();
         for (Execution instance : executions) {
             responseList.add(createExecutionResponse(instance, urlBuilder));
         }
@@ -714,7 +745,7 @@ public class RestResponseFactory {
 
     public List<HistoricProcessInstanceResponse> createHistoricProcessInstanceResponseList(List<HistoricProcessInstance> processInstances) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<HistoricProcessInstanceResponse> responseList = new ArrayList<HistoricProcessInstanceResponse>();
+        List<HistoricProcessInstanceResponse> responseList = new ArrayList<>();
         for (HistoricProcessInstance instance : processInstances) {
             responseList.add(createHistoricProcessInstanceResponse(instance, urlBuilder));
         }
@@ -725,7 +756,6 @@ public class RestResponseFactory {
         return createHistoricProcessInstanceResponse(processInstance, createUrlBuilder());
     }
 
-    @SuppressWarnings("deprecation")
     public HistoricProcessInstanceResponse createHistoricProcessInstanceResponse(HistoricProcessInstance processInstance, RestUrlBuilder urlBuilder) {
         HistoricProcessInstanceResponse result = new HistoricProcessInstanceResponse();
         result.setBusinessKey(processInstance.getBusinessKey());
@@ -734,6 +764,7 @@ public class RestResponseFactory {
         result.setEndActivityId(processInstance.getEndActivityId());
         result.setEndTime(processInstance.getEndTime());
         result.setId(processInstance.getId());
+        result.setName(processInstance.getName());
         result.setProcessDefinitionId(processInstance.getProcessDefinitionId());
         result.setProcessDefinitionUrl(urlBuilder.buildUrl(RestUrls.URL_PROCESS_DEFINITION, processInstance.getProcessDefinitionId()));
         result.setStartActivityId(processInstance.getStartActivityId());
@@ -747,13 +778,15 @@ public class RestResponseFactory {
                 result.addVariable(createRestVariable(name, variableMap.get(name), RestVariableScope.LOCAL, processInstance.getId(), VARIABLE_HISTORY_PROCESS, false, urlBuilder));
             }
         }
+        result.setCallbackId(processInstance.getCallbackId());
+        result.setCallbackType(processInstance.getCallbackType());
         result.setTenantId(processInstance.getTenantId());
         return result;
     }
 
     public List<HistoricTaskInstanceResponse> createHistoricTaskInstanceResponseList(List<HistoricTaskInstance> taskInstances) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<HistoricTaskInstanceResponse> responseList = new ArrayList<HistoricTaskInstanceResponse>();
+        List<HistoricTaskInstanceResponse> responseList = new ArrayList<>();
         for (HistoricTaskInstance instance : taskInstances) {
             responseList.add(createHistoricTaskInstanceResponse(instance, urlBuilder));
         }
@@ -781,6 +814,9 @@ public class RestResponseFactory {
         result.setParentTaskId(taskInstance.getParentTaskId());
         result.setPriority(taskInstance.getPriority());
         result.setProcessDefinitionId(taskInstance.getProcessDefinitionId());
+        result.setScopeDefinitionId(taskInstance.getScopeDefinitionId());
+        result.setScopeId(taskInstance.getScopeId());
+        result.setScopeType(taskInstance.getScopeType());
         result.setTenantId(taskInstance.getTenantId());
         result.setCategory(taskInstance.getCategory());
         if (taskInstance.getProcessDefinitionId() != null) {
@@ -809,9 +845,37 @@ public class RestResponseFactory {
         return result;
     }
 
+    public List<HistoricTaskLogEntryResponse> createHistoricTaskLogEntryResponseList(List<HistoricTaskLogEntry> logEntries) {
+        RestUrlBuilder urlBuilder = createUrlBuilder();
+        List<HistoricTaskLogEntryResponse> responseList = new ArrayList<>();
+        for (HistoricTaskLogEntry instance : logEntries) {
+            responseList.add(createHistoricTaskLogEntryResponse(instance, urlBuilder));
+        }
+        return responseList;
+    }
+
+    public HistoricTaskLogEntryResponse createHistoricTaskLogEntryResponse(HistoricTaskLogEntry logEntry, RestUrlBuilder urlBuilder) {
+        HistoricTaskLogEntryResponse response = new HistoricTaskLogEntryResponse();
+        response.setLogNumber(logEntry.getLogNumber());
+        response.setType(logEntry.getType());
+        response.setTaskId(logEntry.getTaskId());
+        response.setTimeStamp(logEntry.getTimeStamp());
+        response.setUserId(logEntry.getUserId());
+        response.setData(logEntry.getData());
+        response.setExecutionId(logEntry.getExecutionId());
+        response.setProcessInstanceId(logEntry.getProcessInstanceId());
+        response.setProcessDefinitionId(logEntry.getProcessDefinitionId());
+        response.setScopeId(logEntry.getScopeId());
+        response.setScopeDefinitionId(logEntry.getScopeDefinitionId());
+        response.setSubScopeId(logEntry.getSubScopeId());
+        response.setScopeType(logEntry.getScopeType());
+        response.setTenantId(logEntry.getTenantId());
+        return response;
+    }
+
     public List<HistoricActivityInstanceResponse> createHistoricActivityInstanceResponseList(List<HistoricActivityInstance> activityInstances) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<HistoricActivityInstanceResponse> responseList = new ArrayList<HistoricActivityInstanceResponse>();
+        List<HistoricActivityInstanceResponse> responseList = new ArrayList<>();
         for (HistoricActivityInstance instance : activityInstances) {
             responseList.add(createHistoricActivityInstanceResponse(instance, urlBuilder));
         }
@@ -845,7 +909,7 @@ public class RestResponseFactory {
 
     public List<HistoricVariableInstanceResponse> createHistoricVariableInstanceResponseList(List<HistoricVariableInstance> variableInstances) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<HistoricVariableInstanceResponse> responseList = new ArrayList<HistoricVariableInstanceResponse>();
+        List<HistoricVariableInstanceResponse> responseList = new ArrayList<>();
         for (HistoricVariableInstance instance : variableInstances) {
             responseList.add(createHistoricVariableInstanceResponse(instance, urlBuilder));
         }
@@ -870,7 +934,7 @@ public class RestResponseFactory {
 
     public List<HistoricDetailResponse> createHistoricDetailResponse(List<HistoricDetail> detailList) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<HistoricDetailResponse> responseList = new ArrayList<HistoricDetailResponse>();
+        List<HistoricDetailResponse> responseList = new ArrayList<>();
         for (HistoricDetail instance : detailList) {
             responseList.add(createHistoricDetailResponse(instance, urlBuilder));
         }
@@ -911,7 +975,7 @@ public class RestResponseFactory {
 
     public List<HistoricIdentityLinkResponse> createHistoricIdentityLinkResponseList(List<HistoricIdentityLink> identityLinks) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<HistoricIdentityLinkResponse> responseList = new ArrayList<HistoricIdentityLinkResponse>();
+        List<HistoricIdentityLinkResponse> responseList = new ArrayList<>();
         for (HistoricIdentityLink instance : identityLinks) {
             responseList.add(createHistoricIdentityLinkResponse(instance, urlBuilder));
         }
@@ -940,7 +1004,7 @@ public class RestResponseFactory {
 
     public List<TableResponse> createTableResponseList(Map<String, Long> tableCounts) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<TableResponse> tables = new ArrayList<TableResponse>();
+        List<TableResponse> tables = new ArrayList<>();
         for (Entry<String, Long> entry : tableCounts.entrySet()) {
             tables.add(createTableResponse(entry.getKey(), entry.getValue(), urlBuilder));
         }
@@ -961,7 +1025,7 @@ public class RestResponseFactory {
 
     public List<JobResponse> createJobResponseList(List<Job> jobs) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<JobResponse> responseList = new ArrayList<JobResponse>();
+        List<JobResponse> responseList = new ArrayList<>();
         for (Job instance : jobs) {
             responseList.add(createJobResponse(instance, urlBuilder));
         }
@@ -980,7 +1044,10 @@ public class RestResponseFactory {
         response.setExecutionId(job.getExecutionId());
         response.setProcessDefinitionId(job.getProcessDefinitionId());
         response.setProcessInstanceId(job.getProcessInstanceId());
+        response.setElementId(job.getElementId());
+        response.setElementName(job.getElementName());
         response.setRetries(job.getRetries());
+        response.setCreateTime(job.getCreateTime());
         response.setTenantId(job.getTenantId());
 
         response.setUrl(urlBuilder.buildUrl(RestUrls.URL_JOB, job.getId()));
@@ -999,10 +1066,73 @@ public class RestResponseFactory {
 
         return response;
     }
+    
+    public List<BatchResponse> createBatchResponse(List<Batch> batches) {
+        RestUrlBuilder urlBuilder = createUrlBuilder();
+        List<BatchResponse> responseList = new ArrayList<>();
+        for (Batch instance : batches) {
+            responseList.add(createBatchResponse(instance, urlBuilder));
+        }
+        return responseList;
+    }
+
+    public BatchResponse createBatchResponse(Batch batch) {
+        return createBatchResponse(batch, createUrlBuilder());
+    }
+
+    public BatchResponse createBatchResponse(Batch batch, RestUrlBuilder urlBuilder) {
+        BatchResponse response = new BatchResponse();
+        response.setId(batch.getId());
+        response.setBatchType(batch.getBatchType());
+        response.setSearchKey(batch.getBatchSearchKey());
+        response.setSearchKey2(batch.getBatchSearchKey2());
+        response.setCreateTime(batch.getCreateTime());
+        response.setCompleteTime(batch.getCompleteTime());
+        response.setStatus(batch.getStatus());
+        response.setTenantId(batch.getTenantId());
+
+        response.setUrl(urlBuilder.buildUrl(RestUrls.URL_BATCH, batch.getId()));
+
+        return response;
+    }
+    
+    public List<BatchPartResponse> createBatchPartResponse(List<BatchPart> batchParts) {
+        RestUrlBuilder urlBuilder = createUrlBuilder();
+        List<BatchPartResponse> responseList = new ArrayList<>();
+        for (BatchPart instance : batchParts) {
+            responseList.add(createBatchPartResponse(instance, urlBuilder));
+        }
+        return responseList;
+    }
+
+    public BatchPartResponse createBatchPartResponse(BatchPart batchPart) {
+        return createBatchPartResponse(batchPart, createUrlBuilder());
+    }
+
+    public BatchPartResponse createBatchPartResponse(BatchPart batchPart, RestUrlBuilder urlBuilder) {
+        BatchPartResponse response = new BatchPartResponse();
+        response.setId(batchPart.getId());
+        response.setBatchId(batchPart.getBatchId());
+        response.setBatchType(batchPart.getBatchType());
+        response.setSearchKey(batchPart.getBatchSearchKey());
+        response.setSearchKey2(batchPart.getBatchSearchKey2());
+        response.setScopeId(batchPart.getScopeId());
+        response.setSubScopeId(batchPart.getSubScopeId());
+        response.setScopeType(batchPart.getScopeType());
+        response.setCreateTime(batchPart.getCreateTime());
+        response.setCompleteTime(batchPart.getCompleteTime());
+        response.setStatus(batchPart.getStatus());
+        response.setTenantId(batchPart.getTenantId());
+
+        response.setUrl(urlBuilder.buildUrl(RestUrls.URL_BATCH_PART, batchPart.getId()));
+        response.setBatchUrl(urlBuilder.buildUrl(RestUrls.URL_BATCH, batchPart.getBatchId()));
+
+        return response;
+    }
 
     public List<EventSubscriptionResponse> createEventSubscriptionResponseList(List<EventSubscription> eventSubscriptions) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<EventSubscriptionResponse> responseList = new ArrayList<EventSubscriptionResponse>();
+        List<EventSubscriptionResponse> responseList = new ArrayList<>();
         for (EventSubscription instance : eventSubscriptions) {
             responseList.add(createEventSubscriptionResponse(instance, urlBuilder));
         }
@@ -1043,27 +1173,33 @@ public class RestResponseFactory {
         return response;
     }
 
-    public List<UserResponse> createUserResponseList(List<User> users, boolean incudePassword) {
+    public List<UserResponse> createUserResponseList(List<User> users) {
+        return createUserResponseList(users, false);
+    }
+
+    public List<UserResponse> createUserResponseList(List<User> users, boolean includePassword) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<UserResponse> responseList = new ArrayList<UserResponse>();
+        List<UserResponse> responseList = new ArrayList<>();
         for (User instance : users) {
-            responseList.add(createUserResponse(instance, incudePassword, urlBuilder));
+            responseList.add(createUserResponse(instance, includePassword, urlBuilder));
         }
         return responseList;
     }
 
-    public UserResponse createUserResponse(User user, boolean incudePassword) {
-        return createUserResponse(user, incudePassword, createUrlBuilder());
+    public UserResponse createUserResponse(User user, boolean includePassword) {
+        return createUserResponse(user, includePassword, createUrlBuilder());
     }
 
     public UserResponse createUserResponse(User user, boolean incudePassword, RestUrlBuilder urlBuilder) {
         UserResponse response = new UserResponse();
         response.setFirstName(user.getFirstName());
         response.setLastName(user.getLastName());
+        response.setDisplayName(user.getDisplayName());
         response.setId(user.getId());
         response.setEmail(user.getEmail());
         response.setUrl(urlBuilder.buildUrl(RestUrls.URL_USER, user.getId()));
-
+        response.setTenantId(user.getTenantId());
+        
         if (incudePassword) {
             response.setPassword(user.getPassword());
         }
@@ -1076,7 +1212,7 @@ public class RestResponseFactory {
 
     public List<UserInfoResponse> createUserInfoKeysResponse(List<String> keys, String userId) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<UserInfoResponse> responseList = new ArrayList<UserInfoResponse>();
+        List<UserInfoResponse> responseList = new ArrayList<>();
         for (String instance : keys) {
             responseList.add(createUserInfoResponse(instance, null, userId, urlBuilder));
         }
@@ -1097,7 +1233,7 @@ public class RestResponseFactory {
 
     public List<GroupResponse> createGroupResponseList(List<Group> groups) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<GroupResponse> responseList = new ArrayList<GroupResponse>();
+        List<GroupResponse> responseList = new ArrayList<>();
         for (Group instance : groups) {
             responseList.add(createGroupResponse(instance, urlBuilder));
         }
@@ -1132,7 +1268,7 @@ public class RestResponseFactory {
 
     public List<ModelResponse> createModelResponseList(List<Model> models) {
         RestUrlBuilder urlBuilder = createUrlBuilder();
-        List<ModelResponse> responseList = new ArrayList<ModelResponse>();
+        List<ModelResponse> responseList = new ArrayList<>();
         for (Model instance : models) {
             responseList.add(createModelResponse(instance, urlBuilder));
         }
@@ -1231,6 +1367,7 @@ public class RestResponseFactory {
         variableConverters.add(new DoubleRestVariableConverter());
         variableConverters.add(new BooleanRestVariableConverter());
         variableConverters.add(new DateRestVariableConverter());
+        variableConverters.add(new JsonObjectRestVariableConverter(objectMapper));
     }
 
     protected String formatUrl(String serverRootUrl, String[] fragments, Object... arguments) {

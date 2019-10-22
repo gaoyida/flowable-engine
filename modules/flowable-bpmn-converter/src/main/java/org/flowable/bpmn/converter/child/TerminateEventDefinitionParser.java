@@ -27,10 +27,12 @@ import org.flowable.bpmn.model.TerminateEventDefinition;
  */
 public class TerminateEventDefinitionParser extends BaseChildElementParser {
 
+    @Override
     public String getElementName() {
         return ELEMENT_EVENT_TERMINATEDEFINITION;
     }
 
+    @Override
     public void parseChildElement(XMLStreamReader xtr, BaseElement parentElement, BpmnModel model) throws Exception {
         if (!(parentElement instanceof EndEvent)) {
             return;
@@ -49,7 +51,7 @@ public class TerminateEventDefinitionParser extends BaseChildElementParser {
 
     protected void parseTerminateAllAttribute(XMLStreamReader xtr, TerminateEventDefinition eventDefinition) {
         String terminateAllValue = BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TERMINATE_ALL, xtr);
-        if (terminateAllValue != null && "true".equals(terminateAllValue)) {
+        if ("true".equals(terminateAllValue)) {
             eventDefinition.setTerminateAll(true);
         } else {
             eventDefinition.setTerminateAll(false);
@@ -58,7 +60,7 @@ public class TerminateEventDefinitionParser extends BaseChildElementParser {
 
     protected void parseTerminateMultiInstanceAttribute(XMLStreamReader xtr, TerminateEventDefinition eventDefinition) {
         String terminateMiValue = BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TERMINATE_MULTI_INSTANCE, xtr);
-        if (terminateMiValue != null && "true".equals(terminateMiValue)) {
+        if ("true".equals(terminateMiValue)) {
             eventDefinition.setTerminateMultiInstance(true);
         } else {
             eventDefinition.setTerminateMultiInstance(false);

@@ -22,6 +22,8 @@ public interface FormFieldTypes {
     String MULTI_LINE_TEXT = "multi-line-text";
 
     String INTEGER = "integer";
+    
+    String DECIMAL = "decimal";
 
     String AMOUNT = "amount";
 
@@ -42,4 +44,14 @@ public interface FormFieldTypes {
     String FUNCTIONAL_GROUP = "functional-group";
 
     String CONTAINER = "container";
+    
+    String HYPERLINK = "hyperlink";
+    
+    String SPACER = "spacer";
+    
+    String HORIZONTAL_LINE = "horizontal-line";
+    
+    String HEADLINE = "headline";
+    
+    String HEADLINE_WITH_LINE = "headline-with-line";
 }

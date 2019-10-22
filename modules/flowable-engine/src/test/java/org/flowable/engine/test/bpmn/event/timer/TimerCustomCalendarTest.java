@@ -20,13 +20,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.util.Date;
 import java.util.List;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.impl.calendar.BusinessCalendar;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.calendar.BusinessCalendar;
 import org.flowable.engine.impl.test.ResourceFlowableTestCase;
 import org.flowable.engine.runtime.Execution;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.job.api.Job;
+import org.junit.jupiter.api.Test;
 
 /**
  * testing custom calendar for timer definitions Created by martin.grofcik
@@ -37,12 +38,13 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
         super("org/flowable/engine/test/bpmn/event/timer/TimerCustomCalendarTest.flowable.cfg.xml");
     }
 
+    @Test
     @Deployment
     public void testCycleTimer() {
         List<Job> jobs = this.managementService.createTimerJobQuery().list();
 
         assertThat("One job is scheduled", jobs.size(), is(1));
-        assertThat("Job must be scheduled by custom business calendar to Date(0)", jobs.get(0).getDuedate(), is(new Date(0)));
+        assertThat("Job must be scheduled by custom business calendar to Date(1000)", jobs.get(0).getDuedate(), is(new Date(1000)));
 
         managementService.moveTimerToExecutableJob(jobs.get(0).getId());
         managementService.executeJob(jobs.get(0).getId());
@@ -50,7 +52,7 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
         jobs = this.managementService.createTimerJobQuery().list();
 
         assertThat("One job is scheduled (repetition is 2x)", jobs.size(), is(1));
-        assertThat("Job must be scheduled by custom business calendar to Date(0)", jobs.get(0).getDuedate(), is(new Date(0)));
+        assertThat("Job must be scheduled by custom business calendar to Date(1000)", jobs.get(0).getDuedate(), is(new Date(1000)));
 
         managementService.moveTimerToExecutableJob(jobs.get(0).getId());
         managementService.executeJob(jobs.get(0).getId());
@@ -59,6 +61,7 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
         assertThat("There must be no job.", jobs.isEmpty());
     }
 
+    @Test
     @Deployment
     public void testCustomDurationTimerCalendar() {
         ProcessInstance processInstance = this.runtimeService.startProcessInstanceByKey("testCustomDurationCalendar");
@@ -66,7 +69,7 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
         List<Job> jobs = this.managementService.createTimerJobQuery().list();
 
         assertThat("One job is scheduled", jobs.size(), is(1));
-        assertThat("Job must be scheduled by custom business calendar to Date(0)", jobs.get(0).getDuedate(), is(new Date(0)));
+        assertThat("Job must be scheduled by custom business calendar to Date(1000)", jobs.get(0).getDuedate(), is(new Date(1000)));
 
         managementService.moveTimerToExecutableJob(jobs.get(0).getId());
         managementService.executeJob(jobs.get(0).getId());
@@ -76,6 +79,7 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
         runtimeService.trigger(execution.getId());
     }
 
+    @Test
     @Deployment
     public void testInvalidDurationTimerCalendar() {
         try {
@@ -86,13 +90,14 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment
     public void testBoundaryTimer() {
         this.runtimeService.startProcessInstanceByKey("testBoundaryTimer");
 
         List<Job> jobs = this.managementService.createTimerJobQuery().list();
         assertThat("One job is scheduled", jobs.size(), is(1));
-        assertThat("Job must be scheduled by custom business calendar to Date(0)", jobs.get(0).getDuedate(), is(new Date(0)));
+        assertThat("Job must be scheduled by custom business calendar to Date(1000)", jobs.get(0).getDuedate(), is(new Date(1000)));
 
         managementService.moveTimerToExecutableJob(jobs.get(0).getId());
         managementService.executeJob(jobs.get(0).getId());
@@ -103,12 +108,12 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
 
         @Override
         public Date resolveDuedate(String duedateDescription) {
-            return new Date(0);
+            return new Date(1000);
         }
 
         @Override
         public Date resolveDuedate(String duedateDescription, int maxIterations) {
-            return new Date(0);
+            return new Date(1000);
         }
 
         @Override
@@ -118,7 +123,7 @@ public class TimerCustomCalendarTest extends ResourceFlowableTestCase {
 
         @Override
         public Date resolveEndDate(String endDateString) {
-            return new Date(0);
+            return new Date(1000);
         }
 
     }

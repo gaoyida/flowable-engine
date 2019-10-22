@@ -14,6 +14,8 @@ package org.flowable.validation.validator.impl;
 
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+import org.flowable.bpmn.model.CaseServiceTask;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.TaskWithFieldExtensions;
 import org.flowable.validation.ValidationError;
@@ -83,11 +85,47 @@ public abstract class ExternalInvocationTaskValidator extends ProcessLevelValida
 
             if (fieldName.equals("decisionTableReferenceKey") && fieldValue != null && fieldValue.length() > 0) {
                 keyDefined = true;
+                break;
             }
         }
 
         if (!keyDefined) {
             addError(errors, Problems.DMN_TASK_NO_KEY, process, task, "No decision table reference key is defined on the dmn activity");
+        }
+    }
+
+    protected void validateFieldDeclarationsForHttp(org.flowable.bpmn.model.Process process, TaskWithFieldExtensions task, List<FieldExtension> fieldExtensions, List<ValidationError> errors) {
+        boolean requestMethodDefined = false;
+        boolean requestUrlDefined = false;
+
+        for (FieldExtension fieldExtension : fieldExtensions) {
+
+            String fieldName = fieldExtension.getFieldName();
+            String fieldValue = fieldExtension.getStringValue();
+            String fieldExpression = fieldExtension.getExpression();
+
+            if (fieldName.equals("requestMethod") && ((fieldValue != null && fieldValue.length() > 0) || (fieldExpression != null && fieldExpression.length() > 0))) {
+                requestMethodDefined = true;
+            }
+
+            if (fieldName.equals("requestUrl") && ((fieldValue != null && fieldValue.length() > 0) || (fieldExpression != null && fieldExpression.length() > 0))) {
+                requestUrlDefined = true;
+            }
+        }
+
+        if (!requestMethodDefined) {
+            addError(errors, Problems.HTTP_TASK_NO_REQUEST_METHOD, process, task, "No request method is defined on the http activity");
+        }
+
+        if (!requestUrlDefined) {
+            addError(errors, Problems.HTTP_TASK_NO_REQUEST_URL, process, task, "No request url is defined on the http activity");
+        }
+
+    }
+    
+    protected void validateFieldDeclarationsForCase(org.flowable.bpmn.model.Process process, CaseServiceTask caseServiceTask, List<ValidationError> errors) {
+        if (StringUtils.isEmpty(caseServiceTask.getCaseDefinitionKey())) {
+            addError(errors, Problems.CASE_TASK_NO_CASE_DEFINITION_KEY, process, caseServiceTask, "No case definition key is defined on the case task");
         }
     }
 

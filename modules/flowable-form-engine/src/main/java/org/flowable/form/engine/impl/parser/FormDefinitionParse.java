@@ -20,18 +20,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.util.io.InputStreamSource;
+import org.flowable.common.engine.impl.util.io.StreamSource;
+import org.flowable.common.engine.impl.util.io.StringStreamSource;
+import org.flowable.common.engine.impl.util.io.UrlStreamSource;
 import org.flowable.editor.form.converter.FormJsonConverter;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.util.io.InputStreamSource;
-import org.flowable.engine.common.impl.util.io.StreamSource;
-import org.flowable.engine.common.impl.util.io.StringStreamSource;
-import org.flowable.engine.common.impl.util.io.UrlStreamSource;
 import org.flowable.form.engine.FormEngineConfiguration;
-import org.flowable.form.engine.impl.context.Context;
 import org.flowable.form.engine.impl.io.ResourceStreamSource;
 import org.flowable.form.engine.impl.persistence.entity.FormDefinitionEntity;
 import org.flowable.form.engine.impl.persistence.entity.FormDeploymentEntity;
-import org.flowable.form.model.FormModel;
+import org.flowable.form.engine.impl.util.CommandContextUtil;
+import org.flowable.form.model.SimpleFormModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +52,7 @@ public class FormDefinitionParse {
     protected StreamSource streamSource;
     protected String sourceSystemId;
 
-    protected FormModel formModel;
+    protected SimpleFormModel formModel;
 
     protected String targetNamespace;
 
@@ -60,7 +60,7 @@ public class FormDefinitionParse {
     protected FormDeploymentEntity deployment;
 
     /** The end result of the parsing: a list of decision tables. */
-    protected List<FormDefinitionEntity> formDefinitions = new ArrayList<FormDefinitionEntity>();
+    protected List<FormDefinitionEntity> formDefinitions = new ArrayList<>();
 
     public FormDefinitionParse deployment(FormDeploymentEntity deployment) {
         this.deployment = deployment;
@@ -80,15 +80,14 @@ public class FormDefinitionParse {
             }
 
             String formJson = IOUtils.toString(in);
-            formModel = converter.convertToFormModel(formJson, null, 1);
+            formModel = converter.convertToFormModel(formJson);
 
             if (formModel != null && formModel.getFields() != null) {
-                FormDefinitionEntity formDefinitionEntity = Context.getFormEngineConfiguration().getFormDefinitionEntityManager().create();
+                FormDefinitionEntity formDefinitionEntity = CommandContextUtil.getFormEngineConfiguration().getFormDefinitionEntityManager().create();
                 formDefinitionEntity.setKey(formModel.getKey());
                 formDefinitionEntity.setName(formModel.getName());
                 formDefinitionEntity.setResourceName(name);
                 formDefinitionEntity.setDeploymentId(deployment.getId());
-                formDefinitionEntity.setParentDeploymentId(deployment.getParentDeploymentId());
                 formDefinitionEntity.setDescription(formModel.getDescription());
                 formDefinitions.add(formDefinitionEntity);
             }
@@ -179,11 +178,11 @@ public class FormDefinitionParse {
         this.deployment = deployment;
     }
 
-    public FormModel getFormModel() {
+    public SimpleFormModel getFormModel() {
         return formModel;
     }
 
-    public void setFormModel(FormModel formModel) {
+    public void setFormModel(SimpleFormModel formModel) {
         this.formModel = formModel;
     }
 }

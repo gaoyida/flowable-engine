@@ -16,8 +16,7 @@ package org.flowable.form.engine.impl.persistence.entity;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.form.api.FormDefinition;
 import org.flowable.form.api.FormDeployment;
 import org.flowable.form.engine.FormEngineConfiguration;
@@ -51,7 +50,7 @@ public class FormDeploymentEntityManagerImpl extends AbstractEntityManager<FormD
     public void insert(FormDeploymentEntity deployment, boolean fireEvent) {
         super.insert(deployment, fireEvent);
 
-        for (ResourceEntity resource : deployment.getResources().values()) {
+        for (FormResourceEntity resource : deployment.getResources().values()) {
             resource.setDeploymentId(deployment.getId());
             getResourceEntityManager().insert(resource);
         }
@@ -59,12 +58,12 @@ public class FormDeploymentEntityManagerImpl extends AbstractEntityManager<FormD
 
     @Override
     public void deleteDeployment(String deploymentId) {
-        deleteDecisionTablesForDeployment(deploymentId);
+        deleteFormDefinitionsForDeployment(deploymentId);
         getResourceEntityManager().deleteResourcesByDeploymentId(deploymentId);
         delete(findById(deploymentId));
     }
 
-    protected void deleteDecisionTablesForDeployment(String deploymentId) {
+    protected void deleteFormDefinitionsForDeployment(String deploymentId) {
         getFormDefinitionEntityManager().deleteFormDefinitionsByDeploymentId(deploymentId);
     }
 
@@ -79,18 +78,13 @@ public class FormDeploymentEntityManagerImpl extends AbstractEntityManager<FormD
     }
 
     @Override
-    public FormDeploymentEntity findLatestDeploymentByName(String deploymentName) {
-        return deploymentDataManager.findLatestDeploymentByName(deploymentName);
-    }
-
-    @Override
     public long findDeploymentCountByQueryCriteria(FormDeploymentQueryImpl deploymentQuery) {
         return deploymentDataManager.findDeploymentCountByQueryCriteria(deploymentQuery);
     }
 
     @Override
-    public List<FormDeployment> findDeploymentsByQueryCriteria(FormDeploymentQueryImpl deploymentQuery, Page page) {
-        return deploymentDataManager.findDeploymentsByQueryCriteria(deploymentQuery, page);
+    public List<FormDeployment> findDeploymentsByQueryCriteria(FormDeploymentQueryImpl deploymentQuery) {
+        return deploymentDataManager.findDeploymentsByQueryCriteria(deploymentQuery);
     }
 
     @Override
@@ -99,8 +93,8 @@ public class FormDeploymentEntityManagerImpl extends AbstractEntityManager<FormD
     }
 
     @Override
-    public List<FormDeployment> findDeploymentsByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return deploymentDataManager.findDeploymentsByNativeQuery(parameterMap, firstResult, maxResults);
+    public List<FormDeployment> findDeploymentsByNativeQuery(Map<String, Object> parameterMap) {
+        return deploymentDataManager.findDeploymentsByNativeQuery(parameterMap);
     }
 
     @Override

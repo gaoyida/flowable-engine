@@ -13,6 +13,9 @@
 package org.flowable.standalone.escapeclause;
 
 import org.flowable.engine.history.HistoricActivityInstanceQuery;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class HistoricActivityInstanceEscapeClauseTest extends AbstractEscapeClauseTestCase {
 
@@ -20,7 +23,7 @@ public class HistoricActivityInstanceEscapeClauseTest extends AbstractEscapeClau
 
     private String deploymentTwoId;
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
         deploymentOneId = repositoryService
                 .createDeployment()
@@ -36,26 +39,25 @@ public class HistoricActivityInstanceEscapeClauseTest extends AbstractEscapeClau
                 .deploy()
                 .getId();
 
-        super.setUp();
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
         repositoryService.deleteDeployment(deploymentOneId, true);
         repositoryService.deleteDeployment(deploymentTwoId, true);
     }
 
+    @Test
     public void testQueryByTenantIdLike() {
         runtimeService.startProcessInstanceByKeyAndTenantId("noopProcess", "One%");
         runtimeService.startProcessInstanceByKeyAndTenantId("noopProcess", "Two_");
 
-        HistoricActivityInstanceQuery query = historyService.createHistoricActivityInstanceQuery().activityId("noop").activityTenantIdLike("%\\%%");
+        HistoricActivityInstanceQuery query = historyService.createHistoricActivityInstanceQuery().activityId("noop").activityTenantIdLike("%|%%");
         assertEquals("One%", query.singleResult().getTenantId());
         assertEquals(1, query.list().size());
         assertEquals(1, query.count());
 
-        query = historyService.createHistoricActivityInstanceQuery().activityId("noop").activityTenantIdLike("%\\_%");
+        query = historyService.createHistoricActivityInstanceQuery().activityId("noop").activityTenantIdLike("%|_%");
         assertEquals("Two_", query.singleResult().getTenantId());
         assertEquals(1, query.list().size());
         assertEquals(1, query.count());

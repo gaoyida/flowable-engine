@@ -12,85 +12,59 @@
  */
 package org.flowable.dmn.spring.configurator;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.sql.DataSource;
-
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.AbstractEngineConfiguration;
+import org.flowable.common.engine.impl.el.ExpressionManager;
+import org.flowable.common.spring.SpringEngineConfiguration;
 import org.flowable.dmn.engine.DmnEngine;
-import org.flowable.dmn.engine.deployer.DmnDeployer;
+import org.flowable.dmn.engine.configurator.DmnEngineConfigurator;
 import org.flowable.dmn.spring.SpringDmnEngineConfiguration;
-import org.flowable.engine.cfg.AbstractProcessEngineConfigurator;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.persistence.deploy.Deployer;
-import org.flowable.spring.SpringProcessEngineConfiguration;
+import org.flowable.dmn.spring.SpringDmnExpressionManager;
 
 /**
  * @author Tijs Rademakers
  * @author Joram Barrez
  */
-public class SpringDmnEngineConfigurator extends AbstractProcessEngineConfigurator {
-
-    protected SpringDmnEngineConfiguration dmnEngineConfiguration;
+public class SpringDmnEngineConfigurator extends DmnEngineConfigurator {
 
     @Override
-    public void beforeInit(ProcessEngineConfigurationImpl processEngineConfiguration) {
-
-        // Custom deployers need to be added before the process engine boots
-        List<Deployer> deployers = null;
-        if (processEngineConfiguration.getCustomPostDeployers() != null) {
-            deployers = processEngineConfiguration.getCustomPostDeployers();
-        } else {
-            deployers = new ArrayList<Deployer>();
-        }
-        deployers.add(new DmnDeployer());
-        processEngineConfiguration.setCustomPostDeployers(deployers);
-
-    }
-
-    @Override
-    public void configure(ProcessEngineConfigurationImpl processEngineConfiguration) {
+    public void configure(AbstractEngineConfiguration engineConfiguration) {
         if (dmnEngineConfiguration == null) {
             dmnEngineConfiguration = new SpringDmnEngineConfiguration();
+        } else if (!(dmnEngineConfiguration instanceof SpringDmnEngineConfiguration)) {
+            throw new IllegalArgumentException("Expected dmnEngine configuration to be of type "
+                + SpringDmnEngineConfiguration.class + " but was " + dmnEngineConfiguration.getClass());
         }
+        initialiseCommonProperties(engineConfiguration, dmnEngineConfiguration);
+        
+        SpringEngineConfiguration springEngineConfiguration = (SpringEngineConfiguration) engineConfiguration;
+        ((SpringDmnEngineConfiguration) dmnEngineConfiguration).setTransactionManager(springEngineConfiguration.getTransactionManager());
+        ExpressionManager configuredExpressionManager = dmnEngineConfiguration.getExpressionManager();
+		if (configuredExpressionManager == null) {
+			dmnEngineConfiguration.setExpressionManager(new SpringDmnExpressionManager(
+					springEngineConfiguration.getApplicationContext(), springEngineConfiguration.getBeans()));
+		} else if (configuredExpressionManager instanceof SpringDmnExpressionManager) {
+			if (((SpringDmnExpressionManager) configuredExpressionManager).getApplicationContext() == null) {
+				((SpringDmnExpressionManager) configuredExpressionManager)
+						.setApplicationContext(springEngineConfiguration.getApplicationContext());
+			}
+			if (((SpringDmnExpressionManager) configuredExpressionManager).getBeans() == null) {
+				((SpringDmnExpressionManager) configuredExpressionManager)
+						.setBeans(springEngineConfiguration.getBeans());
+			}
+		}
 
-        if (processEngineConfiguration.getDataSource() != null) {
-            DataSource originalDatasource = processEngineConfiguration.getDataSource();
-            dmnEngineConfiguration.setDataSource(originalDatasource);
-
-        } else {
-            throw new FlowableException("A datasource is required for initializing the DMN engine ");
-        }
-
-        dmnEngineConfiguration.setTransactionManager(((SpringProcessEngineConfiguration) processEngineConfiguration).getTransactionManager());
-
-        dmnEngineConfiguration.setDatabaseCatalog(processEngineConfiguration.getDatabaseCatalog());
-        dmnEngineConfiguration.setDatabaseSchema(processEngineConfiguration.getDatabaseSchema());
-        dmnEngineConfiguration.setDatabaseSchemaUpdate(processEngineConfiguration.getDatabaseSchemaUpdate());
-
-        DmnEngine dmnEngine = initDmnEngine();
-
-        processEngineConfiguration.setDmnEngineInitialized(true);
-        processEngineConfiguration.setDmnEngineRepositoryService(dmnEngine.getDmnRepositoryService());
-        processEngineConfiguration.setDmnEngineRuleService(dmnEngine.getDmnRuleService());
+        initDmnEngine();
+        
+        initServiceConfigurations(engineConfiguration, dmnEngineConfiguration);
     }
 
+    @Override
     protected synchronized DmnEngine initDmnEngine() {
         if (dmnEngineConfiguration == null) {
-            throw new FlowableException("DMnEngineConfiguration is required");
+            throw new FlowableException("DmnEngineConfiguration is required");
         }
 
         return dmnEngineConfiguration.buildDmnEngine();
     }
-
-    public SpringDmnEngineConfiguration getDmnEngineConfiguration() {
-        return dmnEngineConfiguration;
-    }
-
-    public SpringDmnEngineConfigurator setDmnEngineConfiguration(SpringDmnEngineConfiguration dmnEngineConfiguration) {
-        this.dmnEngineConfiguration = dmnEngineConfiguration;
-        return this;
-    }
-
 }

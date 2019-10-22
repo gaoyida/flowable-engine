@@ -27,15 +27,15 @@ import javax.persistence.EntityManagerFactory;
 import org.activiti.engine.impl.test.AbstractFlowableTestCase;
 import org.activiti.engine.impl.variable.EntityManagerSession;
 import org.activiti.engine.impl.variable.EntityManagerSessionFactory;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.history.HistoricVariableInstance;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.history.HistoryLevel;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.variable.api.history.HistoricVariableInstance;
 
 /**
  * @author Frederik Heremans
@@ -507,7 +507,7 @@ public class JPAVariableTest extends AbstractFlowableTestCase {
 
         // Starting process instance with an invalid type of ID
         // Under normal circumstances, JPA will throw an exception for this of the class is
-        // present in the PU when creating EntityanagerFactory, but we test it *just in case*
+        // present in the PU when creating EntityManagerFactory, but we test it *just in case*
         variables = new HashMap<String, Object>();
         IllegalIdClassJPAEntity illegalIdTypeEntity = new IllegalIdClassJPAEntity();
         illegalIdTypeEntity.setId(Calendar.getInstance());

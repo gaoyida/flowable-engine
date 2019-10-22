@@ -32,12 +32,14 @@ import org.slf4j.LoggerFactory;
  */
 public class SendTaskParseHandler extends AbstractExternalInvocationBpmnParseHandler<SendTask> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SendTaskParseHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SendTaskParseHandler.class);
 
+    @Override
     public Class<? extends BaseElement> getHandledType() {
         return SendTask.class;
     }
 
+    @Override
     protected void executeParse(BpmnParse bpmnParse, SendTask sendTask) {
 
         ActivityImpl activity = createActivityOnCurrentScope(bpmnParse, sendTask, BpmnXMLConstants.ELEMENT_TASK_SEND);
@@ -59,7 +61,7 @@ public class SendTaskParseHandler extends AbstractExternalInvocationBpmnParseHan
                 StringUtils.isNotEmpty(sendTask.getOperationRef())) {
 
             if (!bpmnParse.getOperations().containsKey(sendTask.getOperationRef())) {
-                logger.warn("{} does not exist for sendTask {}", sendTask.getOperationRef(), sendTask.getId());
+                LOGGER.warn("{} does not exist for sendTask {}", sendTask.getOperationRef(), sendTask.getId());
             } else {
                 WebServiceActivityBehavior webServiceActivityBehavior = bpmnParse.getActivityBehaviorFactory().createWebServiceActivityBehavior(sendTask);
                 Operation operation = bpmnParse.getOperations().get(sendTask.getOperationRef());
@@ -83,7 +85,7 @@ public class SendTaskParseHandler extends AbstractExternalInvocationBpmnParseHan
                 activity.setActivityBehavior(webServiceActivityBehavior);
             }
         } else {
-            logger.warn("One of the attributes 'type' or 'operation' is mandatory on sendTask {}", sendTask.getId());
+            LOGGER.warn("One of the attributes 'type' or 'operation' is mandatory on sendTask {}", sendTask.getId());
         }
     }
 

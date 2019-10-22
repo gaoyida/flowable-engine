@@ -12,12 +12,12 @@
  */
 package org.flowable.idm.engine.impl;
 
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.idm.api.IdmIdentityService;
 import org.flowable.idm.api.IdmManagementService;
 import org.flowable.idm.engine.IdmEngine;
 import org.flowable.idm.engine.IdmEngineConfiguration;
 import org.flowable.idm.engine.IdmEngines;
-import org.flowable.idm.engine.impl.interceptor.CommandExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  */
 public class IdmEngineImpl implements IdmEngine {
 
-    private static Logger log = LoggerFactory.getLogger(IdmEngineImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(IdmEngineImpl.class);
 
     protected String name;
     protected IdmIdentityService identityService;
@@ -41,38 +41,44 @@ public class IdmEngineImpl implements IdmEngine {
         this.managementService = engineConfiguration.getIdmManagementService();
         this.commandExecutor = engineConfiguration.getCommandExecutor();
 
-        if (engineConfiguration.isUsingRelationalDatabase() && engineConfiguration.getDatabaseSchemaUpdate() != null) {
-            commandExecutor.execute(engineConfiguration.getSchemaCommandConfig(), new SchemaOperationsIdmEngineBuild());
+        if (engineConfiguration.getSchemaManagementCmd() != null) {
+            engineConfiguration.getCommandExecutor().execute(engineConfiguration.getSchemaCommandConfig(), engineConfiguration.getSchemaManagementCmd());
         }
 
         if (name == null) {
-            log.info("default flowable IdmEngine created");
+            LOGGER.info("default flowable IdmEngine created");
         } else {
-            log.info("IdmEngine {} created", name);
+            LOGGER.info("IdmEngine {} created", name);
         }
 
         IdmEngines.registerIdmEngine(this);
     }
 
+    @Override
     public void close() {
         IdmEngines.unregister(this);
+        engineConfiguration.close();
     }
 
     // getters and setters
     // //////////////////////////////////////////////////////
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public IdmIdentityService getIdmIdentityService() {
         return identityService;
     }
 
+    @Override
     public IdmManagementService getIdmManagementService() {
         return managementService;
     }
 
+    @Override
     public IdmEngineConfiguration getIdmEngineConfiguration() {
         return engineConfiguration;
     }

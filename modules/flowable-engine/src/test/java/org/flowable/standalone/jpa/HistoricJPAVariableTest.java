@@ -1,3 +1,15 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.standalone.jpa;
 
 import java.util.HashMap;
@@ -7,53 +19,42 @@ import java.util.Map;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 
-import org.flowable.engine.ProcessEngine;
-import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.history.HistoricData;
-import org.flowable.engine.history.HistoricVariableInstance;
+import org.flowable.common.engine.api.history.HistoricData;
 import org.flowable.engine.history.ProcessInstanceHistoryLog;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.HistoricDetailVariableInstanceUpdateEntity;
-import org.flowable.engine.impl.persistence.entity.HistoricVariableInstanceEntity;
-import org.flowable.engine.impl.test.AbstractFlowableTestCase;
-import org.flowable.engine.impl.variable.EntityManagerSession;
-import org.flowable.engine.impl.variable.EntityManagerSessionFactory;
-import org.flowable.engine.task.Task;
+import org.flowable.engine.impl.test.ResourceFlowableTestCase;
 import org.flowable.engine.test.Deployment;
+import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.flowable.variable.service.impl.persistence.entity.HistoricVariableInstanceEntity;
+import org.flowable.variable.service.impl.types.EntityManagerSession;
+import org.flowable.variable.service.impl.types.EntityManagerSessionFactory;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Daisuke Yoshimoto
  */
-public class HistoricJPAVariableTest extends AbstractFlowableTestCase {
+@Tag("jpa")
+public class HistoricJPAVariableTest extends ResourceFlowableTestCase {
 
-    protected static ProcessEngine cachedProcessEngine;
+    private EntityManagerFactory entityManagerFactory;
 
-    private static EntityManagerFactory entityManagerFactory;
-
-    private static FieldAccessJPAEntity simpleEntityFieldAccess;
-    private static boolean entitiesInitialized;
+    private FieldAccessJPAEntity simpleEntityFieldAccess;
 
     protected String processInstanceId;
 
-    @Override
-    protected void initializeProcessEngine() {
-        if (cachedProcessEngine == null) {
-            ProcessEngineConfigurationImpl processEngineConfiguration = (ProcessEngineConfigurationImpl) ProcessEngineConfiguration
-                    .createProcessEngineConfigurationFromResource("org/flowable/standalone/jpa/flowable.cfg.xml");
+    public HistoricJPAVariableTest() {
+        super("org/flowable/standalone/jpa/flowable.cfg.xml");
+    }
 
-            cachedProcessEngine = processEngineConfiguration.buildProcessEngine();
-
-            EntityManagerSessionFactory entityManagerSessionFactory = (EntityManagerSessionFactory) processEngineConfiguration
-                    .getSessionFactories()
-                    .get(EntityManagerSession.class);
-
-            entityManagerFactory = entityManagerSessionFactory.getEntityManagerFactory();
-        }
-        processEngine = cachedProcessEngine;
+    @BeforeEach
+    protected void setUp() {
+        entityManagerFactory = ((EntityManagerSessionFactory) processEngineConfiguration.getSessionFactories().get(EntityManagerSession.class))
+            .getEntityManagerFactory();
     }
 
     public void setupJPAEntities() {
-        if (!entitiesInitialized) {
             EntityManager manager = entityManagerFactory.createEntityManager();
             manager.getTransaction().begin();
 
@@ -66,23 +67,22 @@ public class HistoricJPAVariableTest extends AbstractFlowableTestCase {
             manager.flush();
             manager.getTransaction().commit();
             manager.close();
-            entitiesInitialized = true;
-        }
     }
 
+    @Test
     @Deployment
     public void testGetJPAEntityAsHistoricVariable() {
         setupJPAEntities();
         // -----------------------------------------------------------------------------
         // Simple test, Start process with JPA entities as variables
         // -----------------------------------------------------------------------------
-        Map<String, Object> variables = new HashMap<String, Object>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("simpleEntityFieldAccess", simpleEntityFieldAccess);
 
         // Start the process with the JPA-entities as variables. They will be stored in the DB.
         this.processInstanceId = runtimeService.startProcessInstanceByKey("JPAVariableProcess", variables).getId();
 
-        for (Task task : taskService.createTaskQuery().includeTaskLocalVariables().list()) {
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().includeTaskLocalVariables().list()) {
             taskService.complete(task.getId());
         }
 
@@ -95,20 +95,21 @@ public class HistoricJPAVariableTest extends AbstractFlowableTestCase {
         assertEquals(((FieldAccessJPAEntity) value).getValue(), simpleEntityFieldAccess.getValue());
     }
 
+    @Test
     @Deployment
     public void testGetJPAEntityAsHistoricLog() {
         setupJPAEntities();
         // -----------------------------------------------------------------------------
         // Simple test, Start process with JPA entities as variables
         // -----------------------------------------------------------------------------
-        Map<String, Object> variables = new HashMap<String, Object>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("simpleEntityFieldAccess", simpleEntityFieldAccess);
 
         // Start the process with the JPA-entities as variables. They will be stored in the DB.
         this.processInstanceId = runtimeService.startProcessInstanceByKey("JPAVariableProcess", variables).getId();
 
         // Finish tasks
-        for (Task task : taskService.createTaskQuery().includeTaskLocalVariables().list()) {
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().includeTaskLocalVariables().list()) {
             taskService.complete(task.getId());
         }
 
@@ -125,20 +126,21 @@ public class HistoricJPAVariableTest extends AbstractFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/standalone/jpa/HistoricJPAVariableTest.testGetJPAEntityAsHistoricLog.bpmn20.xml" })
     public void testGetJPAUpdateEntityAsHistoricLog() {
         setupJPAEntities();
         // -----------------------------------------------------------------------------
         // Simple test, Start process with JPA entities as variables
         // -----------------------------------------------------------------------------
-        Map<String, Object> variables = new HashMap<String, Object>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("simpleEntityFieldAccess", simpleEntityFieldAccess);
 
         // Start the process with the JPA-entities as variables. They will be stored in the DB.
         this.processInstanceId = runtimeService.startProcessInstanceByKey("JPAVariableProcess", variables).getId();
 
         // Finish tasks
-        for (Task task : taskService.createTaskQuery().includeProcessVariables().list()) {
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().includeProcessVariables().list()) {
             taskService.setVariable(task.getId(), "simpleEntityFieldAccess", simpleEntityFieldAccess);
             taskService.complete(task.getId());
         }

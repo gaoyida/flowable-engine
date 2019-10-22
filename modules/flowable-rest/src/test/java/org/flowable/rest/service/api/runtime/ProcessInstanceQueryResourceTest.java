@@ -13,16 +13,21 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+
 import java.util.HashMap;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
+import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -38,9 +43,10 @@ public class ProcessInstanceQueryResourceTest extends BaseSpringRestTestCase {
     /**
      * Test querying process instance based on variables. POST query/process-instances
      */
+    @Test
     @Deployment
     public void testQueryProcessInstancesWithVariables() throws Exception {
-        HashMap<String, Object> processVariables = new HashMap<String, Object>();
+        HashMap<String, Object> processVariables = new HashMap<>();
         processVariables.put("stringVar", "Azerty");
         processVariables.put("intVar", 67890);
         processVariables.put("booleanVar", false);
@@ -111,6 +117,20 @@ public class ProcessInstanceQueryResourceTest extends BaseSpringRestTestCase {
         variableNode.put("operation", "notEqualsIgnoreCase");
         assertResultsPresentInPostDataResponse(url, requestNode, processInstance.getId());
 
+        // String not like
+        variableNode.removeAll();
+        variableNode.put("name", "stringVar");
+        variableNode.put("value", "Azer%");
+        variableNode.put("operation", "like");
+        assertResultsPresentInPostDataResponse(url, requestNode, processInstance.getId());
+
+        // String not like Ignore Case
+        variableNode.removeAll();
+        variableNode.put("name", "stringVar");
+        variableNode.put("value", "AzEr%");
+        variableNode.put("operation", "likeIgnoreCase");
+        assertResultsPresentInPostDataResponse(url, requestNode, processInstance.getId());
+
         // String equals without value
         variableNode.removeAll();
         variableNode.put("value", "Azerty");
@@ -127,8 +147,10 @@ public class ProcessInstanceQueryResourceTest extends BaseSpringRestTestCase {
     /**
      * Test querying process instance based on variables. POST query/process-instances
      */
+    @Test
     @Deployment
     public void testQueryProcessInstancesPagingAndSorting() throws Exception {
+        Authentication.setAuthenticatedUserId("queryAndSortingTestUser");
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("aOneTaskProcess");
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("bOneTaskProcess");
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("cOneTaskProcess");
@@ -178,7 +200,12 @@ public class ProcessInstanceQueryResourceTest extends BaseSpringRestTestCase {
         closeResponse(response);
         dataNode = rootNode.get("data");
         assertEquals(1, dataNode.size());
-        assertEquals(processInstance2.getId(), dataNode.get(0).get("id").asText());
+        JsonNode valueNode = dataNode.get(0);
+        assertEquals(processInstance2.getId(), valueNode.get("id").asText());
+        assertEquals("The One Task Process", valueNode.get("processDefinitionName").asText());
+        assertEquals("One task process description", valueNode.get("processDefinitionDescription").asText());
+        assertThat(valueNode.has("startTime")).as("has startTime").isTrue();
+        assertThat(valueNode.get("startUserId").textValue()).as("startUserId").isEqualTo(processInstance2.getStartUserId());
     }
 
 }

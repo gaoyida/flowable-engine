@@ -27,6 +27,7 @@ import org.flowable.bpmn.model.BpmnModel;
  */
 public class AssociationXMLConverter extends BaseBpmnXMLConverter {
 
+    @Override
     public Class<? extends BaseElement> getBpmnElementType() {
         return Association.class;
     }
@@ -44,9 +45,9 @@ public class AssociationXMLConverter extends BaseBpmnXMLConverter {
         association.setTargetRef(xtr.getAttributeValue(null, ATTRIBUTE_FLOW_TARGET_REF));
         association.setId(xtr.getAttributeValue(null, ATTRIBUTE_ID));
 
-        String asociationDirectionString = xtr.getAttributeValue(null, ATTRIBUTE_ASSOCIATION_DIRECTION);
-        if (StringUtils.isNotEmpty(asociationDirectionString)) {
-            AssociationDirection associationDirection = AssociationDirection.valueOf(asociationDirectionString.toUpperCase());
+        String associationDirectionString = xtr.getAttributeValue(null, ATTRIBUTE_ASSOCIATION_DIRECTION);
+        if (StringUtils.isNotEmpty(associationDirectionString)) {
+            AssociationDirection associationDirection = AssociationDirection.valueOf(associationDirectionString.toUpperCase());
 
             association.setAssociationDirection(associationDirection);
         }

@@ -16,8 +16,7 @@ package org.flowable.idm.engine.impl.persistence.entity;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.GroupQuery;
 import org.flowable.idm.api.event.FlowableIdmEventType;
@@ -44,6 +43,7 @@ public class GroupEntityManagerImpl extends AbstractEntityManager<GroupEntity> i
         return groupDataManager;
     }
 
+    @Override
     public Group createNewGroup(String groupId) {
         GroupEntity groupEntity = groupDataManager.create();
         groupEntity.setId(groupId);
@@ -58,7 +58,7 @@ public class GroupEntityManagerImpl extends AbstractEntityManager<GroupEntity> i
         if (group != null) {
 
             getMembershipEntityManager().deleteMembershipByGroupId(groupId);
-            if (getEventDispatcher().isEnabled()) {
+            if (getEventDispatcher() != null && getEventDispatcher().isEnabled()) {
                 getEventDispatcher().dispatchEvent(FlowableIdmEventBuilder.createMembershipEvent(FlowableIdmEventType.MEMBERSHIPS_DELETED, groupId, null));
             }
 
@@ -66,26 +66,32 @@ public class GroupEntityManagerImpl extends AbstractEntityManager<GroupEntity> i
         }
     }
 
+    @Override
     public GroupQuery createNewGroupQuery() {
         return new GroupQueryImpl(getCommandExecutor());
     }
 
-    public List<Group> findGroupByQueryCriteria(GroupQueryImpl query, Page page) {
-        return groupDataManager.findGroupByQueryCriteria(query, page);
+    @Override
+    public List<Group> findGroupByQueryCriteria(GroupQueryImpl query) {
+        return groupDataManager.findGroupByQueryCriteria(query);
     }
 
+    @Override
     public long findGroupCountByQueryCriteria(GroupQueryImpl query) {
         return groupDataManager.findGroupCountByQueryCriteria(query);
     }
 
+    @Override
     public List<Group> findGroupsByUser(String userId) {
         return groupDataManager.findGroupsByUser(userId);
     }
 
-    public List<Group> findGroupsByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return groupDataManager.findGroupsByNativeQuery(parameterMap, firstResult, maxResults);
+    @Override
+    public List<Group> findGroupsByNativeQuery(Map<String, Object> parameterMap) {
+        return groupDataManager.findGroupsByNativeQuery(parameterMap);
     }
 
+    @Override
     public long findGroupCountByNativeQuery(Map<String, Object> parameterMap) {
         return groupDataManager.findGroupCountByNativeQuery(parameterMap);
     }

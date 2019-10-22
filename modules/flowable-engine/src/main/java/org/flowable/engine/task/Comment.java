@@ -15,8 +15,8 @@ package org.flowable.engine.task;
 
 import java.util.Date;
 
+import org.flowable.common.engine.api.history.HistoricData;
 import org.flowable.engine.TaskService;
-import org.flowable.engine.history.HistoricData;
 
 /**
  * User comments that form discussions around tasks.
@@ -32,18 +32,29 @@ public interface Comment extends HistoricData {
 
     /** reference to the user that made the comment */
     String getUserId();
+    
+    void setUserId(String userId);
 
     /** time and date when the user made the comment */
+    @Override
     Date getTime();
+    
+    void setTime(Date time);
 
     /** reference to the task on which this comment was made */
     String getTaskId();
+    
+    void setTaskId(String taskId);
 
     /** reference to the process instance on which this comment was made */
     String getProcessInstanceId();
+    
+    void setProcessInstanceId(String processInstanceId);
 
     /** reference to the type given to the comment */
     String getType();
+    
+    void setType(String type);
 
     /**
      * the full comment message the user had related to the task and/or process instance
@@ -51,4 +62,6 @@ public interface Comment extends HistoricData {
      * @see TaskService#getTaskComments(String)
      */
     String getFullMessage();
+    
+    void setFullMessage(String fullMessage);
 }

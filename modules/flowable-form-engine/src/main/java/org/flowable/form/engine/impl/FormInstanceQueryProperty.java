@@ -29,7 +29,7 @@ package org.flowable.form.engine.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
 import org.flowable.form.api.FormInstanceQuery;
 
 /**
@@ -41,7 +41,7 @@ public class FormInstanceQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, FormInstanceQueryProperty> properties = new HashMap<String, FormInstanceQueryProperty>();
+    private static final Map<String, FormInstanceQueryProperty> properties = new HashMap<>();
 
     public static final FormInstanceQueryProperty SUBMITTED_DATE = new FormInstanceQueryProperty("RES.SUBMITTED_DATE_");
     public static final FormInstanceQueryProperty TENANT_ID = new FormInstanceQueryProperty("RES.TENANT_ID_");
@@ -53,6 +53,7 @@ public class FormInstanceQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

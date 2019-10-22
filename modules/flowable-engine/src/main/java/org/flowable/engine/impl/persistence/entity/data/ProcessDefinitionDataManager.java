@@ -15,8 +15,7 @@ package org.flowable.engine.impl.persistence.entity.data;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.engine.impl.ProcessDefinitionQueryImpl;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.flowable.engine.repository.ProcessDefinition;
@@ -29,10 +28,14 @@ public interface ProcessDefinitionDataManager extends DataManager<ProcessDefinit
     ProcessDefinitionEntity findLatestProcessDefinitionByKey(String processDefinitionKey);
 
     ProcessDefinitionEntity findLatestProcessDefinitionByKeyAndTenantId(String processDefinitionKey, String tenantId);
+    
+    ProcessDefinitionEntity findLatestDerivedProcessDefinitionByKey(String processDefinitionKey);
+
+    ProcessDefinitionEntity findLatestDerivedProcessDefinitionByKeyAndTenantId(String processDefinitionKey, String tenantId);
 
     void deleteProcessDefinitionsByDeploymentId(String deploymentId);
 
-    List<ProcessDefinition> findProcessDefinitionsByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery, Page page);
+    List<ProcessDefinition> findProcessDefinitionsByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery);
 
     long findProcessDefinitionCountByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery);
 
@@ -44,7 +47,7 @@ public interface ProcessDefinitionDataManager extends DataManager<ProcessDefinit
 
     ProcessDefinitionEntity findProcessDefinitionByKeyAndVersionAndTenantId(String processDefinitionKey, Integer processDefinitionVersion, String tenantId);
 
-    List<ProcessDefinition> findProcessDefinitionsByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults);
+    List<ProcessDefinition> findProcessDefinitionsByNativeQuery(Map<String, Object> parameterMap);
 
     long findProcessDefinitionCountByNativeQuery(Map<String, Object> parameterMap);
 

@@ -17,19 +17,21 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
-import org.flowable.engine.impl.persistence.entity.TimerJobEntity;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.flowable.job.api.Job;
+import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
+import org.junit.jupiter.api.Test;
 
 public class BoundaryTimerEventRepeatWithDurationAndEndTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testRepeatWithDurationAndEnd() throws Throwable {
 
@@ -47,10 +49,10 @@ public class BoundaryTimerEventRepeatWithDurationAndEndTest extends PluggableFlo
 
         runtimeService.setVariable(processInstance.getId(), "EndDateForBoundary", calendar.getTime());
 
-        List<Task> tasks = taskService.createTaskQuery().list();
+        List<org.flowable.task.api.Task> tasks = taskService.createTaskQuery().list();
         assertEquals(1, tasks.size());
 
-        Task task = tasks.get(0);
+        org.flowable.task.api.Task task = tasks.get(0);
         assertEquals("Task A", task.getName());
 
         // Test Boundary Events
@@ -110,7 +112,7 @@ public class BoundaryTimerEventRepeatWithDurationAndEndTest extends PluggableFlo
         jobs = managementService.createJobQuery().list();
         assertEquals(0, jobs.size());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             HistoricProcessInstance historicInstance = historyService.createHistoricProcessInstanceQuery()
                     .processInstanceId(processInstance.getId())
                     .singleResult();

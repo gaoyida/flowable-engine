@@ -21,7 +21,7 @@ import org.activiti.engine.impl.interceptor.Command;
 import org.activiti.engine.impl.interceptor.CommandContext;
 import org.activiti.engine.impl.persistence.entity.TaskEntity;
 import org.activiti.engine.task.Task;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 
 /**
  * @author Joram Barrez
@@ -36,13 +36,14 @@ public class SaveTaskCmd implements Command<Void>, Serializable {
         this.task = (TaskEntity) task;
     }
 
+    @Override
     public Void execute(CommandContext commandContext) {
         if (task == null) {
             throw new ActivitiIllegalArgumentException("task is null");
         }
 
         if (task.getRevision() == 0) {
-            task.insert(null);
+            task.insert(null, true);
 
             // Need to to be done here, we can't make it generic for standalone tasks
             // and tasks from a process, as the order of setting properties is

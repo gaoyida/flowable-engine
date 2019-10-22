@@ -16,14 +16,14 @@ package org.flowable.engine.test.bpmn.gateway;
 import java.util.Date;
 
 import org.flowable.engine.history.DeleteReason;
-import org.flowable.engine.impl.EventSubscriptionQueryImpl;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.runtime.EventSubscription;
 import org.flowable.engine.runtime.Execution;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.flowable.eventsubscription.api.EventSubscription;
+import org.flowable.eventsubscription.service.impl.EventSubscriptionQueryImpl;
+import org.flowable.job.api.Job;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Daniel Meyer
@@ -31,6 +31,7 @@ import org.flowable.engine.test.Deployment;
  */
 public class EventBasedGatewayTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/gateway/EventBasedGatewayTest.testCatchAlertAndTimer.bpmn20.xml",
             "org/flowable/engine/test/bpmn/gateway/EventBasedGatewayTest.throwAlertSignal.bpmn20.xml" })
     public void testCatchSignalCancelsTimer() {
@@ -41,20 +42,23 @@ public class EventBasedGatewayTest extends PluggableFlowableTestCase {
         assertEquals(1, runtimeService.createProcessInstanceQuery().count());
         assertEquals(1, managementService.createTimerJobQuery().count());
 
-        ProcessInstance pi2 = runtimeService.startProcessInstanceByKey("throwSignal");
+        runtimeService.startProcessInstanceByKey("throwSignal");
 
         assertEquals(0, createEventSubscriptionQuery().count());
         assertEquals(1, runtimeService.createProcessInstanceQuery().count());
         assertEquals(0, managementService.createJobQuery().count());
         assertEquals(0, managementService.createTimerJobQuery().count());
 
-        Task task = taskService.createTaskQuery().taskName("afterSignal").singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().taskName("afterSignal").singleResult();
         assertNotNull(task);
         taskService.complete(task.getId());
+        
+        waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
         assertHistoricActivitiesDeleteReason(pi1, DeleteReason.EVENT_BASED_GATEWAY_CANCEL, "timerEvent");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/gateway/EventBasedGatewayTest.testCatchAlertAndTimer.bpmn20.xml" })
     public void testCatchTimerCancelsSignal() {
 
@@ -67,22 +71,25 @@ public class EventBasedGatewayTest extends PluggableFlowableTestCase {
         processEngineConfiguration.getClock().setCurrentTime(new Date(processEngineConfiguration.getClock().getCurrentTime().getTime() + 10000));
 
         // wait for timer to fire
-        waitForJobExecutorToProcessAllJobs(10000, 100);
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(10000, 100);
 
         assertEquals(0, createEventSubscriptionQuery().count());
         assertEquals(1, runtimeService.createProcessInstanceQuery().count());
         assertEquals(0, managementService.createJobQuery().count());
         assertEquals(0, managementService.createTimerJobQuery().count());
 
-        Task task = taskService.createTaskQuery().taskName("afterTimer").singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().taskName("afterTimer").singleResult();
 
         assertNotNull(task);
 
         taskService.complete(task.getId());
+        
+        waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
         assertHistoricActivitiesDeleteReason(processInstance, DeleteReason.EVENT_BASED_GATEWAY_CANCEL, "signalEvent");
     }
 
+    @Test
     @Deployment
     public void testCatchSignalAndMessageAndTimer() {
 
@@ -111,14 +118,17 @@ public class EventBasedGatewayTest extends PluggableFlowableTestCase {
         assertEquals(0, managementService.createTimerJobQuery().count());
         assertEquals(0, managementService.createJobQuery().count());
 
-        Task task = taskService.createTaskQuery().taskName("afterMessage").singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().taskName("afterMessage").singleResult();
         assertNotNull(task);
         taskService.complete(task.getId());
+        
+        waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
         assertHistoricActivitiesDeleteReason(processInstance, DeleteReason.EVENT_BASED_GATEWAY_CANCEL, "signalEvent");
         assertHistoricActivitiesDeleteReason(processInstance, DeleteReason.EVENT_BASED_GATEWAY_CANCEL, "timerEvent");
     }
 
+    @Test
     public void testConnectedToActivity() {
 
         try {
@@ -132,13 +142,14 @@ public class EventBasedGatewayTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testAsyncEventBasedGateway() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("asyncEventBasedGateway");
 
         // Trying to fire the signal should fail, job not yet created
         runtimeService.signalEventReceived("alert");
-        Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
         assertNull(task);
 
         Job job = managementService.createJobQuery().processInstanceId(processInstance.getId()).singleResult();

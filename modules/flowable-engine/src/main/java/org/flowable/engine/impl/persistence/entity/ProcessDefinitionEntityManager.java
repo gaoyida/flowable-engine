@@ -15,8 +15,7 @@ package org.flowable.engine.impl.persistence.entity;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.common.impl.persistence.entity.EntityManager;
+import org.flowable.common.engine.impl.persistence.entity.EntityManager;
 import org.flowable.engine.impl.ProcessDefinitionQueryImpl;
 import org.flowable.engine.repository.ProcessDefinition;
 
@@ -28,8 +27,12 @@ public interface ProcessDefinitionEntityManager extends EntityManager<ProcessDef
     ProcessDefinitionEntity findLatestProcessDefinitionByKey(String processDefinitionKey);
 
     ProcessDefinitionEntity findLatestProcessDefinitionByKeyAndTenantId(String processDefinitionKey, String tenantId);
+    
+    ProcessDefinitionEntity findLatestDerivedProcessDefinitionByKey(String processDefinitionKey);
 
-    List<ProcessDefinition> findProcessDefinitionsByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery, Page page);
+    ProcessDefinitionEntity findLatestDerivedProcessDefinitionByKeyAndTenantId(String processDefinitionKey, String tenantId);
+
+    List<ProcessDefinition> findProcessDefinitionsByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery);
 
     long findProcessDefinitionCountByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery);
 
@@ -39,7 +42,7 @@ public interface ProcessDefinitionEntityManager extends EntityManager<ProcessDef
 
     ProcessDefinition findProcessDefinitionByKeyAndVersionAndTenantId(String processDefinitionKey, Integer processDefinitionVersion, String tenantId);
 
-    List<ProcessDefinition> findProcessDefinitionsByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults);
+    List<ProcessDefinition> findProcessDefinitionsByNativeQuery(Map<String, Object> parameterMap);
 
     long findProcessDefinitionCountByNativeQuery(Map<String, Object> parameterMap);
 

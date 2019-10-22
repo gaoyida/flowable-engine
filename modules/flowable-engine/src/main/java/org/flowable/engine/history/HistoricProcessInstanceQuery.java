@@ -18,8 +18,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
+import org.flowable.common.engine.api.query.DeleteQuery;
+import org.flowable.common.engine.api.query.Query;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.common.api.query.Query;
 import org.flowable.engine.runtime.ProcessInstanceQuery;
 
 /**
@@ -30,7 +31,7 @@ import org.flowable.engine.runtime.ProcessInstanceQuery;
  * @author Tijs Rademakers
  * @author Falko Menge
  */
-public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInstanceQuery, HistoricProcessInstance> {
+public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInstanceQuery, HistoricProcessInstance>, DeleteQuery<HistoricProcessInstanceQuery, HistoricProcessInstance> {
 
     /**
      * Only select historic process instances with the given process instance. {@link ProcessInstance) ids and {@link HistoricProcessInstance} ids match.
@@ -100,6 +101,11 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
      * Only select the historic process instances with which the user with the given id is involved.
      */
     HistoricProcessInstanceQuery involvedUser(String userId);
+
+    /**
+     * Only select the historic process instances with which the group with the given ids are involved.
+     */
+    HistoricProcessInstanceQuery involvedGroups(Set<String> groups);
 
     /**
      * Only select process instances which had a global variable with the given value when they ended. The type only applies to already ended process instances, otherwise use a
@@ -202,6 +208,22 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
      *            cannot be null. The string can include the wildcard character '%' to express like-strategy: starts with (string%), ends with (%string) or contains (%string%).
      */
     HistoricProcessInstanceQuery variableValueLikeIgnoreCase(String name, String value);
+    
+    /**
+     * Only select process instances which have a variable with the given name.
+     * 
+     * @param name
+     *            cannot be null.
+     */
+    HistoricProcessInstanceQuery variableExists(String name);
+    
+    /**
+     * Only select process instances which does not have a variable with the given name.
+     * 
+     * @param name
+     *            cannot be null.
+     */
+    HistoricProcessInstanceQuery variableNotExists(String name);
 
     /**
      * Only select historic process instances that were started before the given date.
@@ -214,12 +236,12 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
     HistoricProcessInstanceQuery startedAfter(Date date);
 
     /**
-     * Only select historic process instances that were started before the given date.
+     * Only select historic process instances that were finished before the given date.
      */
     HistoricProcessInstanceQuery finishedBefore(Date date);
 
     /**
-     * Only select historic process instances that were started after the given date.
+     * Only select historic process instances that were finished after the given date.
      */
     HistoricProcessInstanceQuery finishedAfter(Date date);
 
@@ -321,6 +343,16 @@ public interface HistoricProcessInstanceQuery extends Query<HistoricProcessInsta
      * Only select process instances with a name like the given value, ignoring upper/lower case.
      */
     HistoricProcessInstanceQuery processInstanceNameLikeIgnoreCase(String nameLikeIgnoreCase);
+    
+    /**
+     * Only select process instances with the given callback identifier. 
+     */
+    HistoricProcessInstanceQuery processInstanceCallbackId(String callbackId);
+    
+    /**
+     * Only select process instances with the given callback type. 
+     */
+    HistoricProcessInstanceQuery processInstanceCallbackType(String callbackType);
 
     /**
      * Localize historic process name and description to specified locale.

@@ -13,18 +13,17 @@
 package org.activiti.engine.impl.persistence.entity;
 
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.activiti.engine.ActivitiException;
 import org.activiti.engine.impl.db.BulkDeleteable;
 import org.activiti.engine.impl.db.HasRevision;
 import org.activiti.engine.impl.db.PersistentObject;
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.runtime.Job;
+import org.flowable.job.api.Job;
 
 /**
  * Abstract job entity class.
@@ -43,10 +42,19 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
     protected int revision;
 
     protected Date duedate;
+    protected Date createTime;
 
     protected String executionId;
     protected String processInstanceId;
     protected String processDefinitionId;
+    
+    protected String elementId;
+    protected String elementName;
+    
+    protected String scopeId;
+    protected String subScopeId;
+    protected String scopeType;
+    protected String scopeDefinitionId;
 
     protected boolean isExclusive = DEFAULT_EXCLUSIVE;
 
@@ -59,6 +67,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
     protected Date endDate;
 
     protected final ByteArrayRef exceptionByteArrayRef = new ByteArrayRef();
+    protected final ByteArrayRef customValuesByteArrayRef = new ByteArrayRef();
 
     protected String exceptionMessage;
 
@@ -76,59 +85,72 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         if (bytes == null) {
             return null;
         }
-        try {
-            return new String(bytes, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new ActivitiException("UTF-8 is not a supported encoding");
-        }
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     public void setExceptionStacktrace(String exception) {
         exceptionByteArrayRef.setValue("stacktrace", getUtf8Bytes(exception));
     }
 
+    @Override
+    public String getCustomValues() {
+        byte[] bytes = customValuesByteArrayRef.getBytes();
+        if (bytes == null) {
+            return null;
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    public void setCustomValues(String customValues) {
+        customValuesByteArrayRef.setValue("jobCustomValues", getUtf8Bytes(customValues));
+    }
+
     private byte[] getUtf8Bytes(String str) {
         if (str == null) {
             return null;
         }
-        try {
-            return str.getBytes("UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new ActivitiException("UTF-8 is not a supported encoding");
-        }
+        return str.getBytes(StandardCharsets.UTF_8);
     }
 
+    @Override
     public Object getPersistentState() {
-        Map<String, Object> persistentState = new HashMap<String, Object>();
+        Map<String, Object> persistentState = new HashMap<>();
         persistentState.put("retries", retries);
         persistentState.put("duedate", duedate);
         persistentState.put("exceptionMessage", exceptionMessage);
-        persistentState.put("exceptionByteArrayId", exceptionByteArrayRef.getId());
+        persistentState.put("exceptionByteArrayRef", exceptionByteArrayRef.getId());
+        persistentState.put("customValuesByteArrayRef", customValuesByteArrayRef.getId());
         return persistentState;
     }
 
+    @Override
     public int getRevisionNext() {
         return revision + 1;
     }
 
     // getters and setters //////////////////////////////////////////////////////
 
+    @Override
     public String getId() {
         return id;
     }
 
+    @Override
     public void setId(String id) {
         this.id = id;
     }
 
+    @Override
     public int getRevision() {
         return revision;
     }
 
+    @Override
     public void setRevision(int revision) {
         this.revision = revision;
     }
 
+    @Override
     public Date getDuedate() {
         return duedate;
     }
@@ -137,6 +159,16 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.duedate = duedate;
     }
 
+    @Override
+    public Date getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(Date createTime) {
+        this.createTime = createTime;
+    }
+
+    @Override
     public String getExecutionId() {
         return executionId;
     }
@@ -145,6 +177,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.executionId = executionId;
     }
 
+    @Override
     public int getRetries() {
         return retries;
     }
@@ -153,6 +186,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.retries = retries;
     }
 
+    @Override
     public String getProcessInstanceId() {
         return processInstanceId;
     }
@@ -161,6 +195,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.processInstanceId = processInstanceId;
     }
 
+    @Override
     public boolean isExclusive() {
         return isExclusive;
     }
@@ -169,6 +204,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.isExclusive = isExclusive;
     }
 
+    @Override
     public String getProcessDefinitionId() {
         return processDefinitionId;
     }
@@ -176,7 +212,62 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
     public void setProcessDefinitionId(String processDefinitionId) {
         this.processDefinitionId = processDefinitionId;
     }
+    
+    @Override
+    public String getElementId() {
+        return elementId;
+    }
 
+    public void setElementId(String elementId) {
+        this.elementId = elementId;
+    }
+
+    @Override
+    public String getElementName() {
+        return elementName;
+    }
+
+    public void setElementName(String elementName) {
+        this.elementName = elementName;
+    }
+
+    @Override
+    public String getScopeId() {
+        return scopeId;
+    }
+
+    public void setScopeId(String scopeId) {
+        this.scopeId = scopeId;
+    }
+
+    @Override
+    public String getSubScopeId() {
+        return subScopeId;
+    }
+
+    public void setSubScopeId(String subScopeId) {
+        this.subScopeId = subScopeId;
+    }
+
+    @Override
+    public String getScopeType() {
+        return scopeType;
+    }
+
+    public void setScopeType(String scopeType) {
+        this.scopeType = scopeType;
+    }
+
+    @Override
+    public String getScopeDefinitionId() {
+        return scopeDefinitionId;
+    }
+
+    public void setScopeDefinitionId(String scopeDefinitionId) {
+        this.scopeDefinitionId = scopeDefinitionId;
+    }
+
+    @Override
     public String getJobHandlerType() {
         return jobHandlerType;
     }
@@ -185,6 +276,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.jobHandlerType = jobHandlerType;
     }
 
+    @Override
     public String getJobHandlerConfiguration() {
         return jobHandlerConfiguration;
     }
@@ -209,6 +301,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.endDate = endDate;
     }
 
+    @Override
     public String getExceptionMessage() {
         return exceptionMessage;
     }
@@ -217,6 +310,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.exceptionMessage = StringUtils.abbreviate(exceptionMessage, MAX_EXCEPTION_MESSAGE_LENGTH);
     }
 
+    @Override
     public String getJobType() {
         return jobType;
     }
@@ -225,6 +319,7 @@ public abstract class AbstractJobEntity implements Job, PersistentObject, HasRev
         this.jobType = jobType;
     }
 
+    @Override
     public String getTenantId() {
         return tenantId;
     }

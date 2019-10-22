@@ -17,22 +17,26 @@ import java.util.Map;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
+import org.flowable.common.engine.api.FlowableOptimisticLockingException;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandContextCloseListener;
 import org.flowable.engine.ProcessEngine;
-import org.flowable.engine.common.api.FlowableOptimisticLockingException;
 import org.flowable.engine.impl.cmd.TriggerCmd;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.interceptor.CommandContextCloseListener;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 import org.junit.Assert;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 /**
  * @author Joram Barrez
  */
+@DisabledIfSystemProperty(named = "database", matches = "cockroachdb") // Disabled due to having a retry interceptor for CRDB and barriers in this test
 public class OptimisticLockingExceptionTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/concurrency/CompetingJoinTest.testCompetingJoins.bpmn20.xml" })
     public void testOptimisticLockExceptionForConcurrentJoin() throws Exception {
 
@@ -63,7 +67,7 @@ public class OptimisticLockingExceptionTest extends PluggableFlowableTestCase {
                 Thread.sleep(250L);
                 totalWaitTime += 250L;
 
-                if (totalWaitTime >= 5000L) {
+                if (totalWaitTime >= 7000L) {
                     break;
                 }
             }
@@ -101,6 +105,7 @@ public class OptimisticLockingExceptionTest extends PluggableFlowableTestCase {
             this.executionId = executionid;
         }
 
+        @Override
         public void run() {
             try {
                 processEngine.getManagementService().executeCommand(new TestTriggerCommand(executionId, null));

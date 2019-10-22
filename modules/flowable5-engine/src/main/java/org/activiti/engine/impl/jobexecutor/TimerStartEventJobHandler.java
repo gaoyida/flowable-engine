@@ -23,22 +23,24 @@ import org.activiti.engine.impl.persistence.entity.ExecutionEntity;
 import org.activiti.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.activiti.engine.impl.pvm.process.ActivityImpl;
 import org.activiti.engine.runtime.ProcessInstance;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.Job;
+import org.flowable.job.api.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TimerStartEventJobHandler extends TimerEventHandler implements JobHandler {
 
-    private static Logger log = LoggerFactory.getLogger(TimerStartEventJobHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TimerStartEventJobHandler.class);
 
     public static final String TYPE = "timer-start-event";
 
+    @Override
     public String getType() {
         return TYPE;
     }
 
+    @Override
     public void execute(Job job, String configuration, ExecutionEntity execution, CommandContext commandContext) {
 
         DeploymentManager deploymentManager = Context
@@ -65,7 +67,7 @@ public class TimerStartEventJobHandler extends TimerEventHandler implements JobH
             processInstance.start();
 
         } else {
-            log.debug("Ignoring timer of suspended process definition {}", processDefinition.getId());
+            LOGGER.debug("Ignoring timer of suspended process definition {}", processDefinition.getId());
         }
 
     }
@@ -92,13 +94,13 @@ public class TimerStartEventJobHandler extends TimerEventHandler implements JobH
 
                 new StartProcessInstanceCmd<ProcessInstance>(processDefinitionKey, null, null, null, job.getTenantId()).execute(commandContext);
             } else {
-                log.debug("Ignoring timer of suspended process definition {}", processDefinition.getId());
+                LOGGER.debug("Ignoring timer of suspended process definition {}", processDefinition.getId());
             }
         } catch (RuntimeException e) {
-            log.error("exception during timer execution", e);
+            LOGGER.error("exception during timer execution", e);
             throw e;
         } catch (Exception e) {
-            log.error("exception during timer execution", e);
+            LOGGER.error("exception during timer execution", e);
             throw new ActivitiException("exception during timer execution: " + e.getMessage(), e);
         }
     }

@@ -12,18 +12,32 @@
  */
 package org.flowable.dmn.engine;
 
-import java.lang.reflect.Method;
 import java.util.Map;
 
-import org.flowable.dmn.api.RuleEngineExecutionResult;
+import org.flowable.common.engine.impl.el.ExpressionManager;
+import org.flowable.dmn.api.DecisionExecutionAuditContainer;
+import org.flowable.dmn.engine.impl.ExecuteDecisionInfo;
+import org.flowable.dmn.engine.impl.hitpolicy.AbstractHitPolicy;
 import org.flowable.dmn.model.Decision;
-import org.mvel2.integration.PropertyHandler;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * @author Yvo Swillens
  */
 public interface RuleEngineExecutor {
 
-    RuleEngineExecutionResult execute(Decision decision, Map<String, Object> inputVariables,
-            Map<String, Method> customExpressionFunctions, Map<Class<?>, PropertyHandler> propertyHandlers);
+    DecisionExecutionAuditContainer execute(Decision decision, ExecuteDecisionInfo executeDecisionInfo);
+    
+    Map<String, AbstractHitPolicy> getHitPolicyBehaviors();
+
+    void setHitPolicyBehaviors(Map<String, AbstractHitPolicy> hitPolicyBehaviors);
+    
+    ExpressionManager getExpressionManager();
+
+    void setExpressionManager(ExpressionManager expressionManager);
+    
+    ObjectMapper getObjectMapper();
+
+    void setObjectMapper(ObjectMapper objectMapper);
 }

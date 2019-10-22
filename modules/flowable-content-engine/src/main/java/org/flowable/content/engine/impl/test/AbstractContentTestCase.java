@@ -13,11 +13,10 @@
 
 package org.flowable.content.engine.impl.test;
 
-import junit.framework.AssertionFailedError;
-import junit.framework.TestCase;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import junit.framework.TestCase;
 
 /**
  * @author Tom Baeyens
@@ -26,7 +25,7 @@ public abstract class AbstractContentTestCase extends TestCase {
 
     protected static final String EMPTY_LINE = "\n";
 
-    protected static Logger log = LoggerFactory.getLogger(AbstractContentTestCase.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractContentTestCase.class);
 
     protected boolean isEmptyLinesEnabled = true;
 
@@ -34,8 +33,8 @@ public abstract class AbstractContentTestCase extends TestCase {
      * Asserts if the provided text is part of some text.
      */
     public void assertTextPresent(String expected, String actual) {
-        if ((actual == null) || (!actual.contains(expected))) {
-            throw new AssertionFailedError("expected presence of [" + expected + "], but was [" + actual + "]");
+        if ((actual == null) || !actual.contains(expected)) {
+            throw new AssertionError("expected presence of [" + expected + "], but was [" + actual + "]");
         }
     }
 
@@ -48,29 +47,29 @@ public abstract class AbstractContentTestCase extends TestCase {
 
     @Override
     protected void runTest() throws Throwable {
-        if (log.isDebugEnabled()) {
+        if (LOGGER.isDebugEnabled()) {
             if (isEmptyLinesEnabled) {
-                log.debug(EMPTY_LINE);
+                LOGGER.debug(EMPTY_LINE);
             }
-            log.debug("#### START {}.{} ###########################################################", this.getClass().getSimpleName(), getName());
+            LOGGER.debug("#### START {}.{} ###########################################################", this.getClass().getSimpleName(), getName());
         }
 
         try {
 
             super.runTest();
 
-        } catch (AssertionFailedError e) {
-            log.error(EMPTY_LINE);
-            log.error("ASSERTION FAILED: {}", e, e);
+        } catch (AssertionError e) {
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error("ASSERTION FAILED: {}", e, e);
             throw e;
 
         } catch (Throwable e) {
-            log.error(EMPTY_LINE);
-            log.error("EXCEPTION: {}", e, e);
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error("EXCEPTION: {}", e, e);
             throw e;
 
         } finally {
-            log.debug("#### END {}.{} #############################################################", this.getClass().getSimpleName(), getName());
+            LOGGER.debug("#### END {}.{} #############################################################", this.getClass().getSimpleName(), getName());
         }
     }
 

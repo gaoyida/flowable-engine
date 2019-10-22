@@ -28,34 +28,34 @@ import javax.inject.Scope;
 
 import org.flowable.cdi.FlowableCdiException;
 import org.flowable.cdi.impl.util.ProgrammaticBeanLookup;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.context.Context;
 import org.flowable.engine.RuntimeService;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.impl.context.Context;
 import org.flowable.engine.impl.context.ExecutionContext;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.runtime.Execution;
-import org.flowable.engine.task.Task;
+import org.flowable.task.api.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of the business process association manager. Uses a fallback-strategy to associate the process instance with the "broadest" active scope, starting with the conversation.
- * <p />
+ * <p/>
  * Subclass in order to implement custom association schemes and association with custom scopes.
- * 
+ *
  * @author Daniel Meyer
  */
 @SuppressWarnings("serial")
 public class DefaultContextAssociationManager implements ContextAssociationManager, Serializable {
 
-    private static final Logger log = LoggerFactory.getLogger(DefaultContextAssociationManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextAssociationManager.class);
 
     protected static class ScopedAssociation {
 
         @Inject
         private RuntimeService runtimeService;
 
-        protected Map<String, Object> cachedVariables = new HashMap<String, Object>();
+        protected Map<String, Object> cachedVariables = new HashMap<>();
         protected Execution execution;
         protected Task task;
 
@@ -117,7 +117,7 @@ public class DefaultContextAssociationManager implements ContextAssociationManag
                 beanManager.getContext(scopeAnnotation.annotationType());
                 return scopeType;
             } catch (ContextNotActiveException e) {
-                log.trace("Context {} not active.", scopeAnnotation.annotationType());
+                LOGGER.trace("Context {} not active.", scopeAnnotation.annotationType());
             }
         }
         throw new FlowableException("Could not determine an active context to associate the current process instance / task instance with.");
@@ -125,11 +125,11 @@ public class DefaultContextAssociationManager implements ContextAssociationManag
 
     /**
      * Override to add different / additional contexts.
-     * 
+     *
      * @return a list of {@link Scope}-types, which are used in the given order to resolve the broadest active context (@link #getBroadestActiveContext()})
      */
     protected List<Class<? extends ScopedAssociation>> getAvailableScopedAssociationClasses() {
-        ArrayList<Class<? extends ScopedAssociation>> scopeTypes = new ArrayList<Class<? extends ScopedAssociation>>();
+        ArrayList<Class<? extends ScopedAssociation>> scopeTypes = new ArrayList<>();
         scopeTypes.add(ConversationScopedAssociation.class);
         scopeTypes.add(RequestScopedAssociation.class);
         return scopeTypes;
@@ -155,8 +155,8 @@ public class DefaultContextAssociationManager implements ContextAssociationManag
             throw new FlowableCdiException("Cannot associate " + execution + ", already associated with " + associatedExecution + ". Disassociate first!");
         }
 
-        if (log.isTraceEnabled()) {
-            log.trace("Associating {} (@{})", execution, scopedAssociation.getClass().getAnnotations()[0].annotationType().getSimpleName());
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Associating {} (@{})", execution, scopedAssociation.getClass().getAnnotations()[0].annotationType().getSimpleName());
         }
         scopedAssociation.setExecution(execution);
     }
@@ -168,10 +168,10 @@ public class DefaultContextAssociationManager implements ContextAssociationManag
         }
         ScopedAssociation scopedAssociation = getScopedAssociation();
         if (scopedAssociation.getExecution() == null) {
-            throw new FlowableException("Cannot dissasociate execution, no " + scopedAssociation.getClass().getAnnotations()[0].annotationType().getSimpleName() + " execution associated. ");
+            throw new FlowableException("Cannot disassociate execution, no " + scopedAssociation.getClass().getAnnotations()[0].annotationType().getSimpleName() + " execution associated. ");
         }
-        if (log.isTraceEnabled()) {
-            log.trace("Disassociating");
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Disassociating");
         }
         scopedAssociation.setExecution(null);
         scopedAssociation.setTask(null);
@@ -228,6 +228,7 @@ public class DefaultContextAssociationManager implements ContextAssociationManag
         return null;
     }
 
+    @Override
     public Task getTask() {
         if (Context.getCommandContext() != null) {
             throw new FlowableCdiException("Cannot work with tasks in an active command.");
@@ -235,6 +236,7 @@ public class DefaultContextAssociationManager implements ContextAssociationManag
         return getScopedAssociation().getTask();
     }
 
+    @Override
     public void setTask(Task task) {
         if (Context.getCommandContext() != null) {
             throw new FlowableCdiException("Cannot work with tasks in an active command.");

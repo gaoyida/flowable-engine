@@ -1,3 +1,15 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.bpmn.model;
 
 import java.util.ArrayList;
@@ -8,7 +20,7 @@ public class DataAssociation extends BaseElement {
     protected String sourceRef;
     protected String targetRef;
     protected String transformation;
-    protected List<Assignment> assignments = new ArrayList<Assignment>();
+    protected List<Assignment> assignments = new ArrayList<>();
 
     public String getSourceRef() {
         return sourceRef;
@@ -42,6 +54,7 @@ public class DataAssociation extends BaseElement {
         this.assignments = assignments;
     }
 
+    @Override
     public DataAssociation clone() {
         DataAssociation clone = new DataAssociation();
         clone.setValues(this);
@@ -53,7 +66,7 @@ public class DataAssociation extends BaseElement {
         setTargetRef(otherAssociation.getTargetRef());
         setTransformation(otherAssociation.getTransformation());
 
-        assignments = new ArrayList<Assignment>();
+        assignments = new ArrayList<>();
         if (otherAssociation.getAssignments() != null && !otherAssociation.getAssignments().isEmpty()) {
             for (Assignment assignment : otherAssociation.getAssignments()) {
                 assignments.add(assignment.clone());

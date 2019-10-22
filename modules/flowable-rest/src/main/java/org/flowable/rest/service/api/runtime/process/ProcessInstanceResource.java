@@ -16,15 +16,26 @@ package org.flowable.rest.service.api.runtime.process;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import io.swagger.annotations.Authorization;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.apache.commons.lang3.StringUtils;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.rest.exception.FlowableConflictException;
+import org.flowable.engine.DynamicBpmnService;
+import org.flowable.engine.ProcessMigrationService;
+import org.flowable.engine.RepositoryService;
+import org.flowable.engine.impl.dynamic.DynamicEmbeddedSubProcessBuilder;
+import org.flowable.engine.impl.dynamic.DynamicUserTaskBuilder;
+import org.flowable.engine.migration.ProcessInstanceMigrationDocument;
+import org.flowable.engine.migration.ProcessInstanceMigrationDocumentConverter;
+import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.rest.exception.FlowableConflictException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,6 +44,7 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.Authorization;
 
 /**
  * @author Frederik Heremans
@@ -40,15 +52,33 @@ import io.swagger.annotations.ApiResponses;
 @RestController
 @Api(tags = { "Process Instances" }, description = "Manage Process Instances", authorizations = { @Authorization(value = "basicAuth") })
 public class ProcessInstanceResource extends BaseProcessInstanceResource {
+    
+    @Autowired
+    protected DynamicBpmnService dynamicBpmnService;
+    
+    @Autowired
+    protected RepositoryService repositoryService;
+
+    @Autowired
+    protected ProcessMigrationService migrationService;
 
     @ApiOperation(value = "Get a process instance", tags = { "Process Instances" }, nickname = "getProcessInstance")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates the process instance was found and returned."),
             @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
     })
-    @RequestMapping(value = "/runtime/process-instances/{processInstanceId}", method = RequestMethod.GET, produces = "application/json")
+    @GetMapping(value = "/runtime/process-instances/{processInstanceId}", produces = "application/json")
     public ProcessInstanceResponse getProcessInstance(@ApiParam(name = "processInstanceId") @PathVariable String processInstanceId, HttpServletRequest request) {
-        return restResponseFactory.createProcessInstanceResponse(getProcessInstanceFromRequest(processInstanceId));
+        ProcessInstanceResponse processInstanceResponse = restResponseFactory.createProcessInstanceResponse(getProcessInstanceFromRequest(processInstanceId));
+        
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().processDefinitionId(processInstanceResponse.getProcessDefinitionId()).singleResult();
+        
+        if (processDefinition != null) {
+            processInstanceResponse.setProcessDefinitionName(processDefinition.getName());
+            processInstanceResponse.setProcessDefinitionDescription(processDefinition.getDescription());
+        }
+        
+        return processInstanceResponse;
     }
 
     @ApiOperation(value = "Delete a process instance", tags = { "Process Instances" }, nickname = "deleteProcessInstance")
@@ -56,28 +86,25 @@ public class ProcessInstanceResource extends BaseProcessInstanceResource {
             @ApiResponse(code = 204, message = "Indicates the process instance was found and deleted. Response body is left empty intentionally."),
             @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
     })
-    @RequestMapping(value = "/runtime/process-instances/{processInstanceId}", method = RequestMethod.DELETE)
+    @DeleteMapping(value = "/runtime/process-instances/{processInstanceId}")
     public void deleteProcessInstance(@ApiParam(name = "processInstanceId") @PathVariable String processInstanceId, @RequestParam(value = "deleteReason", required = false) String deleteReason, HttpServletResponse response) {
-
         ProcessInstance processInstance = getProcessInstanceFromRequest(processInstanceId);
+        if (restApiInterceptor != null) {
+            restApiInterceptor.deleteProcessInstance(processInstance);
+        }
 
         runtimeService.deleteProcessInstance(processInstance.getId(), deleteReason);
         response.setStatus(HttpStatus.NO_CONTENT.value());
     }
 
-    @ApiOperation(value = "Activate or suspend a process instance", tags = { "Process Instances" }, notes = "## Activate a process instance\n\n"
-            + " ```JSON\n" + "{\n" + "  \"action\" : \"suspend\"\n" + "} ```"
-            + "\n\n\n"
-            + "## Suspend a process instance\n\n"
-            + " ```JSON\n" + "{\n" + "  \"action\" : \"activate\"\n" + "} ```"
-            + "\n\n\n")
+    @ApiOperation(value = "Activate or suspend a process instance", tags = { "Process Instances" })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates the process instance was found and action was executed."),
             @ApiResponse(code = 400, message = "\t\n" + "Indicates an invalid action was supplied."),
             @ApiResponse(code = 409, message = "Indicates the requested process instance action cannot be executed since the process-instance is already activated/suspended."),
             @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
     })
-    @RequestMapping(value = "/runtime/process-instances/{processInstanceId}", method = RequestMethod.PUT, produces = "application/json")
+    @PutMapping(value = "/runtime/process-instances/{processInstanceId}", produces = "application/json")
     public ProcessInstanceResponse performProcessInstanceAction(@ApiParam(name = "processInstanceId") @PathVariable String processInstanceId, @RequestBody ProcessInstanceActionRequest actionRequest, HttpServletRequest request) {
 
         ProcessInstance processInstance = getProcessInstanceFromRequest(processInstanceId);
@@ -91,23 +118,109 @@ public class ProcessInstanceResource extends BaseProcessInstanceResource {
         throw new FlowableIllegalArgumentException("Invalid action: '" + actionRequest.getAction() + "'.");
     }
 
-    @ApiOperation(value = "Change the state a process instance", tags = { "Process Instances" }, notes = "```JSON\n" + "{\n" + "  \"cancelActivityId\" : \"task2\"\n"
-            + "  \"startActivityId\" : \"task1\"\n } ```"
-            + "\n\n\n")
+    @ApiOperation(value = "Change the state a process instance", tags = { "Process Instances" }, notes = "")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates the process instance was found and change state activity was executed."),
             @ApiResponse(code = 409, message = "Indicates the requested process instance action cannot be executed since the process-instance is already activated/suspended."),
             @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
     })
-    @RequestMapping(value = "/runtime/process-instances/{processInstanceId}/change-state", method = RequestMethod.POST, produces = "application/json")
+    @PostMapping(value = "/runtime/process-instances/{processInstanceId}/change-state", produces = "application/json")
     public void changeActivityState(@ApiParam(name = "processInstanceId") @PathVariable String processInstanceId,
-            @RequestBody ProcessInstanceChangeActivityStateRequest activityStateRequest, HttpServletRequest request) {
+            @RequestBody ExecutionChangeActivityStateRequest activityStateRequest, HttpServletRequest request) {
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.changeActivityState(activityStateRequest);
+        }
 
-        runtimeService.createChangeActivityStateBuilder()
+        if (activityStateRequest.getCancelActivityIds() != null && activityStateRequest.getCancelActivityIds().size() == 1) {
+            runtimeService.createChangeActivityStateBuilder()
                 .processInstanceId(processInstanceId)
-                .cancelActivityId(activityStateRequest.getCancelActivityId())
-                .startActivityId(activityStateRequest.getStartActivityId())
+                .moveSingleActivityIdToActivityIds(activityStateRequest.getCancelActivityIds().get(0), activityStateRequest.getStartActivityIds())
                 .changeState();
+        
+        } else if (activityStateRequest.getStartActivityIds() != null && activityStateRequest.getStartActivityIds().size() == 1) {
+            runtimeService.createChangeActivityStateBuilder()
+                .processInstanceId(processInstanceId)
+                .moveActivityIdsToSingleActivityId(activityStateRequest.getCancelActivityIds(), activityStateRequest.getStartActivityIds().get(0))
+                .changeState();
+        }
+        
+    }
+    
+    @ApiOperation(value = "Evaluate the conditions of a process instance", tags = { "Process Instances" }, notes = "")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Indicates the process instance was found and the evaluation of the conditions was executed."),
+            @ApiResponse(code = 409, message = "Indicates the requested process instance action cannot be executed since the process-instance is already activated/suspended."),
+            @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
+    })
+    @PostMapping(value = "/runtime/process-instances/{processInstanceId}/evaluate-conditions", produces = "application/json")
+    public void evaluateConditions(@ApiParam(name = "processInstanceId") @PathVariable String processInstanceId) {
+        ProcessInstance processInstance = getProcessInstanceFromRequest(processInstanceId);
+        runtimeService.evaluateConditionalEvents(processInstance.getId());
+    }
+    
+    @ApiOperation(value = "Migrate process instance", tags = { "Process Instances" }, notes = "")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Indicates the process instance was found and migration was executed."),
+            @ApiResponse(code = 409, message = "Indicates the requested process instance action cannot be executed since the process-instance is already activated/suspended."),
+            @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
+    })
+    @PostMapping(value = "/runtime/process-instances/{processInstanceId}/migrate", produces = "application/json")
+    public void migrateProcessInstance(@ApiParam(name = "processInstanceId") @PathVariable String processInstanceId,
+            @RequestBody String migrationDocumentJson, HttpServletRequest request) {
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.migrateProcessInstance(processInstanceId, migrationDocumentJson);
+        }
+
+        ProcessInstanceMigrationDocument migrationDocument = ProcessInstanceMigrationDocumentConverter.convertFromJson(migrationDocumentJson);
+        migrationService.migrateProcessInstance(processInstanceId, migrationDocument);
+    }
+    
+    @ApiOperation(value = "Inject activity in a process instance", tags = { "Process Instances" },
+            notes = "")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Indicates the process instance was updated and the activity injection was executed."),
+            @ApiResponse(code = 409, message = "Indicates the requested process instance action cannot be executed since the process-instance is already activated/suspended."),
+            @ApiResponse(code = 404, message = "Indicates the requested process instance was not found.")
+    })
+    @PostMapping(value = "/runtime/process-instances/{processInstanceId}/inject", produces = "application/json")
+    public void injectActivityInProcessInstance(@ApiParam(name = "processInstanceId") @PathVariable String processInstanceId,
+            @RequestBody InjectActivityRequest injectActivityRequest, HttpServletRequest request) {
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.injectActivity(injectActivityRequest);
+        }
+
+        if ("task".equalsIgnoreCase(injectActivityRequest.getInjectionType())) {
+            DynamicUserTaskBuilder taskBuilder = new DynamicUserTaskBuilder();
+            taskBuilder.id(injectActivityRequest.getId())
+                .name(injectActivityRequest.getName())
+                .assignee(injectActivityRequest.getAssignee());
+            
+            if (injectActivityRequest.getTaskId() != null) {
+                dynamicBpmnService.injectParallelUserTask(injectActivityRequest.getTaskId(), taskBuilder);
+            } else {
+                dynamicBpmnService.injectUserTaskInProcessInstance(processInstanceId, taskBuilder);
+            }
+        
+        } else if ("subprocess".equalsIgnoreCase(injectActivityRequest.getInjectionType())) {
+            if (StringUtils.isEmpty(injectActivityRequest.getProcessDefinitionId())) {
+                throw new FlowableIllegalArgumentException("processDefinitionId is required");
+            }
+            DynamicEmbeddedSubProcessBuilder subProcessBuilder = new DynamicEmbeddedSubProcessBuilder();
+            subProcessBuilder.id(injectActivityRequest.getId())
+                .processDefinitionId(injectActivityRequest.getProcessDefinitionId());
+            
+            if (injectActivityRequest.getTaskId() != null) {
+                dynamicBpmnService.injectParallelEmbeddedSubProcess(injectActivityRequest.getTaskId(), subProcessBuilder);
+            } else {
+                dynamicBpmnService.injectEmbeddedSubProcessInProcessInstance(processInstanceId, subProcessBuilder);
+            }
+        
+        } else {
+            throw new FlowableIllegalArgumentException("injection type is not supported " + injectActivityRequest.getInjectionType());
+        }
     }
 
     protected ProcessInstanceResponse activateProcessInstance(ProcessInstance processInstance) {

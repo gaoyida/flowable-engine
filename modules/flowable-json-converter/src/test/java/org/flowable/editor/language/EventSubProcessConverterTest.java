@@ -26,7 +26,7 @@ import org.junit.Test;
 public class EventSubProcessConverterTest extends AbstractConverterTest {
 
     @Test
-    public void connvertJsonToModel() throws Exception {
+    public void convertJsonToModel() throws Exception {
         BpmnModel bpmnModel = readJsonFile();
         validateModel(bpmnModel);
     }
@@ -38,6 +38,7 @@ public class EventSubProcessConverterTest extends AbstractConverterTest {
         validateModel(bpmnModel);
     }
 
+    @Override
     protected String getResource() {
         return "test.eventsubprocessmodel.json";
     }

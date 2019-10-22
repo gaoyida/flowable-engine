@@ -26,8 +26,6 @@
 
 package org.flowable.engine.test.api.runtime;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,14 +38,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ExecutionQuery;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * @author Joram Barrez
@@ -59,19 +62,19 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
     private static final String SEQUENTIAL_PROCESS_KEY = "oneTaskProcess";
     private static final String CONCURRENT_PROCESS_NAME = "concurrentName";
     private static final String SEQUENTIAL_PROCESS_NAME = "oneTaskProcessName";
-    private static final String CONCURRENT_PROCESS_CATEGORY = "org.flowable.enginge.test.api.runtime.concurrent.Category";
-    private static final String SEQUENTIAL_PROCESS_CATEGORY = "org.flowable.enginge.test.api.runtime.Category";
+    private static final String CONCURRENT_PROCESS_CATEGORY = "org.flowable.engine.test.api.runtime.concurrent.Category";
+    private static final String SEQUENTIAL_PROCESS_CATEGORY = "org.flowable.engine.test.api.runtime.Category";
 
     private List<String> concurrentProcessInstanceIds;
     private List<String> sequentialProcessInstanceIds;
 
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
         repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml")
                 .addClasspathResource("org/flowable/engine/test/api/runtime/concurrentExecution.bpmn20.xml").deploy();
 
-        concurrentProcessInstanceIds = new ArrayList<String>();
-        sequentialProcessInstanceIds = new ArrayList<String>();
+        concurrentProcessInstanceIds = new ArrayList<>();
+        sequentialProcessInstanceIds = new ArrayList<>();
 
         for (int i = 0; i < 4; i++) {
             concurrentProcessInstanceIds.add(runtimeService.startProcessInstanceByKey(CONCURRENT_PROCESS_KEY, "BUSINESS-KEY-" + i).getId());
@@ -79,21 +82,23 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         sequentialProcessInstanceIds.add(runtimeService.startProcessInstanceByKey(SEQUENTIAL_PROCESS_KEY).getId());
     }
 
+    @AfterEach
     protected void tearDown() throws Exception {
         for (org.flowable.engine.repository.Deployment deployment : repositoryService.createDeploymentQuery().list()) {
             repositoryService.deleteDeployment(deployment.getId(), true);
         }
-        super.tearDown();
     }
 
+    @Test
     public void testQueryByProcessDefinitionKey() {
         // Concurrent process with 3 executions for each process instance
         assertEquals(12, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).list().size());
         assertEquals(2, runtimeService.createExecutionQuery().processDefinitionKey(SEQUENTIAL_PROCESS_KEY).list().size());
     }
 
+    @Test
     public void testQueryByProcessDefinitionKeyIn() {
-        Set<String> includeIds = new HashSet<String>();
+        Set<String> includeIds = new HashSet<>();
         assertEquals(14, runtimeService.createExecutionQuery().processDefinitionKeys(includeIds).list().size());
         includeIds.add(CONCURRENT_PROCESS_KEY);
         assertEquals(12, runtimeService.createExecutionQuery().processDefinitionKeys(includeIds).list().size());
@@ -107,6 +112,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createExecutionQuery().processDefinitionKeys(includeIds).list().size());
     }
 
+    @Test
     public void testQueryByInvalidProcessDefinitionKey() {
         ExecutionQuery query = runtimeService.createExecutionQuery().processDefinitionKey("invalid");
         assertNull(query.singleResult());
@@ -114,12 +120,14 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(0, query.count());
     }
 
+    @Test
     public void testQueryByProcessDefinitionCategory() {
         // Concurrent process with 3 executions for each process instance
         assertEquals(12, runtimeService.createExecutionQuery().processDefinitionCategory(CONCURRENT_PROCESS_CATEGORY).list().size());
         assertEquals(2, runtimeService.createExecutionQuery().processDefinitionCategory(SEQUENTIAL_PROCESS_CATEGORY).list().size());
     }
 
+    @Test
     public void testQueryByInvalidProcessDefinitionCategory() {
         ExecutionQuery query = runtimeService.createExecutionQuery().processDefinitionCategory("invalid");
         assertNull(query.singleResult());
@@ -127,12 +135,14 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(0, query.count());
     }
 
+    @Test
     public void testQueryByProcessDefinitionName() {
         // Concurrent process with 3 executions for each process instance
         assertEquals(12, runtimeService.createExecutionQuery().processDefinitionName(CONCURRENT_PROCESS_NAME).list().size());
         assertEquals(2, runtimeService.createExecutionQuery().processDefinitionName(SEQUENTIAL_PROCESS_NAME).list().size());
     }
 
+    @Test
     public void testQueryByInvalidProcessDefinitionName() {
         ExecutionQuery query = runtimeService.createExecutionQuery().processDefinitionName("invalid");
         assertNull(query.singleResult());
@@ -140,6 +150,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(0, query.count());
     }
 
+    @Test
     public void testQueryByProcessInstanceId() {
         for (String processInstanceId : concurrentProcessInstanceIds) {
             ExecutionQuery query = runtimeService.createExecutionQuery().processInstanceId(processInstanceId);
@@ -149,6 +160,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, runtimeService.createExecutionQuery().processInstanceId(sequentialProcessInstanceIds.get(0)).list().size());
     }
 
+    @Test
     public void testQueryByRootProcessInstanceId() {
         for (String processInstanceId : concurrentProcessInstanceIds) {
             ExecutionQuery query = runtimeService.createExecutionQuery().rootProcessInstanceId(processInstanceId);
@@ -158,6 +170,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, runtimeService.createExecutionQuery().rootProcessInstanceId(sequentialProcessInstanceIds.get(0)).list().size());
     }
 
+    @Test
     public void testQueryByParentId() {
         // Concurrent processes fork into 2 child-executions. Should be found
         // when parentId is used
@@ -168,6 +181,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testQueryByInvalidProcessInstanceId() {
         ExecutionQuery query = runtimeService.createExecutionQuery().processInstanceId("invalid");
         assertNull(query.singleResult());
@@ -175,11 +189,13 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(0, query.count());
     }
 
+    @Test
     public void testQueryExecutionId() {
         List<Execution> executions = runtimeService.createExecutionQuery().processDefinitionKey(SEQUENTIAL_PROCESS_KEY).list();
         assertEquals(2, executions.size());
     }
 
+    @Test
     public void testQueryByInvalidExecutionId() {
         ExecutionQuery query = runtimeService.createExecutionQuery().executionId("invalid");
         assertNull(query.singleResult());
@@ -187,6 +203,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(0, query.count());
     }
 
+    @Test
     public void testQueryByActivityId() {
         ExecutionQuery query = runtimeService.createExecutionQuery().activityId("receivePayment");
         assertEquals(4, query.list().size());
@@ -199,6 +216,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testQueryByInvalidActivityId() {
         ExecutionQuery query = runtimeService.createExecutionQuery().activityId("invalid");
         assertNull(query.singleResult());
@@ -209,6 +227,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
     /**
      * Validate fix for ACT-1896
      */
+    @Test
     public void testQueryByActivityIdAndBusinessKeyWithChildren() {
         ExecutionQuery query = runtimeService.createExecutionQuery().activityId("receivePayment").processInstanceBusinessKey("BUSINESS-KEY-1", true);
         assertEquals(1, query.list().size());
@@ -219,6 +238,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals("receivePayment", execution.getActivityId());
     }
 
+    @Test
     public void testQueryPaging() {
         assertEquals(14, runtimeService.createExecutionQuery().count());
         assertEquals(4, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).listPage(0, 4).size());
@@ -227,6 +247,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(12, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).listPage(0, 20).size());
     }
 
+    @Test
     public void testQuerySorting() {
 
         // 13 executions: 3 for each concurrent, 1 for the sequential
@@ -244,6 +265,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(12, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).orderByProcessDefinitionKey().asc().orderByProcessInstanceId().desc().list().size());
     }
 
+    @Test
     public void testQueryInvalidSorting() {
         try {
             runtimeService.createExecutionQuery().orderByProcessDefinitionKey().list();
@@ -253,30 +275,33 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testQueryByBusinessKey() {
         assertEquals(1, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).processInstanceBusinessKey("BUSINESS-KEY-1").list().size());
         assertEquals(1, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).processInstanceBusinessKey("BUSINESS-KEY-2").list().size());
         assertEquals(0, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).processInstanceBusinessKey("NON-EXISTING").list().size());
     }
 
+    @Test
     public void testQueryByBusinessKeyIncludingChildExecutions() {
         assertEquals(3, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).processInstanceBusinessKey("BUSINESS-KEY-1", true).list().size());
         assertEquals(3, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).processInstanceBusinessKey("BUSINESS-KEY-2", true).list().size());
         assertEquals(0, runtimeService.createExecutionQuery().processDefinitionKey(CONCURRENT_PROCESS_KEY).processInstanceBusinessKey("NON-EXISTING", true).list().size());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryStringVariable() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("stringVar", "abcdef");
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("stringVar", "abcdef");
         vars.put("stringVar2", "ghijkl");
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("stringVar", "azerty");
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -313,7 +338,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueLessThan("stringVar", "abcdeg").list();
         assertEquals(2, executions.size());
         List<String> expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        List<String> ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        List<String> ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -324,7 +349,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueLessThanOrEqual("stringVar", "abcdef").list();
         assertEquals(2, executions.size());
         expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -355,7 +380,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueEquals("abcdef").list();
         assertEquals(2, executions.size());
         expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -367,9 +392,10 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance3.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryEqualsIgnoreCase() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("mixed", "AbCdEfG");
         vars.put("lower", "ABCDEFG");
         vars.put("upper", "abcdefg");
@@ -436,9 +462,10 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryLike() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("var1", "aaaaa");
         vars.put("var2", "bbbbb");
         vars.put("var3", "ccccc");
@@ -469,9 +496,10 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryLikeIgnoreCase() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("mixed", "AbCdEfG");
         vars.put("lower", "ABCDEFG");
         vars.put("upper", "abcdefg");
@@ -511,19 +539,20 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment(resources = {
             "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryLongVariable() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("longVar", 12345L);
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("longVar", 12345L);
         vars.put("longVar2", 67890L);
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("longVar", 55555L);
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -572,7 +601,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, executions.size());
 
         List<String> expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        List<String> ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        List<String> ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -593,7 +622,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueEquals(12345L).list();
         assertEquals(2, executions.size());
         expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -605,18 +634,19 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance3.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryDoubleVariable() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("doubleVar", 12345.6789);
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("doubleVar", 12345.6789);
         vars.put("doubleVar2", 9876.54321);
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("doubleVar", 55555.5555);
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -665,7 +695,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, executions.size());
 
         List<String> expecedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        List<String> ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        List<String> ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expecedIds);
         assertTrue(ids.isEmpty());
 
@@ -686,7 +716,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueEquals(12345.6789).list();
         assertEquals(2, executions.size());
         expecedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expecedIds);
         assertTrue(ids.isEmpty());
 
@@ -698,18 +728,19 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance3.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryIntegerVariable() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("integerVar", 12345);
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("integerVar", 12345);
         vars.put("integerVar2", 67890);
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("integerVar", 55555);
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -758,7 +789,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, executions.size());
 
         List<String> expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        List<String> ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        List<String> ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -779,7 +810,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueEquals(12345).list();
         assertEquals(2, executions.size());
         expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -791,20 +822,21 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance3.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryShortVariable() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         short shortVar = 1234;
         vars.put("shortVar", shortVar);
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
         short shortVar2 = 6789;
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("shortVar", shortVar);
         vars.put("shortVar2", shortVar2);
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("shortVar", (short) 5555);
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -854,7 +886,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, executions.size());
 
         List<String> expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        List<String> ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        List<String> ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -875,7 +907,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueEquals((short) 1234).list();
         assertEquals(2, executions.size());
         expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -887,9 +919,10 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance3.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryDateVariable() throws Exception {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         Date date1 = Calendar.getInstance().getTime();
         vars.put("dateVar", date1);
 
@@ -899,14 +932,14 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         cal2.add(Calendar.SECOND, 1);
 
         Date date2 = cal2.getTime();
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("dateVar", date1);
         vars.put("dateVar2", date2);
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
         Calendar nextYear = Calendar.getInstance();
         nextYear.add(Calendar.YEAR, 1);
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("dateVar", nextYear.getTime());
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -965,7 +998,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, executions.size());
 
         List<String> expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        List<String> ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        List<String> ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -986,7 +1019,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         executions = runtimeService.createExecutionQuery().variableValueEquals(date1).list();
         assertEquals(2, executions.size());
         expectedIds = Arrays.asList(processInstance1.getId(), processInstance2.getId());
-        ids = new ArrayList<String>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
+        ids = new ArrayList<>(Arrays.asList(executions.get(0).getId(), executions.get(1).getId()));
         ids.removeAll(expectedIds);
         assertTrue(ids.isEmpty());
 
@@ -998,15 +1031,16 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance3.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testBooleanVariable() throws Exception {
 
         // TEST EQUALS
-        HashMap<String, Object> vars = new HashMap<String, Object>();
+        HashMap<String, Object> vars = new HashMap<>();
         vars.put("booleanVar", true);
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("booleanVar", false);
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -1073,10 +1107,11 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance2.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryVariablesUpdatedToNullValue() {
         // Start process instance with different types of variables
-        Map<String, Object> variables = new HashMap<String, Object>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("longVar", 928374L);
         variables.put("shortVar", (short) 123);
         variables.put("integerVar", 1234);
@@ -1110,25 +1145,26 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertNull(notQuery.singleResult());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryNullVariable() throws Exception {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("nullVar", null);
         ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("nullVar", "notnull");
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("nullVarLong", "notnull");
         ProcessInstance processInstance3 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("nullVarDouble", "notnull");
         ProcessInstance processInstance4 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("nullVarByte", "testbytes".getBytes());
         ProcessInstance processInstance5 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
@@ -1199,9 +1235,10 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertNull(execution);
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryInvalidTypes() throws Exception {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("bytesVar", "test".getBytes());
         vars.put("serializableVar", new DummySerializable());
 
@@ -1224,6 +1261,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance.getId(), "test");
     }
 
+    @Test
     public void testQueryVariablesNullNameArgument() {
         try {
             runtimeService.createExecutionQuery().variableValueEquals(null, "value");
@@ -1269,9 +1307,10 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryAllVariableTypes() throws Exception {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("nullVar", null);
         vars.put("stringVar", "string");
         vars.put("longVar", 10L);
@@ -1293,14 +1332,15 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance.getId(), "test");
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testClashingValues() throws Exception {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("var", 1234L);
 
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
-        Map<String, Object> vars2 = new HashMap<String, Object>();
+        Map<String, Object> vars2 = new HashMap<>();
         vars2.put("var", 1234);
 
         ProcessInstance processInstance2 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars2);
@@ -1313,7 +1353,63 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         runtimeService.deleteProcessInstance(processInstance.getId(), "test");
         runtimeService.deleteProcessInstance(processInstance2.getId(), "test");
     }
+    
+    @Test
+    @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
+    public void testVariableExistsQuery() {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("mixed", "AbCdEfG");
+        vars.put("upper", "ABCDEFG");
+        vars.put("lower", "abcdefg");
+        ProcessInstance processInstance1 = runtimeService.startProcessInstanceByKey("oneTaskProcess", vars);
 
+        Execution execution = runtimeService.createExecutionQuery().variableExists("mixed").singleResult();
+        assertNotNull(execution);
+        assertEquals(processInstance1.getId(), execution.getProcessInstanceId());
+        
+        runtimeService.setVariableLocal(execution.getId(), "localvar", "test");
+
+        List<Execution> executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).processVariableNotExists("lower").list();
+        assertEquals(0, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).processVariableExists("lower")
+                        .processVariableValueEquals("upper", "ABCDEFG").list();
+        assertEquals(2, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).or().processVariableExists("mixed")
+                        .processVariableValueEquals("upper", "ABCDEFG").endOr().list();
+        assertEquals(2, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).or().processVariableNotExists("mixed")
+                        .processVariableValueEquals("upper", "ABCDEFG").endOr().list();
+        assertEquals(2, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).or().processVariableNotExists("mixed").endOr().or()
+                        .processVariableValueEquals("upper", "ABCDEFG").endOr().list();
+        assertEquals(0, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).variableExists("localvar")
+                        .processVariableValueEquals("upper", "ABCDEFG").list();
+        assertEquals(1, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).or().variableExists("mixed")
+                        .processVariableValueEquals("upper", "ABCDEFG").endOr().list();
+        assertEquals(2, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).or().variableNotExists("mixed")
+                        .processVariableValueEquals("upper", "ABCDEFG").endOr().list();
+        assertEquals(2, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).or().variableNotExists("mixed").endOr().or()
+                        .variableValueEquals("upper", "ABCDEFG").endOr().list();
+        assertEquals(2, executions.size());
+        
+        executions = runtimeService.createExecutionQuery().processInstanceId(processInstance1.getId()).or().variableExists("mixed").endOr().or()
+                        .variableValueEquals("upper", "ABCDEFG").endOr().list();
+        assertEquals(0, executions.size());
+    }
+
+    @Test
     @Deployment
     public void testQueryBySignalSubscriptionName() {
         runtimeService.startProcessInstanceByKey("catchSignal");
@@ -1331,6 +1427,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, runtimeService.createExecutionQuery().signalEventSubscriptionName("alert").count());
     }
 
+    @Test
     @Deployment
     public void testQueryBySignalSubscriptionNameBoundary() {
         runtimeService.startProcessInstanceByKey("signalProces");
@@ -1348,10 +1445,11 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, runtimeService.createExecutionQuery().signalEventSubscriptionName("Test signal").count());
     }
 
+    @Test
     public void testNativeQuery() {
         // just test that the query will be constructed and executed, details
         // are tested in the TaskQueryTest
-        assertEquals("ACT_RU_EXECUTION", managementService.getTableName(Execution.class));
+        assertEquals("ACT_RU_EXECUTION", managementService.getTableName(Execution.class, false));
 
         long executionCount = runtimeService.createExecutionQuery().count();
 
@@ -1359,14 +1457,16 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(executionCount, runtimeService.createNativeExecutionQuery().sql("SELECT count(*) FROM " + managementService.getTableName(Execution.class)).count());
     }
 
+    @Test
     public void testNativeQueryPaging() {
         assertEquals(5, runtimeService.createNativeExecutionQuery().sql("SELECT * FROM " + managementService.getTableName(Execution.class)).listPage(1, 5).size());
         assertEquals(1, runtimeService.createNativeExecutionQuery().sql("SELECT * FROM " + managementService.getTableName(Execution.class)).listPage(2, 1).size());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/runtime/concurrentExecution.bpmn20.xml" })
     public void testExecutionQueryWithProcessVariable() {
-        Map<String, Object> variables = new HashMap<String, Object>();
+        Map<String, Object> variables = new HashMap<>();
         variables.put("x", "parent");
         variables.put("xIgnoreCase", "PaReNt");
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("concurrent", variables);
@@ -1403,6 +1503,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/runtime/executionLocalization.bpmn20.xml" })
     public void testLocalizeExecution() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("executionLocalization");
@@ -1600,6 +1701,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals("SubProcess Description 'en-US'", execution.getDescription());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryStartedBefore() throws Exception {
         Calendar calendar = new GregorianCalendar();
@@ -1624,6 +1726,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, executions.size());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryStartedAfter() throws Exception {
         Calendar calendar = new GregorianCalendar();
@@ -1648,6 +1751,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(2, executions.size());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/oneTaskProcess.bpmn20.xml" })
     public void testQueryStartedBy() throws Exception {
         final String authenticatedUser = "user1";
@@ -1659,6 +1763,7 @@ public class ExecutionQueryTest extends PluggableFlowableTestCase {
         assertEquals(1, executions.size());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/runtime/multipleSubProcess.bpmn20.xml",
             "org/flowable/engine/test/api/runtime/subProcess.bpmn20.xml" })
     public void testOnlySubProcessExecutions() throws Exception {

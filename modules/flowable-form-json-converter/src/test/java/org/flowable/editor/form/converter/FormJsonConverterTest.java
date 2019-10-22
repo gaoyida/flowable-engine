@@ -19,10 +19,11 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.io.IOUtils;
 import org.flowable.form.model.FormField;
-import org.flowable.form.model.FormModel;
+import org.flowable.form.model.SimpleFormModel;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class FormJsonConverterTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(FormJsonConverterTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FormJsonConverterTest.class);
 
     private static final String JSON_RESOURCE_1 = "org/flowable/editor/form/converter/form_1.json";
 
@@ -45,17 +46,13 @@ public class FormJsonConverterTest {
     public void testSimpleJsonForm() throws Exception {
 
         String testJsonResource = readJsonToString(JSON_RESOURCE_1);
-        FormModel formDefinition = new FormJsonConverter().convertToFormModel(testJsonResource, "11", 1);
+        SimpleFormModel formModel = new FormJsonConverter().convertToFormModel(testJsonResource);
 
-        assertNotNull(formDefinition);
-        assertEquals("11", formDefinition.getId());
-        assertEquals("form1", formDefinition.getKey());
-        assertEquals("My first form", formDefinition.getName());
+        assertNotNull(formModel);
+        assertNotNull(formModel.getFields());
+        assertEquals(1, formModel.getFields().size());
 
-        assertNotNull(formDefinition.getFields());
-        assertEquals(1, formDefinition.getFields().size());
-
-        FormField formField = formDefinition.getFields().get(0);
+        FormField formField = formModel.getFields().get(0);
         assertEquals("input1", formField.getId());
         assertEquals("Input1", formField.getName());
         assertEquals("text", formField.getType());
@@ -65,15 +62,11 @@ public class FormJsonConverterTest {
 
     /* Helper methods */
     protected String readJsonToString(String resource) {
-        InputStream is = null;
-        try {
-            is = this.getClass().getClassLoader().getResourceAsStream(resource);
-            return IOUtils.toString(is);
+        try (InputStream is = this.getClass().getClassLoader().getResourceAsStream(resource)) {
+            return IOUtils.toString(is, StandardCharsets.UTF_8);
         } catch (IOException e) {
             fail("Could not read " + resource + " : " + e.getMessage());
             return null;
-        } finally {
-            IOUtils.closeQuietly(is);
         }
     }
 

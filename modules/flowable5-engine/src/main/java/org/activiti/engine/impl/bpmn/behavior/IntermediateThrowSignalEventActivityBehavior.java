@@ -23,6 +23,13 @@ import org.activiti.engine.impl.pvm.delegate.ActivityExecution;
 import org.flowable.bpmn.model.Signal;
 import org.flowable.bpmn.model.ThrowEvent;
 import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.impl.util.EventSubscriptionUtil;
+import org.flowable.engine.impl.util.Flowable5Util;
+import org.flowable.engine.impl.util.ProcessDefinitionUtil;
+import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.eventsubscription.service.EventSubscriptionService;
+import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
 
 /**
  * @author Daniel Meyer
@@ -39,6 +46,7 @@ public class IntermediateThrowSignalEventActivityBehavior extends AbstractBpmnAc
         this.signalDefinition = signalDefinition;
     }
 
+    @Override
     public void execute(DelegateExecution execution) {
 
         CommandContext commandContext = Context.getCommandContext();
@@ -55,7 +63,15 @@ public class IntermediateThrowSignalEventActivityBehavior extends AbstractBpmnAc
         }
 
         for (SignalEventSubscriptionEntity signalEventSubscriptionEntity : subscriptionEntities) {
-            signalEventSubscriptionEntity.eventReceived(null, signalDefinition.isAsync());
+            ProcessDefinition processDefinition = ProcessDefinitionUtil.getProcessDefinition(signalEventSubscriptionEntity.getProcessDefinitionId());
+            if (Flowable5Util.isVersion5Tag(processDefinition.getEngineVersion())) {
+                signalEventSubscriptionEntity.eventReceived(null, signalDefinition.isAsync());
+                
+            } else {
+                EventSubscriptionService eventSubscriptionService = CommandContextUtil.getEventSubscriptionService();
+                EventSubscriptionEntity flowable6EventSubscription = eventSubscriptionService.findById(signalEventSubscriptionEntity.getId());
+                EventSubscriptionUtil.eventReceived(flowable6EventSubscription, null, signalDefinition.isAsync());
+            }
         }
 
         ActivityExecution activityExecution = (ActivityExecution) execution;

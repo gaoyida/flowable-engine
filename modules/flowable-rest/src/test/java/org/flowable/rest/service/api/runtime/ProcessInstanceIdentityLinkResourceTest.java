@@ -13,6 +13,10 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
@@ -23,6 +27,7 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -37,6 +42,7 @@ public class ProcessInstanceIdentityLinkResourceTest extends BaseSpringRestTestC
     /**
      * Test getting all identity links.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceIdentityLinkResourceTest.process.bpmn20.xml" })
     public void testGetIdentityLinks() throws Exception {
 
@@ -83,6 +89,7 @@ public class ProcessInstanceIdentityLinkResourceTest extends BaseSpringRestTestC
     /**
      * Test creating an identity link.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceIdentityLinkResourceTest.process.bpmn20.xml" })
     public void testCreateIdentityLink() throws Exception {
 
@@ -135,6 +142,7 @@ public class ProcessInstanceIdentityLinkResourceTest extends BaseSpringRestTestC
     /**
      * Test getting a single identity link for a process instance.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceIdentityLinkResourceTest.process.bpmn20.xml" })
     public void testGetSingleIdentityLink() throws Exception {
 
@@ -161,6 +169,7 @@ public class ProcessInstanceIdentityLinkResourceTest extends BaseSpringRestTestC
     /**
      * Test deleting a single identity link for a process instance.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceIdentityLinkResourceTest.process.bpmn20.xml" })
     public void testDeleteSingleIdentityLink() throws Exception {
 

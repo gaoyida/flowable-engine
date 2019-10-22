@@ -1,3 +1,15 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.editor.language.xml;
 
 import static org.junit.Assert.assertEquals;
@@ -20,7 +32,7 @@ import org.junit.Test;
 public class FormPropertiesConverterTest extends AbstractConverterTest {
 
     @Test
-    public void connvertJsonToModel() throws Exception {
+    public void convertJsonToModel() throws Exception {
         BpmnModel bpmnModel = readXMLFile();
         validateModel(bpmnModel);
     }
@@ -33,6 +45,7 @@ public class FormPropertiesConverterTest extends AbstractConverterTest {
         validateModel(bpmnModel);
     }
 
+    @Override
     protected String getResource() {
         return "formPropertiesProcess.bpmn";
     }
@@ -73,9 +86,9 @@ public class FormPropertiesConverterTest extends AbstractConverterTest {
             } else if (formProperty.getId().equals("new_property_5")) {
                 checkFormProperty(formProperty, true, false, false);
 
-                List<Map<String, Object>> formValues = new ArrayList<Map<String, Object>>();
+                List<Map<String, Object>> formValues = new ArrayList<>();
                 for (FormValue formValue : formProperty.getFormValues()) {
-                    Map<String, Object> formValueMap = new HashMap<String, Object>();
+                    Map<String, Object> formValueMap = new HashMap<>();
                     formValueMap.put("id", formValue.getId());
                     formValueMap.put("name", formValue.getName());
                     formValues.add(formValueMap);
@@ -100,19 +113,19 @@ public class FormPropertiesConverterTest extends AbstractConverterTest {
     }
 
     private void checkFormPropertyFormValues(List<Map<String, Object>> formValues) {
-        List<Map<String, Object>> expectedFormValues = new ArrayList<Map<String, Object>>();
-        Map<String, Object> formValue1 = new HashMap<String, Object>();
+        List<Map<String, Object>> expectedFormValues = new ArrayList<>();
+        Map<String, Object> formValue1 = new HashMap<>();
         formValue1.put("id", "value1");
         formValue1.put("name", "Value 1");
-        Map<String, Object> formValue2 = new HashMap<String, Object>();
+        Map<String, Object> formValue2 = new HashMap<>();
         formValue2.put("id", "value2");
         formValue2.put("name", "Value 2");
 
-        Map<String, Object> formValue3 = new HashMap<String, Object>();
+        Map<String, Object> formValue3 = new HashMap<>();
         formValue3.put("id", "value3");
         formValue3.put("name", "Value 3");
 
-        Map<String, Object> formValue4 = new HashMap<String, Object>();
+        Map<String, Object> formValue4 = new HashMap<>();
         formValue4.put("id", "value4");
         formValue4.put("name", "Value 4");
 

@@ -15,8 +15,8 @@ package org.flowable.spring.executor.jms;
 import javax.jms.Message;
 import javax.jms.TextMessage;
 
-import org.flowable.engine.impl.asyncexecutor.ExecuteAsyncRunnable;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.flowable.job.service.JobServiceConfiguration;
+import org.flowable.job.service.impl.asyncexecutor.ExecuteAsyncRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,31 +25,32 @@ import org.slf4j.LoggerFactory;
  */
 public class JobMessageListener implements javax.jms.MessageListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(JobMessageListener.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobMessageListener.class);
 
-    protected ProcessEngineConfigurationImpl processEngineConfiguration;
+    protected JobServiceConfiguration jobServiceConfiguration;
 
+    @Override
     public void onMessage(final Message message) {
         try {
             if (message instanceof TextMessage) {
                 TextMessage textMessage = (TextMessage) message;
                 String jobId = textMessage.getText();
 
-                ExecuteAsyncRunnable executeAsyncRunnable = new ExecuteAsyncRunnable(jobId, processEngineConfiguration);
+                ExecuteAsyncRunnable executeAsyncRunnable = new ExecuteAsyncRunnable(jobId, jobServiceConfiguration, jobServiceConfiguration.getJobEntityManager(), null);
                 executeAsyncRunnable.run();
 
             }
         } catch (Exception e) {
-            logger.error("Exception when handling message from job queue", e);
+            LOGGER.error("Exception when handling message from job queue", e);
         }
     }
 
-    public ProcessEngineConfigurationImpl getProcessEngineConfiguration() {
-        return processEngineConfiguration;
+    public JobServiceConfiguration getJobServiceConfigurationn() {
+        return jobServiceConfiguration;
     }
 
-    public void setProcessEngineConfiguration(ProcessEngineConfigurationImpl processEngineConfiguration) {
-        this.processEngineConfiguration = processEngineConfiguration;
+    public void setJobServiceConfiguration(JobServiceConfiguration jobServiceConfiguration) {
+        this.jobServiceConfiguration = jobServiceConfiguration;
     }
 
 }

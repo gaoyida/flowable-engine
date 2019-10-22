@@ -15,12 +15,14 @@ package org.flowable.engine.impl.cmd;
 import java.io.Serializable;
 import java.util.List;
 
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.persistence.entity.IdentityLinkEntity;
-import org.flowable.engine.impl.persistence.entity.TaskEntity;
-import org.flowable.engine.task.IdentityLink;
-import org.flowable.engine.task.IdentityLinkType;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.identitylink.api.IdentityLink;
+import org.flowable.identitylink.api.IdentityLinkType;
+import org.flowable.identitylink.service.impl.persistence.entity.IdentityLinkEntity;
+import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 
 /**
  * @author Joram Barrez
@@ -36,31 +38,33 @@ public class GetIdentityLinksForTaskCmd implements Command<List<IdentityLink>>, 
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
+    @Override
     public List<IdentityLink> execute(CommandContext commandContext) {
-        TaskEntity task = commandContext.getTaskEntityManager().findById(taskId);
+        TaskEntity task = CommandContextUtil.getTaskService().getTask(taskId);
+        
+        if (task == null) {
+            throw new FlowableObjectNotFoundException("task not found");
+        }
 
         List<IdentityLink> identityLinks = (List) task.getIdentityLinks();
 
         // assignee is not part of identity links in the db.
         // so if there is one, we add it here.
         // @Tom: we discussed this long on skype and you agreed ;-)
-        // an assignee *is* an identityLink, and so must it be reflected in the
-        // API
+        // an assignee *is* an identityLink, and so must it be reflected in the API
         //
-        // Note: we cant move this code to the TaskEntity (which would be
-        // cleaner),
+        // Note: we cant move this code to the TaskEntity (which would be cleaner),
         // since the task.delete cascaded to all associated identityLinks
-        // and of course this leads to exception while trying to delete a
-        // non-existing identityLink
+        // and of course this leads to exception while trying to delete a non-existing identityLink
         if (task.getAssignee() != null) {
-            IdentityLinkEntity identityLink = commandContext.getIdentityLinkEntityManager().create();
+            IdentityLinkEntity identityLink = CommandContextUtil.getIdentityLinkService().createIdentityLink();
             identityLink.setUserId(task.getAssignee());
             identityLink.setType(IdentityLinkType.ASSIGNEE);
             identityLink.setTaskId(task.getId());
             identityLinks.add(identityLink);
         }
         if (task.getOwner() != null) {
-            IdentityLinkEntity identityLink = commandContext.getIdentityLinkEntityManager().create();
+            IdentityLinkEntity identityLink = CommandContextUtil.getIdentityLinkService().createIdentityLink();
             identityLink.setUserId(task.getOwner());
             identityLink.setTaskId(task.getId());
             identityLink.setType(IdentityLinkType.OWNER);

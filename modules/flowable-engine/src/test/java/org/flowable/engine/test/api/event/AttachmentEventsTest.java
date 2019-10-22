@@ -14,16 +14,19 @@ package org.flowable.engine.test.api.event;
 
 import java.io.ByteArrayInputStream;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
-import org.flowable.engine.impl.delegate.event.FlowableEngineEntityEvent;
-import org.flowable.engine.impl.history.HistoryLevel;
-import org.flowable.engine.impl.identity.Authentication;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.identity.Authentication;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.task.Attachment;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test case for all {@link FlowableEvent}s related to attachments.
@@ -37,13 +40,14 @@ public class AttachmentEventsTest extends PluggableFlowableTestCase {
     /**
      * Test create, update and delete events of attachments on a task/process.
      */
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml" })
     public void testAttachmentEntityEvents() throws Exception {
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
 
-            Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+            org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
             assertNotNull(task);
 
             // Create link-attachment
@@ -116,9 +120,10 @@ public class AttachmentEventsTest extends PluggableFlowableTestCase {
     /**
      * Test create, update and delete events of users.
      */
+    @Test
     public void testAttachmentEntityEventsStandaloneTask() throws Exception {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
-            Task task = null;
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
+            org.flowable.task.api.Task task = null;
             try {
                 task = taskService.newTask();
                 taskService.saveTask(task);
@@ -182,16 +187,16 @@ public class AttachmentEventsTest extends PluggableFlowableTestCase {
 
             } finally {
                 if (task != null && task.getId() != null) {
-                    taskService.deleteTask(task.getId());
-                    historyService.deleteHistoricTaskInstance(task.getId());
+                    taskService.deleteTask(task.getId(), true);
                 }
             }
         }
     }
 
+    @Test
     public void testAttachmentEntityEventsOnHistoricTaskDelete() throws Exception {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
-            Task task = null;
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
+            org.flowable.task.api.Task task = null;
             try {
                 task = taskService.newTask();
                 taskService.saveTask(task);
@@ -216,23 +221,20 @@ public class AttachmentEventsTest extends PluggableFlowableTestCase {
 
             } finally {
                 if (task != null && task.getId() != null) {
-                    taskService.deleteTask(task.getId());
-                    historyService.deleteHistoricTaskInstance(task.getId());
+                    taskService.deleteTask(task.getId(), true);
                 }
             }
         }
     }
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
         listener = new TestFlowableEntityEventListener(Attachment.class);
         processEngineConfiguration.getEventDispatcher().addEventListener(listener);
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
 
         if (listener != null) {
             processEngineConfiguration.getEventDispatcher().removeEventListener(listener);

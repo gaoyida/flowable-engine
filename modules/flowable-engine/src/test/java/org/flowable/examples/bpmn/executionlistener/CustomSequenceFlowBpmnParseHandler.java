@@ -15,8 +15,8 @@ package org.flowable.examples.bpmn.executionlistener;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.ExtensionElement;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.ImplementationType;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.engine.impl.bpmn.parser.BpmnParse;
@@ -27,6 +27,7 @@ import org.flowable.engine.impl.bpmn.parser.handler.SequenceFlowParseHandler;
  */
 public class CustomSequenceFlowBpmnParseHandler extends SequenceFlowParseHandler {
 
+    @Override
     protected void executeParse(BpmnParse bpmnParse, SequenceFlow flow) {
 
         // Do the regular stuff

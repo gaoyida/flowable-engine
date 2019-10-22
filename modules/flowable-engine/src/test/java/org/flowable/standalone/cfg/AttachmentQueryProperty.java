@@ -16,7 +16,7 @@ package org.flowable.standalone.cfg;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
 
 /**
  * @author Bassam Al-Sarori
@@ -25,7 +25,7 @@ public class AttachmentQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, AttachmentQueryProperty> properties = new HashMap<String, AttachmentQueryProperty>();
+    private static final Map<String, AttachmentQueryProperty> properties = new HashMap<>();
 
     public static final AttachmentQueryProperty ATTACHMENT_ID = new AttachmentQueryProperty("RES.ID_");
     public static final AttachmentQueryProperty NAME = new AttachmentQueryProperty("RES.NAME_");
@@ -44,6 +44,7 @@ public class AttachmentQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

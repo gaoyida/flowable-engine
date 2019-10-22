@@ -17,13 +17,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.db.HasRevision;
-import org.flowable.engine.common.impl.persistence.entity.AbstractEntity;
+import org.flowable.common.engine.impl.db.HasRevision;
 
 /**
  * @author Tijs Rademakers
  */
-public class TokenEntityImpl extends AbstractEntity implements TokenEntity, Serializable, HasRevision {
+public class TokenEntityImpl extends AbstractIdmEngineEntity implements TokenEntity, Serializable, HasRevision {
 
     private static final long serialVersionUID = 1L;
 
@@ -96,7 +95,7 @@ public class TokenEntityImpl extends AbstractEntity implements TokenEntity, Seri
 
     @Override
     public Object getPersistentState() {
-        Map<String, Object> persistentState = new HashMap<String, Object>();
+        Map<String, Object> persistentState = new HashMap<>();
         persistentState.put("tokenValue", tokenValue);
         persistentState.put("tokenDate", tokenDate);
         persistentState.put("ipAddress", ipAddress);

@@ -15,12 +15,12 @@ package org.flowable.engine.impl.event.logger.handler;
 import java.util.Date;
 import java.util.Map;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEntityEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.identity.Authentication;
 import org.flowable.engine.impl.persistence.entity.EventLogEntryEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.slf4j.Logger;
@@ -33,7 +33,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public abstract class AbstractDatabaseEventLoggerEventHandler implements EventLoggerEventHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractDatabaseEventLoggerEventHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractDatabaseEventLoggerEventHandler.class);
 
     protected FlowableEvent event;
     protected Date timeStamp;
@@ -52,7 +52,7 @@ public abstract class AbstractDatabaseEventLoggerEventHandler implements EventLo
 
     protected EventLogEntryEntity createEventLogEntry(String type, String processDefinitionId, String processInstanceId, String executionId, String taskId, Map<String, Object> data) {
 
-        EventLogEntryEntity eventLogEntry = Context.getCommandContext().getEventLogEntryEntityManager().create();
+        EventLogEntryEntity eventLogEntry = CommandContextUtil.getEventLogEntryEntityManager().create();
         eventLogEntry.setProcessDefinitionId(processDefinitionId);
         eventLogEntry.setProcessInstanceId(processInstanceId);
         eventLogEntry.setExecutionId(executionId);
@@ -79,7 +79,7 @@ public abstract class AbstractDatabaseEventLoggerEventHandler implements EventLo
         try {
             eventLogEntry.setData(objectMapper.writeValueAsBytes(data));
         } catch (Exception e) {
-            logger.warn("Could not serialize event data. Data will not be written to the database", e);
+            LOGGER.warn("Could not serialize event data. Data will not be written to the database", e);
         }
 
         return eventLogEntry;

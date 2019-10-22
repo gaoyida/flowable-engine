@@ -13,14 +13,23 @@
 
 package org.flowable.engine.impl.persistence.entity;
 
+import static java.util.Comparator.comparing;
+
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
-import org.flowable.engine.common.impl.db.HasRevision;
-import org.flowable.engine.common.impl.persistence.entity.Entity;
+import org.flowable.common.engine.impl.db.HasRevision;
+import org.flowable.common.engine.impl.persistence.entity.AlwaysUpdatedPersistentObject;
+import org.flowable.common.engine.impl.persistence.entity.Entity;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
+import org.flowable.identitylink.service.impl.persistence.entity.IdentityLinkEntity;
+import org.flowable.job.service.impl.persistence.entity.JobEntity;
+import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
+import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 
 /**
  * @author Tom Baeyens
@@ -30,7 +39,9 @@ import org.flowable.engine.runtime.ProcessInstance;
  * @author Joram Barrez
  */
 
-public interface ExecutionEntity extends DelegateExecution, Execution, ProcessInstance, Entity, HasRevision {
+public interface ExecutionEntity extends DelegateExecution, Execution, ProcessInstance, Entity, AlwaysUpdatedPersistentObject, HasRevision {
+
+    Comparator<ExecutionEntity> EXECUTION_ENTITY_START_TIME_ASC_COMPARATOR = comparing(ProcessInstance::getStartTime);
 
     void setBusinessKey(String businessKey);
 
@@ -48,6 +59,7 @@ public interface ExecutionEntity extends DelegateExecution, Execution, ProcessIn
 
     void setProcessInstance(ExecutionEntity processInstance);
 
+    @Override
     ExecutionEntity getParent();
 
     void setParent(ExecutionEntity parent);
@@ -66,6 +78,7 @@ public interface ExecutionEntity extends DelegateExecution, Execution, ProcessIn
 
     void setRootProcessInstance(ExecutionEntity rootProcessInstance);
 
+    @Override
     List<? extends ExecutionEntity> getExecutions();
 
     void addChildExecution(ExecutionEntity executionEntity);
@@ -86,8 +99,6 @@ public interface ExecutionEntity extends DelegateExecution, Execution, ProcessIn
 
     void setEnded(boolean isEnded);
 
-    void setEventName(String eventName);
-
     String getDeleteReason();
 
     void setDeleteReason(String deleteReason);
@@ -99,10 +110,6 @@ public interface ExecutionEntity extends DelegateExecution, Execution, ProcessIn
     boolean isEventScope();
 
     void setEventScope(boolean isEventScope);
-
-    boolean isMultiInstanceRoot();
-
-    void setMultiInstanceRoot(boolean isMultiInstanceRoot);
 
     void setName(String name);
 
@@ -118,18 +125,22 @@ public interface ExecutionEntity extends DelegateExecution, Execution, ProcessIn
 
     void setLockTime(Date lockTime);
 
-    boolean isDeleted();
-
-    void setDeleted(boolean isDeleted);
-
     void forceUpdate();
+    
+    String getStartActivityId();
 
-    String getStartUserId();
+    void setStartActivityId(String startActivityId);
 
     void setStartUserId(String startUserId);
 
-    Date getStartTime();
-
     void setStartTime(Date startTime);
+    
+    void setCallbackId(String callbackId);
+    
+    void setCallbackType(String callbackType);
+    
+    void setVariable(String variableName, Object value, ExecutionEntity sourceExecution, boolean fetchAllVariables);
+    
+    Object setVariableLocal(String variableName, Object value, ExecutionEntity sourceExecution, boolean fetchAllVariables);
 
 }

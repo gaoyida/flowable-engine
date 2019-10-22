@@ -14,9 +14,11 @@
 package org.flowable.engine.delegate;
 
 /**
+ * Here for backwards compatibility, prefer use the {@link org.flowable.task.service.delegate.TaskListener}.
+ *
  * @author Tom Baeyens
+ * @author Joram Barrez
  */
-public interface TaskListener extends BaseTaskListener {
+public interface TaskListener extends org.flowable.task.service.delegate.TaskListener {
 
-    void notify(DelegateTask delegateTask);
 }

@@ -20,21 +20,30 @@ import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricActivityInstanceQuery;
 import org.flowable.engine.history.HistoricDetail;
 import org.flowable.engine.history.HistoricDetailQuery;
-import org.flowable.engine.history.HistoricIdentityLink;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.HistoricProcessInstanceQuery;
-import org.flowable.engine.history.HistoricTaskInstance;
-import org.flowable.engine.history.HistoricTaskInstanceQuery;
-import org.flowable.engine.history.HistoricVariableInstance;
-import org.flowable.engine.history.HistoricVariableInstanceQuery;
 import org.flowable.engine.history.NativeHistoricActivityInstanceQuery;
 import org.flowable.engine.history.NativeHistoricDetailQuery;
 import org.flowable.engine.history.NativeHistoricProcessInstanceQuery;
-import org.flowable.engine.history.NativeHistoricTaskInstanceQuery;
-import org.flowable.engine.history.NativeHistoricVariableInstanceQuery;
 import org.flowable.engine.history.ProcessInstanceHistoryLog;
 import org.flowable.engine.history.ProcessInstanceHistoryLogQuery;
-import org.flowable.engine.task.IdentityLink;
+import org.flowable.engine.impl.HistoricActivityInstanceQueryImpl;
+import org.flowable.engine.impl.HistoricProcessInstanceQueryImpl;
+import org.flowable.entitylink.api.history.HistoricEntityLink;
+import org.flowable.identitylink.api.IdentityLink;
+import org.flowable.identitylink.api.history.HistoricIdentityLink;
+import org.flowable.task.api.TaskInfo;
+import org.flowable.task.api.history.HistoricTaskInstance;
+import org.flowable.task.api.history.HistoricTaskInstanceQuery;
+import org.flowable.task.api.history.HistoricTaskLogEntry;
+import org.flowable.task.api.history.HistoricTaskLogEntryBuilder;
+import org.flowable.task.api.history.HistoricTaskLogEntryQuery;
+import org.flowable.task.api.history.NativeHistoricTaskLogEntryQuery;
+import org.flowable.task.service.history.NativeHistoricTaskInstanceQuery;
+import org.flowable.task.service.impl.HistoricTaskInstanceQueryImpl;
+import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.flowable.variable.api.history.HistoricVariableInstanceQuery;
+import org.flowable.variable.api.history.NativeHistoricVariableInstanceQuery;
 
 /**
  * Service exposing information about ongoing and past process instances. This is different from the runtime information in the sense that this runtime information only contains the actual runtime
@@ -65,7 +74,7 @@ public interface HistoryService {
     HistoricDetailQuery createHistoricDetailQuery();
 
     /**
-     * Returns a new {@link org.flowable.engine.common.api.query.NativeQuery} for process definitions.
+     * Returns a new {@link org.flowable.common.engine.api.query.NativeQuery} for process definitions.
      */
     NativeHistoricDetailQuery createNativeHistoricDetailQuery();
 
@@ -75,7 +84,7 @@ public interface HistoryService {
     HistoricVariableInstanceQuery createHistoricVariableInstanceQuery();
 
     /**
-     * Returns a new {@link org.flowable.engine.common.api.query.NativeQuery} for process definitions.
+     * Returns a new {@link org.flowable.common.engine.api.query.NativeQuery} for process definitions.
      */
     NativeHistoricVariableInstanceQuery createNativeHistoricVariableInstanceQuery();
 
@@ -89,6 +98,16 @@ public interface HistoryService {
      * Deletes historic process instance. All historic activities, historic task and historic details (variable updates, form properties) are deleted as well.
      */
     void deleteHistoricProcessInstance(String processInstanceId);
+    
+    /**
+     * Deletes historic task and activity data for removed process instances
+     */
+    void deleteTaskAndActivityDataOfRemovedHistoricProcessInstances();
+    
+    /**
+     * Deletes historic identity links, detail info, variable data and entity links for removed process instances
+     */
+    void deleteRelatedDataOfRemovedHistoricProcessInstances();
 
     /**
      * creates a native query to search for {@link HistoricProcessInstance}s via SQL
@@ -116,10 +135,60 @@ public interface HistoryService {
      * certain process instance, even if the instance is completed as opposed to {@link IdentityLink}s which only exist for active instances.
      */
     List<HistoricIdentityLink> getHistoricIdentityLinksForProcessInstance(String processInstanceId);
+    
+    /**
+     * Retrieves the {@link HistoricEntityLink}s associated with the given process instance.
+     */
+    List<HistoricEntityLink> getHistoricEntityLinkChildrenForProcessInstance(String processInstanceId);
+
+    /**
+     * Retrieves the {@link HistoricEntityLink}s associated with the given task.
+     */
+    List<HistoricEntityLink> getHistoricEntityLinkChildrenForTask(String taskId);
+
+    /**
+     * Retrieves the {@link HistoricEntityLink}s where the given process instance is referenced.
+     */
+    List<HistoricEntityLink> getHistoricEntityLinkParentsForProcessInstance(String processInstanceId);
+
+    /**
+     * Retrieves the {@link HistoricEntityLink}s where the given task is referenced.
+     */
+    List<HistoricEntityLink> getHistoricEntityLinkParentsForTask(String taskId);
 
     /**
      * Allows to retrieve the {@link ProcessInstanceHistoryLog} for one process instance.
      */
     ProcessInstanceHistoryLogQuery createProcessInstanceHistoryLogQuery(String processInstanceId);
+
+    /**
+     * Deletes user task log entry by its log number
+     *
+     * @param logNumber user task log entry identifier
+     */
+    void deleteHistoricTaskLogEntry(long logNumber);
+
+    /**
+     * Create new task log entry builder to the log task event
+     *
+     * @param task to which is log related to
+     */
+    HistoricTaskLogEntryBuilder createHistoricTaskLogEntryBuilder(TaskInfo task);
+
+    /**
+     * Create new task log entry builder to the log task event without predefined values from the task
+     *
+     */
+    HistoricTaskLogEntryBuilder createHistoricTaskLogEntryBuilder();
+
+    /**
+     * Returns a new {@link HistoricTaskLogEntryQuery} that can be used to dynamically query task log entries.
+     */
+    HistoricTaskLogEntryQuery createHistoricTaskLogEntryQuery();
+
+    /**
+     * Returns a new {@link NativeHistoricTaskLogEntryQuery} for {@link HistoricTaskLogEntry}s.
+     */
+    NativeHistoricTaskLogEntryQuery createNativeHistoricTaskLogEntryQuery();
 
 }

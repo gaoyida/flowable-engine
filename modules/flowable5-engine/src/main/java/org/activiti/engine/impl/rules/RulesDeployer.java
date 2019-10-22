@@ -20,12 +20,12 @@ import org.activiti.engine.impl.persistence.deploy.Deployer;
 import org.activiti.engine.impl.persistence.deploy.DeploymentManager;
 import org.activiti.engine.impl.persistence.entity.DeploymentEntity;
 import org.activiti.engine.impl.persistence.entity.ResourceEntity;
-import org.drools.KnowledgeBase;
-import org.drools.builder.KnowledgeBuilder;
-import org.drools.builder.KnowledgeBuilderFactory;
-import org.drools.builder.ResourceType;
-import org.drools.io.Resource;
-import org.drools.io.ResourceFactory;
+import org.kie.api.KieBase;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.internal.builder.KnowledgeBuilder;
+import org.kie.internal.builder.KnowledgeBuilderFactory;
+import org.kie.internal.io.ResourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,10 +34,11 @@ import org.slf4j.LoggerFactory;
  */
 public class RulesDeployer implements Deployer {
 
-    private static final Logger log = LoggerFactory.getLogger(RulesDeployer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RulesDeployer.class);
 
+    @Override
     public void deploy(DeploymentEntity deployment, Map<String, Object> deploymentSettings) {
-        log.debug("Processing deployment {}", deployment.getName());
+        LOGGER.debug("Processing deployment {}", deployment.getName());
 
         KnowledgeBuilder knowledgeBuilder = null;
 
@@ -47,7 +48,7 @@ public class RulesDeployer implements Deployer {
 
         Map<String, ResourceEntity> resources = deployment.getResources();
         for (String resourceName : resources.keySet()) {
-            log.info("Processing resource {}", resourceName);
+            LOGGER.info("Processing resource {}", resourceName);
             if (resourceName.endsWith(".drl")) { // is only parsing .drls sufficient? what about other rule dsl's? (@see ResourceType)
                 if (knowledgeBuilder == null) {
                     knowledgeBuilder = KnowledgeBuilderFactory.newKnowledgeBuilder();
@@ -60,7 +61,7 @@ public class RulesDeployer implements Deployer {
         }
 
         if (knowledgeBuilder != null) {
-            KnowledgeBase knowledgeBase = knowledgeBuilder.newKnowledgeBase();
+            KieBase knowledgeBase = knowledgeBuilder.newKieBase();
             deploymentManager.getKnowledgeBaseCache().add(deployment.getId(), knowledgeBase);
         }
     }

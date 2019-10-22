@@ -24,13 +24,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.ibatis.session.RowBounds;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.management.TableMetaData;
-import org.flowable.engine.common.api.management.TablePage;
-import org.flowable.engine.common.impl.persistence.entity.Entity;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.management.TableMetaData;
+import org.flowable.common.engine.api.management.TablePage;
+import org.flowable.common.engine.impl.db.DbSqlSession;
+import org.flowable.common.engine.impl.persistence.entity.Entity;
 import org.flowable.form.engine.FormEngineConfiguration;
 import org.flowable.form.engine.impl.TablePageQueryImpl;
-import org.flowable.form.engine.impl.db.DbSqlSession;
 import org.flowable.form.engine.impl.persistence.AbstractManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,17 +44,17 @@ public class TableDataManagerImpl extends AbstractManager implements TableDataMa
         super(formEngineConfiguration);
     }
 
-    private static Logger log = LoggerFactory.getLogger(TableDataManagerImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TableDataManagerImpl.class);
 
-    public static Map<Class<?>, String> apiTypeToTableNameMap = new HashMap<Class<?>, String>();
-    public static Map<Class<? extends Entity>, String> entityToTableNameMap = new HashMap<Class<? extends Entity>, String>();
+    public static Map<Class<?>, String> apiTypeToTableNameMap = new HashMap<>();
+    public static Map<Class<? extends Entity>, String> entityToTableNameMap = new HashMap<>();
 
     static {
 
         // Form module
         entityToTableNameMap.put(FormDeploymentEntity.class, "ACT_FO_FORM_DEPLOYMENT");
         entityToTableNameMap.put(FormDefinitionEntity.class, "ACT_FO_FORM_DEFINITION");
-        entityToTableNameMap.put(ResourceEntity.class, "ACT_FO_FORM_RESOURCE");
+        entityToTableNameMap.put(FormResourceEntity.class, "ACT_FO_FORM_RESOURCE");
         entityToTableNameMap.put(FormInstanceEntity.class, "ACT_FO_FORM_INSTANCE");
     }
 
@@ -64,12 +64,12 @@ public class TableDataManagerImpl extends AbstractManager implements TableDataMa
 
     @Override
     public Map<String, Long> getTableCount() {
-        Map<String, Long> tableCount = new HashMap<String, Long>();
+        Map<String, Long> tableCount = new HashMap<>();
         try {
             for (String tableName : getTablesPresentInDatabase()) {
                 tableCount.put(tableName, getTableCount(tableName));
             }
-            log.debug("Number of rows per flowable table: {}", tableCount);
+            LOGGER.debug("Number of rows per flowable table: {}", tableCount);
         } catch (Exception e) {
             throw new FlowableException("couldn't get table counts", e);
         }
@@ -78,17 +78,18 @@ public class TableDataManagerImpl extends AbstractManager implements TableDataMa
 
     @Override
     public List<String> getTablesPresentInDatabase() {
-        List<String> tableNames = new ArrayList<String>();
+        List<String> tableNames = new ArrayList<>();
         Connection connection = null;
         try {
             connection = getDbSqlSession().getSqlSession().getConnection();
             DatabaseMetaData databaseMetaData = connection.getMetaData();
             ResultSet tables = null;
             try {
-                log.debug("retrieving flowable tables from jdbc metadata");
+                LOGGER.debug("retrieving flowable tables from jdbc metadata");
                 String databaseTablePrefix = getDbSqlSession().getDbSqlSessionFactory().getDatabaseTablePrefix();
                 String tableNameFilter = databaseTablePrefix + "ACT_%";
-                if ("postgres".equals(getDbSqlSession().getDbSqlSessionFactory().getDatabaseType())) {
+                if ("postgres".equals(getDbSqlSession().getDbSqlSessionFactory().getDatabaseType())
+                    || "cockroachdb".equals(getDbSqlSession().getDbSqlSessionFactory().getDatabaseType())) {
                     tableNameFilter = databaseTablePrefix + "act_%";
                 }
                 if ("oracle".equals(getDbSqlSession().getDbSqlSessionFactory().getDatabaseType())) {
@@ -114,7 +115,7 @@ public class TableDataManagerImpl extends AbstractManager implements TableDataMa
                     String tableName = tables.getString("TABLE_NAME");
                     tableName = tableName.toUpperCase();
                     tableNames.add(tableName);
-                    log.debug("  retrieved flowable table name {}", tableName);
+                    LOGGER.debug("  retrieved flowable table name {}", tableName);
                 }
             } finally {
                 tables.close();
@@ -126,7 +127,7 @@ public class TableDataManagerImpl extends AbstractManager implements TableDataMa
     }
 
     protected long getTableCount(String tableName) {
-        log.debug("selecting table count for {}", tableName);
+        LOGGER.debug("selecting table count for {}", tableName);
         Long count = (Long) getDbSqlSession().selectOne("org.flowable.form.engine.impl.TablePageMap.selectTableCount", Collections.singletonMap("tableName", tableName));
         return count;
     }
@@ -172,7 +173,8 @@ public class TableDataManagerImpl extends AbstractManager implements TableDataMa
             result.setTableName(tableName);
             DatabaseMetaData metaData = getDbSqlSession().getSqlSession().getConnection().getMetaData();
 
-            if ("postgres".equals(getDbSqlSession().getDbSqlSessionFactory().getDatabaseType())) {
+            if ("postgres".equals(getDbSqlSession().getDbSqlSessionFactory().getDatabaseType())
+                    || "cockroachdb".equals(getDbSqlSession().getDbSqlSessionFactory().getDatabaseType())) {
                 tableName = tableName.toLowerCase();
             }
 

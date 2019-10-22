@@ -21,6 +21,8 @@ import org.flowable.rest.service.api.engine.variable.RestVariable;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 
+import io.swagger.annotations.ApiModelProperty;
+
 /**
  * @author Frederik Heremans
  */
@@ -31,27 +33,50 @@ public class TaskActionRequest extends RestActionRequest {
     public static final String ACTION_DELEGATE = "delegate";
     public static final String ACTION_RESOLVE = "resolve";
 
-    private String assignee;
-    private List<RestVariable> variables;
-    private List<RestVariable> transientVariables;
+    protected String assignee;
+    protected String formDefinitionId;
+    protected String outcome;
+    protected List<RestVariable> variables;
+    protected List<RestVariable> transientVariables;
 
     public void setAssignee(String assignee) {
         this.assignee = assignee;
     }
 
+    @ApiModelProperty(value = "If action is claim or delegate, you can use this parameter to set the assignee associated ", example = "userWhoClaims/userToDelegateTo")
     public String getAssignee() {
         return assignee;
+    }
+
+    @ApiModelProperty(value = "Required when completing a task with a form", example = "12345")
+    public String getFormDefinitionId() {
+        return formDefinitionId;
+    }
+
+    public void setFormDefinitionId(String formDefinitionId) {
+        this.formDefinitionId = formDefinitionId;
+    }
+
+    @ApiModelProperty(value = "Optional outcome value when completing a task with a form", example = "accepted/rejected")
+    public String getOutcome() {
+        return outcome;
+    }
+
+    public void setOutcome(String outcome) {
+        this.outcome = outcome;
     }
 
     public void setVariables(List<RestVariable> variables) {
         this.variables = variables;
     }
 
+    @ApiModelProperty(value = "If action is complete, you can use this parameter to set variables ")
     @JsonTypeInfo(use = Id.CLASS, defaultImpl = RestVariable.class)
     public List<RestVariable> getVariables() {
         return variables;
     }
 
+    @ApiModelProperty(value = "If action is complete, you can use this parameter to set transient variables ")
     public List<RestVariable> getTransientVariables() {
         return transientVariables;
     }
@@ -59,6 +84,12 @@ public class TaskActionRequest extends RestActionRequest {
     @JsonTypeInfo(use = Id.CLASS, defaultImpl = RestVariable.class)
     public void setTransientVariables(List<RestVariable> transientVariables) {
         this.transientVariables = transientVariables;
+    }
+
+    @Override
+    @ApiModelProperty(value = "Action to perform: Either complete, claim, delegate or resolve", example = "complete", required = true)
+    public String getAction() {
+        return super.getAction();
     }
 
 }

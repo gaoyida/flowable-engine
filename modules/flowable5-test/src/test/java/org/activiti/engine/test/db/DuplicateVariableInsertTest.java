@@ -26,7 +26,6 @@ import org.activiti.engine.impl.interceptor.Command;
 import org.activiti.engine.impl.interceptor.CommandContext;
 import org.activiti.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 
 public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
 
@@ -46,7 +45,7 @@ public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
         final org.activiti.engine.impl.cfg.ProcessEngineConfigurationImpl activiti5ProcessEngineConfig = (org.activiti.engine.impl.cfg.ProcessEngineConfigurationImpl) processEngineConfiguration.getFlowable5CompatibilityHandler()
                 .getRawProcessConfiguration();
 
-        Thread firstInstertThread = new Thread(new Runnable() {
+        Thread firstInsertThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -68,11 +67,11 @@ public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
             }
         });
 
-        firstInstertThread.start();
+        firstInsertThread.start();
         secondInsertThread.start();
 
         // Wait for threads to complete
-        firstInstertThread.join();
+        firstInsertThread.join();
         secondInsertThread.join();
 
         // One of the 2 threads should get an optimistic lock exception
@@ -92,7 +91,7 @@ public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
     public void testDuplicateVariableInsertOnTask() throws Exception {
         String processDefinitionId = deployOneTaskTestProcess();
         final ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinitionId);
-        final Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        final org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
 
         final CyclicBarrier startBarrier = new CyclicBarrier(2);
         final CyclicBarrier endBarrier = new CyclicBarrier(2);
@@ -102,7 +101,7 @@ public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
         final org.activiti.engine.impl.cfg.ProcessEngineConfigurationImpl activiti5ProcessEngineConfig = (org.activiti.engine.impl.cfg.ProcessEngineConfigurationImpl) processEngineConfiguration.getFlowable5CompatibilityHandler()
                 .getRawProcessConfiguration();
 
-        Thread firstInstertThread = new Thread(new Runnable() {
+        Thread firstInsertThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -124,11 +123,11 @@ public class DuplicateVariableInsertTest extends PluggableFlowableTestCase {
             }
         });
 
-        firstInstertThread.start();
+        firstInsertThread.start();
         secondInsertThread.start();
 
         // Wait for threads to complete
-        firstInstertThread.join();
+        firstInsertThread.join();
         secondInsertThread.join();
 
         // One of the 2 threads should get an optimistic lock exception

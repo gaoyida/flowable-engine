@@ -15,10 +15,11 @@ package org.flowable.idm.engine.impl.cmd;
 
 import java.io.Serializable;
 
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.idm.api.Token;
-import org.flowable.idm.engine.impl.interceptor.Command;
-import org.flowable.idm.engine.impl.interceptor.CommandContext;
+import org.flowable.idm.engine.impl.util.CommandContextUtil;
 
 /**
  * @author Tijs Rademakers
@@ -36,8 +37,9 @@ public class CreateTokenCmd implements Command<Token>, Serializable {
         this.tokenId = tokenId;
     }
 
+    @Override
     public Token execute(CommandContext commandContext) {
-        return commandContext.getTokenEntityManager().createNewToken(tokenId);
+        return CommandContextUtil.getTokenEntityManager(commandContext).createNewToken(tokenId);
     }
 
 }

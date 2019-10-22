@@ -30,12 +30,14 @@ import org.slf4j.LoggerFactory;
  */
 public class IntermediateCatchEventParseHandler extends AbstractFlowNodeBpmnParseHandler<IntermediateCatchEvent> {
 
-    private static final Logger logger = LoggerFactory.getLogger(IntermediateCatchEventParseHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(IntermediateCatchEventParseHandler.class);
 
+    @Override
     public Class<? extends BaseElement> getHandledType() {
         return IntermediateCatchEvent.class;
     }
 
+    @Override
     protected void executeParse(BpmnParse bpmnParse, IntermediateCatchEvent event) {
 
         ActivityImpl nestedActivity = null;
@@ -74,7 +76,7 @@ public class IntermediateCatchEventParseHandler extends AbstractFlowNodeBpmnPars
                 bpmnParse.getBpmnParserHandlers().parseElement(bpmnParse, eventDefinition);
 
             } else {
-                logger.warn("Unsupported intermediate catch event type for event {}", event.getId());
+                LOGGER.warn("Unsupported intermediate catch event type for event {}", event.getId());
             }
         }
     }

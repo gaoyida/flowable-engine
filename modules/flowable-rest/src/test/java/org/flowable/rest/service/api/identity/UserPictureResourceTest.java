@@ -13,6 +13,9 @@
 
 package org.flowable.rest.service.api.identity;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +30,7 @@ import org.flowable.idm.api.User;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.HttpMultipartHelper;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 import org.springframework.http.MediaType;
 
 /**
@@ -37,6 +41,7 @@ public class UserPictureResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting the picture for a user.
      */
+    @Test
     public void testGetUserPicture() throws Exception {
         User savedUser = null;
         try {
@@ -71,13 +76,15 @@ public class UserPictureResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting the picture for an unexisting user.
      */
+    @Test
     public void testGetPictureForUnexistingUser() throws Exception {
         closeResponse(executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_USER_PICTURE, "unexisting")), HttpStatus.SC_NOT_FOUND));
     }
 
     /**
-     * Test getting the picture for a user who doesn't have a pîcture set
+     * Test getting the picture for a user who does not have a picture set
      */
+    @Test
     public void testGetPictureForUserWithoutPicture() throws Exception {
         User savedUser = null;
         try {
@@ -103,6 +110,7 @@ public class UserPictureResourceTest extends BaseSpringRestTestCase {
         }
     }
 
+    @Test
     public void testUpdatePicture() throws Exception {
         User savedUser = null;
         try {
@@ -131,6 +139,7 @@ public class UserPictureResourceTest extends BaseSpringRestTestCase {
         }
     }
 
+    @Test
     public void testUpdatePictureWithCustomMimeType() throws Exception {
         User savedUser = null;
         try {
@@ -141,7 +150,7 @@ public class UserPictureResourceTest extends BaseSpringRestTestCase {
             identityService.saveUser(newUser);
             savedUser = newUser;
 
-            Map<String, String> additionalFields = new HashMap<String, String>();
+            Map<String, String> additionalFields = new HashMap<>();
             additionalFields.put("mimeType", MediaType.IMAGE_PNG.toString());
 
             HttpPut httpPut = new HttpPut(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_USER_PICTURE, newUser.getId()));

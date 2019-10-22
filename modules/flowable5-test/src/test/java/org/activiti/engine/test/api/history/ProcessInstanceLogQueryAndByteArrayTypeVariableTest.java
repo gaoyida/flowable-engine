@@ -16,14 +16,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.activiti.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.history.HistoricData;
-import org.flowable.engine.history.HistoricVariableInstance;
+import org.flowable.common.engine.api.history.HistoricData;
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.history.HistoricVariableUpdate;
 import org.flowable.engine.history.ProcessInstanceHistoryLog;
-import org.flowable.engine.impl.history.HistoryLevel;
 import org.flowable.engine.impl.persistence.entity.HistoricDetailVariableInstanceUpdateEntity;
-import org.flowable.engine.impl.persistence.entity.HistoricVariableInstanceEntity;
-import org.flowable.engine.task.Task;
+import org.flowable.engine.impl.test.HistoryTestHelper;
+import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.flowable.variable.service.impl.persistence.entity.HistoricVariableInstanceEntity;
 
 /**
  * @author Daisuke Yoshimoto
@@ -56,7 +56,7 @@ public class ProcessInstanceLogQueryAndByteArrayTypeVariableTest extends Pluggab
         this.processInstanceId = runtimeService.startProcessInstanceByKey("twoTasksProcess", vars).getId();
 
         // Finish tasks
-        for (Task task : taskService.createTaskQuery().list()) {
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
             taskService.complete(task.getId());
         }
     }
@@ -67,7 +67,7 @@ public class ProcessInstanceLogQueryAndByteArrayTypeVariableTest extends Pluggab
     }
 
     public void testIncludeVariables() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.FULL)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.FULL, processEngineConfiguration)) {
             ProcessInstanceHistoryLog log = historyService.createProcessInstanceHistoryLogQuery(processInstanceId)
                     .includeVariables()
                     .singleResult();
@@ -82,7 +82,7 @@ public class ProcessInstanceLogQueryAndByteArrayTypeVariableTest extends Pluggab
     }
 
     public void testIncludeVariableUpdates() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.FULL)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.FULL, processEngineConfiguration)) {
 
             HistoricVariableInstance historicVariableInstance = historyService.createHistoricVariableInstanceQuery()
                     .processInstanceId(processInstanceId).variableName("var").singleResult();

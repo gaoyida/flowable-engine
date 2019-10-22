@@ -20,6 +20,7 @@ import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.CancelEventDefinition;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.ErrorEventDefinition;
+import org.flowable.bpmn.model.EscalationEventDefinition;
 import org.flowable.bpmn.model.EventDefinition;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.TerminateEventDefinition;
@@ -42,6 +43,7 @@ public class EndEventJsonConverter extends BaseBpmnJsonConverter {
     public static void fillJsonTypes(Map<String, Class<? extends BaseBpmnJsonConverter>> convertersToBpmnMap) {
         convertersToBpmnMap.put(STENCIL_EVENT_END_NONE, EndEventJsonConverter.class);
         convertersToBpmnMap.put(STENCIL_EVENT_END_ERROR, EndEventJsonConverter.class);
+        convertersToBpmnMap.put(STENCIL_EVENT_END_ESCALATION, EndEventJsonConverter.class);
         convertersToBpmnMap.put(STENCIL_EVENT_END_CANCEL, EndEventJsonConverter.class);
         convertersToBpmnMap.put(STENCIL_EVENT_END_TERMINATE, EndEventJsonConverter.class);
     }
@@ -50,6 +52,7 @@ public class EndEventJsonConverter extends BaseBpmnJsonConverter {
         convertersToJsonMap.put(EndEvent.class, EndEventJsonConverter.class);
     }
 
+    @Override
     protected String getStencilId(BaseElement baseElement) {
         EndEvent endEvent = (EndEvent) baseElement;
         List<EventDefinition> eventDefinitions = endEvent.getEventDefinitions();
@@ -60,6 +63,8 @@ public class EndEventJsonConverter extends BaseBpmnJsonConverter {
         EventDefinition eventDefinition = eventDefinitions.get(0);
         if (eventDefinition instanceof ErrorEventDefinition) {
             return STENCIL_EVENT_END_ERROR;
+        } else if (eventDefinition instanceof EscalationEventDefinition) {
+            return STENCIL_EVENT_END_ESCALATION;
         } else if (eventDefinition instanceof CancelEventDefinition) {
             return STENCIL_EVENT_END_CANCEL;
         } else if (eventDefinition instanceof TerminateEventDefinition) {
@@ -69,19 +74,26 @@ public class EndEventJsonConverter extends BaseBpmnJsonConverter {
         }
     }
 
+    @Override
     protected void convertElementToJson(ObjectNode propertiesNode, BaseElement baseElement) {
         EndEvent endEvent = (EndEvent) baseElement;
         addEventProperties(endEvent, propertiesNode);
     }
 
+    @Override
     protected FlowElement convertJsonToElement(JsonNode elementNode, JsonNode modelNode, Map<String, JsonNode> shapeMap) {
         EndEvent endEvent = new EndEvent();
         String stencilId = BpmnJsonConverterUtil.getStencilId(elementNode);
         if (STENCIL_EVENT_END_ERROR.equals(stencilId)) {
             convertJsonToErrorDefinition(elementNode, endEvent);
+            
+        } else if (STENCIL_EVENT_END_ESCALATION.equals(stencilId)) {
+            convertJsonToEscalationDefinition(elementNode, endEvent);
+            
         } else if (STENCIL_EVENT_END_CANCEL.equals(stencilId)) {
             CancelEventDefinition eventDefinition = new CancelEventDefinition();
             endEvent.getEventDefinitions().add(eventDefinition);
+            
         } else if (STENCIL_EVENT_END_TERMINATE.equals(stencilId)) {
             TerminateEventDefinition eventDefinition = new TerminateEventDefinition();
 
@@ -97,6 +109,7 @@ public class EndEventJsonConverter extends BaseBpmnJsonConverter {
 
             endEvent.getEventDefinitions().add(eventDefinition);
         }
+        
         return endEvent;
     }
 }

@@ -13,33 +13,29 @@
 
 package org.flowable.engine.test.mock;
 
-import javax.el.ArrayELResolver;
-import javax.el.BeanELResolver;
-import javax.el.CompositeELResolver;
-import javax.el.ELResolver;
-import javax.el.ListELResolver;
-import javax.el.MapELResolver;
+import org.flowable.common.engine.api.variable.VariableContainer;
+import org.flowable.common.engine.impl.javax.el.ArrayELResolver;
+import org.flowable.common.engine.impl.javax.el.BeanELResolver;
+import org.flowable.common.engine.impl.javax.el.CompositeELResolver;
+import org.flowable.common.engine.impl.javax.el.CouldNotResolvePropertyELResolver;
+import org.flowable.common.engine.impl.javax.el.ELResolver;
+import org.flowable.common.engine.impl.javax.el.ListELResolver;
+import org.flowable.common.engine.impl.javax.el.MapELResolver;
+import org.flowable.engine.impl.el.ProcessExpressionManager;
+import org.flowable.engine.impl.el.ProcessVariableScopeELResolver;
 
-import org.flowable.engine.delegate.VariableScope;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.el.ExpressionManager;
-import org.flowable.engine.impl.el.VariableScopeElResolver;
-
-public class MockExpressionManager extends ExpressionManager {
-
-    public MockExpressionManager(ProcessEngineConfigurationImpl processEngineConfiguration) {
-        super(processEngineConfiguration);
-    }
+public class MockExpressionManager extends ProcessExpressionManager {
 
     @Override
-    protected ELResolver createElResolver(VariableScope variableScope) {
+    protected ELResolver createElResolver(VariableContainer variableContainer) {
         CompositeELResolver compositeElResolver = new CompositeELResolver();
-        compositeElResolver.add(new VariableScopeElResolver(variableScope));
+        compositeElResolver.add(new ProcessVariableScopeELResolver(variableContainer));
         compositeElResolver.add(new MockElResolver());
         compositeElResolver.add(new ArrayELResolver());
         compositeElResolver.add(new ListELResolver());
         compositeElResolver.add(new MapELResolver());
         compositeElResolver.add(new BeanELResolver());
+        compositeElResolver.add(new CouldNotResolvePropertyELResolver());
         return compositeElResolver;
     }
 

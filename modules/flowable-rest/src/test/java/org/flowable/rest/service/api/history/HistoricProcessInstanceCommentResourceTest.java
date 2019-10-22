@@ -13,6 +13,10 @@
 
 package org.flowable.rest.service.api.history;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.List;
 
 import org.apache.http.HttpStatus;
@@ -26,6 +30,7 @@ import org.flowable.engine.task.Comment;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -38,6 +43,7 @@ public class HistoricProcessInstanceCommentResourceTest extends BaseSpringRestTe
     /**
      * Test getting all comments for a historic process instance. GET history/historic-process-instances/{processInstanceId}/comments
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testGetComments() throws Exception {
         ProcessInstance pi = null;
@@ -86,6 +92,7 @@ public class HistoricProcessInstanceCommentResourceTest extends BaseSpringRestTe
     /**
      * Test creating a comment for a process instance. POST history/historic-process-instances/{processInstanceId}/comments
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testCreateComment() throws Exception {
         ProcessInstance pi = null;
@@ -131,6 +138,7 @@ public class HistoricProcessInstanceCommentResourceTest extends BaseSpringRestTe
     /**
      * Test getting a comment for a historic process instance. GET history/historic -process-instances/{processInstanceId}/comments/{commentId}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testGetComment() throws Exception {
         ProcessInstance pi = null;
@@ -180,6 +188,7 @@ public class HistoricProcessInstanceCommentResourceTest extends BaseSpringRestTe
     /**
      * Test deleting a comment for a task. DELETE runtime/tasks/{taskId}/comments/{commentId}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testDeleteComment() throws Exception {
         ProcessInstance pi = null;

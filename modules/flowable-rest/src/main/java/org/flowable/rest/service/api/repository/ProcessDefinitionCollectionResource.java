@@ -13,6 +13,25 @@
 
 package org.flowable.rest.service.api.repository;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.flowable.common.engine.api.query.QueryProperty;
+import org.flowable.common.rest.api.DataResponse;
+import org.flowable.engine.RepositoryService;
+import org.flowable.engine.impl.ProcessDefinitionQueryProperty;
+import org.flowable.engine.repository.ProcessDefinitionQuery;
+import org.flowable.rest.service.api.BpmnRestApiInterceptor;
+import org.flowable.rest.service.api.RestResponseFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -21,21 +40,6 @@ import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
-import org.flowable.engine.RepositoryService;
-import org.flowable.engine.common.api.query.QueryProperty;
-import org.flowable.engine.impl.ProcessDefinitionQueryProperty;
-import org.flowable.engine.repository.ProcessDefinitionQuery;
-import org.flowable.rest.api.DataResponse;
-import org.flowable.rest.service.api.RestResponseFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * @author Frederik Heremans
@@ -44,7 +48,7 @@ import java.util.Map;
 @Api(tags = { "Process Definitions" }, description = "Manage Process Definitions", authorizations = { @Authorization(value = "basicAuth") })
 public class ProcessDefinitionCollectionResource {
 
-    private static final Map<String, QueryProperty> properties = new HashMap<String, QueryProperty>();
+    private static final Map<String, QueryProperty> properties = new HashMap<>();
 
     static {
         properties.put("id", ProcessDefinitionQueryProperty.PROCESS_DEFINITION_ID);
@@ -61,8 +65,11 @@ public class ProcessDefinitionCollectionResource {
 
     @Autowired
     protected RepositoryService repositoryService;
+    
+    @Autowired(required=false)
+    protected BpmnRestApiInterceptor restApiInterceptor;
 
-    @ApiOperation(value = "List of process definitions", tags = { "Process Definitions" })
+    @ApiOperation(value = "List of process definitions", tags = { "Process Definitions" }, nickname = "listProcessDefinitions")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "version", dataType = "integer", value = "Only return process definitions with the given version.", paramType = "query"),
             @ApiImplicitParam(name = "name", dataType = "string", value = "Only return process definitions with the given name.", paramType = "query"),
@@ -73,7 +80,7 @@ public class ProcessDefinitionCollectionResource {
             @ApiImplicitParam(name = "resourceNameLike", dataType = "string", value = "Only return process definitions with a name like the given resource name.", paramType = "query"),
             @ApiImplicitParam(name = "category", dataType = "string", value = "Only return process definitions with the given category.", paramType = "query"),
             @ApiImplicitParam(name = "categoryLike", dataType = "string", value = "Only return process definitions with a category like the given name.", paramType = "query"),
-            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return process definitions which don’t have the given category.", paramType = "query"),
+            @ApiImplicitParam(name = "categoryNotEquals", dataType = "string", value = "Only return process definitions which do not have the given category.", paramType = "query"),
             @ApiImplicitParam(name = "deploymentId", dataType = "string", value = "Only return process definitions with the given category.", paramType = "query"),
             @ApiImplicitParam(name = "startableByUser", dataType = "string", value = "Only return process definitions which are part of a deployment with the given id.", paramType = "query"),
             @ApiImplicitParam(name = "latest", dataType = "boolean", value = "Only return the latest process definition versions. Can only be used together with key and keyLike parameters, using any other parameter will result in a 400-response.", paramType = "query"),
@@ -84,8 +91,8 @@ public class ProcessDefinitionCollectionResource {
             @ApiResponse(code = 200, message = "Indicates request was successful and the process-definitions are returned"),
             @ApiResponse(code = 400, message = "Indicates a parameter was passed in the wrong format or that latest is used with other parameters other than key and keyLike. The status-message contains additional information.")
     })
-    @RequestMapping(value = "/repository/process-definitions", method = RequestMethod.GET, produces = "application/json")
-    public DataResponse getProcessDefinitions(@ApiParam(hidden = true) @RequestParam Map<String, String> allRequestParams, HttpServletRequest request) {
+    @GetMapping(value = "/repository/process-definitions", produces = "application/json")
+    public DataResponse<ProcessDefinitionResponse> getProcessDefinitions(@ApiParam(hidden = true) @RequestParam Map<String, String> allRequestParams, HttpServletRequest request) {
         ProcessDefinitionQuery processDefinitionQuery = repositoryService.createProcessDefinitionQuery();
 
         // Populate filter-parameters
@@ -147,7 +154,11 @@ public class ProcessDefinitionCollectionResource {
         if (allRequestParams.containsKey("tenantIdLike")) {
             processDefinitionQuery.processDefinitionTenantIdLike(allRequestParams.get("tenantIdLike"));
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessProcessDefinitionsWithQuery(processDefinitionQuery);
+        }
 
-        return new ProcessDefinitionsPaginateList(restResponseFactory).paginateList(allRequestParams, processDefinitionQuery, "name", properties);
+        return paginateList(allRequestParams, processDefinitionQuery, "name", properties, restResponseFactory::createProcessDefinitionResponseList);
     }
 }

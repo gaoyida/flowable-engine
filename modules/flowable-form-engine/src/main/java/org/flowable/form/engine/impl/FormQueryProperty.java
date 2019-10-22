@@ -16,7 +16,7 @@ package org.flowable.form.engine.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
 
 /**
  * Contains the possible properties that can be used in a {@link ProcessDefinitionQuery}.
@@ -27,7 +27,7 @@ public class FormQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, FormQueryProperty> properties = new HashMap<String, FormQueryProperty>();
+    private static final Map<String, FormQueryProperty> properties = new HashMap<>();
 
     public static final FormQueryProperty FORM_DEFINITION_KEY = new FormQueryProperty("RES.KEY_");
     public static final FormQueryProperty FORM_CATEGORY = new FormQueryProperty("RES.CATEGORY_");
@@ -44,6 +44,7 @@ public class FormQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

@@ -45,6 +45,7 @@ public final class RestUrls {
     public static final String SEGMENT_EVENT_SUBSCRIPTIONS = "event-subscriptions";
     public static final String SEGMENT_SUBTASKS = "subtasks";
     public static final String SEGMENT_IDENTITYLINKS = "identitylinks";
+    public static final String SEGMENT_FORM = "form";
     public static final String SEGMENT_COMMENTS = "comments";
     public static final String SEGMENT_EVENTS = "events";
     public static final String SEGMENT_ATTACHMENTS = "attachments";
@@ -56,6 +57,7 @@ public final class RestUrls {
     public static final String SEGMENT_HISTORIC_TASK_INSTANCE_RESOURCE = "historic-task-instances";
     public static final String SEGMENT_HISTORIC_ACTIVITY_INSTANCE_RESOURCE = "historic-activity-instances";
     public static final String SEGMENT_HISTORIC_VARIABLE_INSTANCE_RESOURCE = "historic-variable-instances";
+    public static final String SEGMENT_HISTORIC_TASK_LOG_ENTRIES = "historic-task-log-entries";
     public static final String SEGMENT_HISTORIC_DETAIL_RESOURCE = "historic-detail";
     public static final String SEGMENT_FORM_DATA = "form-data";
     public static final String SEGMENT_TABLES = "tables";
@@ -66,6 +68,10 @@ public final class RestUrls {
     public static final String SEGMENT_SUSPENDED_JOBS = "suspended-jobs";
     public static final String SEGMENT_DEADLETTER_JOBS = "deadletter-jobs";
     public static final String SEGMENT_JOB_EXCEPTION_STACKTRACE = "exception-stacktrace";
+    public static final String SEGMENT_BATCHES = "batches";
+    public static final String SEGMENT_BATCH_DOCUMENT = "batch-document";
+    public static final String SEGMENT_BATCH_PARTS = "batch-parts";
+    public static final String SEGMENT_BATCH_PART_RESULT_DOCUMENT = "result-document";
     public static final String SEGMENT_USERS = "users";
     public static final String SEGMENT_GROUPS = "groups";
     public static final String SEGMENT_PICTURE = "picture";
@@ -81,6 +87,7 @@ public final class RestUrls {
     public static final String SEGMENT_DIAGRAM = "diagram";
     public static final String SEGMENT_SIGNALS = "signals";
     public static final String SEGMENT_IMAGE = "image";
+    public static final String SEGMENT_START_FORM = "start-form";
     public static final String SEGMENT_DECISION_TABLES = "decision-tables";
     public static final String SEGMENT_FORM_DEFINITIONS = "form-definitions";
 
@@ -143,6 +150,11 @@ public final class RestUrls {
      * URL template for the image of a process definition: <i>repository/process-definitions/{0:processDefinitionId}/image</i>
      */
     public static final String[] URL_PROCESS_DEFINITION_IMAGE = { SEGMENT_REPOSITORY_RESOURCES, SEGMENT_PROCESS_DEFINITION_RESOURCE, "{0}", SEGMENT_IMAGE };
+    
+    /**
+     * URL template for the start form of a process definition: <i>repository/process-definitions/{0:processDefinitionId}/start-form</i>
+     */
+    public static final String[] URL_PROCESS_DEFINITION_START_FORM = { SEGMENT_REPOSITORY_RESOURCES, SEGMENT_PROCESS_DEFINITION_RESOURCE, "{0}", SEGMENT_START_FORM };
 
     /**
      * URL template for the image of a process definition: <i>repository/process-definitions/{0:processDefinitionId}/decision-tables</i>
@@ -219,6 +231,11 @@ public final class RestUrls {
      */
     public static final String[] URL_TASK_IDENTITYLINK = { SEGMENT_RUNTIME_RESOURCES, SEGMENT_TASK_RESOURCE, "{0}", SEGMENT_IDENTITYLINKS, "{1}", "{2}", "{3}" };
 
+    /**
+     * URL template for a task form: <i>runtime/tasks/{0:taskId}/form</i>
+     */
+    public static final String[] URL_TASK_FORM = { SEGMENT_RUNTIME_RESOURCES, SEGMENT_TASK_RESOURCE, "{0}", SEGMENT_FORM };
+    
     /**
      * URL template for a task's identity links: <i>runtime/tasks/{0:taskId}/comments</i>
      */
@@ -387,6 +404,16 @@ public final class RestUrls {
     public static final String[] URL_HISTORIC_TASK_INSTANCE_VARIABLE_DATA = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_TASK_INSTANCE_RESOURCE, "{0}", SEGMENT_VARIABLES, "{1}", SEGMENT_VARIABLE_DATA };
 
     /**
+     * URL template for a historic task instance form: <i>history/historic-task-instances/{0:taskId}/form</i>
+     */
+    public static final String[] URL_HISTORIC_TASK_INSTANCE_FORM = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_TASK_INSTANCE_RESOURCE, "{0}", SEGMENT_FORM };
+
+    /**
+     * URL template for a historic task log entries form: <i>history/historic-task-log-entries</i>
+     */
+    public static final String[] URL_HISTORIC_TASK_LOG_ENTRIES = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_TASK_LOG_ENTRIES };
+
+    /**
      * URL template for historic activity instance query: <i>history/historic-activity-instances</i>
      */
     public static final String[] URL_HISTORIC_ACTIVITY_INSTANCES = { SEGMENT_HISTORY_RESOURCES, SEGMENT_HISTORIC_ACTIVITY_INSTANCE_RESOURCE };
@@ -520,6 +547,26 @@ public final class RestUrls {
      * URL template for the collection of timer jobs: <i>management/deadletter-jobs</i>
      */
     public static final String[] URL_DEADLETTER_JOB_COLLECTION = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_DEADLETTER_JOBS };
+    
+    /**
+     * URL template for a single batch: <i>management/batches/{0:batchId}</i>
+     */
+    public static final String[] URL_BATCH = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCHES, "{0}" };
+    
+    /**
+     * URL template for the collection of batches: <i>management/batches</i>
+     */
+    public static final String[] URL_BATCH_COLLECTION = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCHES };
+    
+    /**
+     * URL template for a single batch part: <i>management/batches/{0:batchId}</i>
+     */
+    public static final String[] URL_BATCH_PART = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCH_PARTS, "{0}" };
+    
+    /**
+     * URL template for the collection of batches: <i>management/batches/{0:batchId}/batch-parts</i>
+     */
+    public static final String[] URL_BATCH_PART_COLLECTION = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCH_PARTS, "{0}", SEGMENT_BATCH_PARTS };
 
     /**
      * URL template for a single event subscription: <i>runtime/event-subscriptions/{0:eventSubscriptionId}</i>

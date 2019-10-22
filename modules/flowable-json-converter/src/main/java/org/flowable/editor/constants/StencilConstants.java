@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +14,7 @@ package org.flowable.editor.constants;
 
 /**
  * @author Tijs Rademakers
+ * @author Zheng Ji
  */
 public interface StencilConstants {
 
@@ -23,9 +24,12 @@ public interface StencilConstants {
     final String STENCIL_EVENT_START_MESSAGE = "StartMessageEvent";
     final String STENCIL_EVENT_START_SIGNAL = "StartSignalEvent";
     final String STENCIL_EVENT_START_ERROR = "StartErrorEvent";
+    final String STENCIL_EVENT_START_CONDITIONAL = "StartConditionalEvent";
+    final String STENCIL_EVENT_START_ESCALATION = "StartEscalationEvent";
 
     final String STENCIL_EVENT_END_NONE = "EndNoneEvent";
     final String STENCIL_EVENT_END_ERROR = "EndErrorEvent";
+    final String STENCIL_EVENT_END_ESCALATION = "EndEscalationEvent";
     final String STENCIL_EVENT_END_CANCEL = "EndCancelEvent";
     final String STENCIL_EVENT_END_TERMINATE = "EndTerminateEvent";
 
@@ -48,6 +52,7 @@ public interface StencilConstants {
     final String STENCIL_TASK_USER = "UserTask";
     final String STENCIL_TASK_CAMEL = "CamelTask";
     final String STENCIL_TASK_MULE = "MuleTask";
+    final String STENCIL_TASK_HTTP = "HttpTask";
     final String STENCIL_TASK_SHELL = "ShellTask";
     final String STENCIL_TASK_DECISION = "DecisionTask";
 
@@ -58,6 +63,8 @@ public interface StencilConstants {
 
     final String STENCIL_EVENT_BOUNDARY_TIMER = "BoundaryTimerEvent";
     final String STENCIL_EVENT_BOUNDARY_ERROR = "BoundaryErrorEvent";
+    final String STENCIL_EVENT_BOUNDARY_CONDITIONAL = "BoundaryConditionalEvent";
+    final String STENCIL_EVENT_BOUNDARY_ESCALATION = "BoundaryEscalationEvent";
     final String STENCIL_EVENT_BOUNDARY_SIGNAL = "BoundarySignalEvent";
     final String STENCIL_EVENT_BOUNDARY_MESSAGE = "BoundaryMessageEvent";
     final String STENCIL_EVENT_BOUNDARY_CANCEL = "BoundaryCancelEvent";
@@ -66,8 +73,10 @@ public interface StencilConstants {
     final String STENCIL_EVENT_CATCH_SIGNAL = "CatchSignalEvent";
     final String STENCIL_EVENT_CATCH_TIMER = "CatchTimerEvent";
     final String STENCIL_EVENT_CATCH_MESSAGE = "CatchMessageEvent";
+    final String STENCIL_EVENT_CATCH_CONDITIONAL = "CatchConditionalEvent";
 
     final String STENCIL_EVENT_THROW_SIGNAL = "ThrowSignalEvent";
+    final String STENCIL_EVENT_THROW_ESCALATION = "ThrowEscalationEvent";
     final String STENCIL_EVENT_THROW_NONE = "ThrowNoneEvent";
 
     final String STENCIL_SEQUENCE_FLOW = "SequenceFlow";
@@ -90,7 +99,13 @@ public interface StencilConstants {
     final String PROPERTY_PROCESS_VERSION = "process_version";
     final String PROPERTY_PROCESS_AUTHOR = "process_author";
     final String PROPERTY_PROCESS_NAMESPACE = "process_namespace";
-    final String PROPERTY_PROCESS_EXECUTABLE = "process_executable";
+    final String PROPERTY_PROCESS_HISTORYLEVEL = "process_historylevel";
+
+    final String PROPERTY_IS_EXECUTABLE = "isexecutable";
+    final String PROPERTY_IS_EAGER_EXECUTION_FETCHING = "iseagerexecutionfetch";
+
+    final String PROPERTY_PROCESS_POTENTIALSTARTERUSER = "process_potentialstarteruser";
+    final String PROPERTY_PROCESS_POTENTIALSTARTERGROUP = "process_potentialstartergroup";
 
     final String PROPERTY_TIMER_DURATON = "timerdurationdefinition";
     final String PROPERTY_TIMER_DATE = "timerdatedefinition";
@@ -105,8 +120,15 @@ public interface StencilConstants {
     final String PROPERTY_MESSAGEREF = "messageref";
 
     final String PROPERTY_SIGNALREF = "signalref";
+    
+    final String PROPERTY_CONDITIONAL_EVENT_CONDITION = "conditionaleventcondition";
 
     final String PROPERTY_ERRORREF = "errorref";
+    
+    final String PROPERTY_ESCALATION_DEFINITIONS = "escalationdefinitions";
+    final String PROPERTY_ESCALATION_DEFINITION_ID = "id";
+    final String PROPERTY_ESCALATION_DEFINITION_NAME = "name";
+    final String PROPERTY_ESCALATIONREF = "escalationref";
 
     final String PROPERTY_INTERRUPTING = "interrupting";
 
@@ -151,6 +173,7 @@ public interface StencilConstants {
     final String PROPERTY_FIELD_STRING = "string";
 
     final String PROPERTY_FORMKEY = "formkeydefinition";
+    final String PROPERTY_FORM_FIELD_VALIDATION = "formfieldvalidation";
 
     final String PROPERTY_USERTASK_ASSIGNMENT = "usertaskassignment";
     final String PROPERTY_USERTASK_PRIORITY = "prioritydefinition";
@@ -165,18 +188,24 @@ public interface StencilConstants {
     final String PROPERTY_SERVICETASK_EXPRESSION = "servicetaskexpression";
     final String PROPERTY_SERVICETASK_DELEGATE_EXPRESSION = "servicetaskdelegateexpression";
     final String PROPERTY_SERVICETASK_RESULT_VARIABLE = "servicetaskresultvariable";
+    final String PROPERTY_SERVICETASK_EXCEPTIONS = "servicetaskexceptions";
+    final String PROPERTY_SERVICETASK_EXCEPTION_CLASS = "class";
+    final String PROPERTY_SERVICETASK_EXCEPTION_CODE = "code";
+    final String PROPERTY_SERVICETASK_EXCEPTION_CHILDREN = "children";
     final String PROPERTY_SERVICETASK_FIELDS = "servicetaskfields";
     final String PROPERTY_SERVICETASK_FIELD_NAME = "name";
     final String PROPERTY_SERVICETASK_FIELD_STRING_VALUE = "stringValue";
     final String PROPERTY_SERVICETASK_FIELD_STRING = "string";
     final String PROPERTY_SERVICETASK_FIELD_EXPRESSION = "expression";
-
+    final String PROPERTY_SERVICETASK_TRIGGERABLE = "servicetasktriggerable";
+    final String PROPERTY_SERVICETASK_USE_LOCAL_SCOPE_FOR_RESULT_VARIABLE = "servicetaskuselocalscopeforresultvariable";
     final String PROPERTY_FORM_PROPERTIES = "formproperties";
     final String PROPERTY_FORM_ID = "id";
     final String PROPERTY_FORM_NAME = "name";
     final String PROPERTY_FORM_TYPE = "type";
     final String PROPERTY_FORM_EXPRESSION = "expression";
     final String PROPERTY_FORM_VARIABLE = "variable";
+    final String PROPERTY_FORM_DEFAULT = "default";
     final String PROPERTY_FORM_DATE_PATTERN = "datePattern";
     final String PROPERTY_FORM_REQUIRED = "required";
     final String PROPERTY_FORM_READABLE = "readable";
@@ -193,6 +222,7 @@ public interface StencilConstants {
 
     final String PROPERTY_SCRIPT_FORMAT = "scriptformat";
     final String PROPERTY_SCRIPT_TEXT = "scripttext";
+    final String PROPERTY_SCRIPT_AUTO_STORE_VARIABLES = "scriptautostorevariables";
 
     final String PROPERTY_RULETASK_CLASS = "ruletask_class";
     final String PROPERTY_RULETASK_VARIABLES_INPUT = "ruletask_variables_input";
@@ -200,6 +230,7 @@ public interface StencilConstants {
     final String PROPERTY_RULETASK_RULES = "ruletask_rules";
     final String PROPERTY_RULETASK_EXCLUDE = "ruletask_exclude";
 
+    final String PROPERTY_MAILTASK_HEADERS = "mailtaskheaders";
     final String PROPERTY_MAILTASK_TO = "mailtaskto";
     final String PROPERTY_MAILTASK_FROM = "mailtaskfrom";
     final String PROPERTY_MAILTASK_SUBJECT = "mailtasksubject";
@@ -210,8 +241,18 @@ public interface StencilConstants {
     final String PROPERTY_MAILTASK_CHARSET = "mailtaskcharset";
 
     final String PROPERTY_CALLACTIVITY_CALLEDELEMENT = "callactivitycalledelement";
+    final String PROPERTY_CALLACTIVITY_CALLEDELEMENTTYPE = "callactivitycalledelementtype";
     final String PROPERTY_CALLACTIVITY_IN = "callactivityinparameters";
     final String PROPERTY_CALLACTIVITY_OUT = "callactivityoutparameters";
+    final String PROPERTY_CALLACTIVITY_FALLBACK_TO_DEFAULT_TENANT = "callactivityfallbacktodefaulttenant";
+    final String PROPERTY_CALLACTIVITY_ID_VARIABLE_NAME = "callactivityidvariablename";
+    final String PROPERTY_CALLACTIVITY_INHERIT_VARIABLES = "callactivityinheritvariables";
+    final String PROPERTY_CALLACTIVITY_SAME_DEPLOYMENT = "callactivitysamedeployment";
+    final String PROPERTY_CALLACTIVITY_PROCESS_INSTANCE_NAME = "callactivityprocessinstancename";
+    final String PROPERTY_CALLACTIVITY_BUSINESS_KEY = "callactivitybusinesskey";
+    final String PROPERTY_CALLACTIVITY_INHERIT_BUSINESS_KEY = "callactivityinheritbusinesskey";
+    final String PROPERTY_CALLACTIVITY_USE_LOCALSCOPE_FOR_OUTPARAMETERS = "callactivityuselocalscopeforoutparameters";
+    final String PROPERTY_CALLACTIVITY_COMPLETE_ASYNC = "callactivitycompleteasync";
     final String PROPERTY_IOPARAMETER_SOURCE = "source";
     final String PROPERTY_IOPARAMETER_SOURCE_EXPRESSION = "sourceExpression";
     final String PROPERTY_IOPARAMETER_TARGET = "target";
@@ -245,4 +286,42 @@ public interface StencilConstants {
     final String PROPERTY_DECISIONTABLE_REFERENCE_ID = "decisiontablereferenceid";
     final String PROPERTY_DECISIONTABLE_REFERENCE_NAME = "decisiontablereferencename";
     final String PROPERTY_DECISIONTABLE_REFERENCE_KEY = "decisionTableReferenceKey";
+    final String PROPERTY_DECISIONTABLE_THROW_ERROR_NO_HITS = "decisiontaskthrowerroronnohits";
+    final String PROPERTY_DECISIONTABLE_THROW_ERROR_NO_HITS_KEY = "decisionTaskThrowErrorOnNoHits";
+    final String PROPERTY_DECISIONTABLE_FALLBACK_TO_DEFAULT_TENANT = "decisiontaskfallbacktodefaulttenant";
+    final String PROPERTY_DECISIONTABLE_FALLBACK_TO_DEFAULT_TENANT_KEY = "fallbackToDefaultTenant";
+
+    final String PROPERTY_HTTPTASK_REQ_METHOD = "httptaskrequestmethod";
+    final String PROPERTY_HTTPTASK_REQ_URL = "httptaskrequesturl";
+    final String PROPERTY_HTTPTASK_REQ_HEADERS = "httptaskrequestheaders";
+    final String PROPERTY_HTTPTASK_REQ_BODY  = "httptaskrequestbody";
+    final String PROPERTY_HTTPTASK_REQ_BODY_ENCODING  = "httptaskrequestbodyencoding";
+    final String PROPERTY_HTTPTASK_REQ_TIMEOUT = "httptaskrequesttimeout";
+    final String PROPERTY_HTTPTASK_REQ_DISALLOW_REDIRECTS = "httptaskdisallowredirects";
+    final String PROPERTY_HTTPTASK_REQ_FAIL_STATUS_CODES = "httptaskfailstatuscodes";
+    final String PROPERTY_HTTPTASK_REQ_HANDLE_STATUS_CODES = "httptaskhandlestatuscodes";
+    final String PROPERTY_HTTPTASK_REQ_IGNORE_EXCEPTION = "httptaskignoreexception";
+    final String PROPERTY_HTTPTASK_RESPONSE_VARIABLE_NAME = "httptaskresponsevariablename";
+    final String PROPERTY_HTTPTASK_SAVE_REQUEST_VARIABLES = "httptasksaverequestvariables";
+    final String PROPERTY_HTTPTASK_SAVE_RESPONSE_PARAMETERS = "httptasksaveresponseparameters";
+    final String PROPERTY_HTTPTASK_RESULT_VARIABLE_PREFIX = "httptaskresultvariableprefix";
+    final String PROPERTY_HTTPTASK_SAVE_RESPONSE_TRANSIENT = "httptasksaveresponseparameterstransient";
+    final String PROPERTY_HTTPTASK_SAVE_RESPONSE_AS_JSON = "httptasksaveresponseasjson";
+
+    final String PROPERTY_SKIP_EXPRESSION = "skipexpression";
+
+    final String PROPERTY_SHELLTASK_COMMAND = "shellcommand";
+    final String PROPERTY_SHELLTASK_ARG1 = "shellarg1";
+    final String PROPERTY_SHELLTASK_ARG2 = "shellarg2";
+    final String PROPERTY_SHELLTASK_ARG3 = "shellarg3";
+    final String PROPERTY_SHELLTASK_ARG4 = "shellarg4";
+    final String PROPERTY_SHELLTASK_ARG5 = "shellarg5";
+    final String PROPERTY_SHELLTASK_WAIT = "shellwait";
+    final String PROPERTY_SHELLTASK_OUTPUT_VARIABLE = "shelloutputvariable";
+    final String PROPERTY_SHELLTASK_ERROR_CODE_VARIABLE = "shellerrorcodevariable";
+    final String PROPERTY_SHELLTASK_ERROR_REDIRECT = "shellerrorredirect";
+    final String PROPERTY_SHELLTASK_CLEAN_ENV = "shellcleanenv";
+    final String PROPERTY_SHELLTASK_DIRECTORY = "shelldirectory";
+
+    final String PROPERTY_FOR_COMPENSATION = "isforcompensation";
 }

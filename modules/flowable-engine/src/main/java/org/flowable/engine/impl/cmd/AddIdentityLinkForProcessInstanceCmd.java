@@ -14,15 +14,16 @@ package org.flowable.engine.impl.cmd;
 
 import java.io.Serializable;
 
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.compatibility.Flowable5CompatibilityHandler;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntityManager;
-import org.flowable.engine.impl.persistence.entity.IdentityLinkEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.Flowable5Util;
+import org.flowable.engine.impl.util.IdentityLinkUtil;
 
 /**
  * @author Marcus Klimstra
@@ -64,9 +65,10 @@ public class AddIdentityLinkForProcessInstanceCmd implements Command<Void>, Seri
 
     }
 
+    @Override
     public Void execute(CommandContext commandContext) {
 
-        ExecutionEntityManager executionEntityManager = commandContext.getExecutionEntityManager();
+        ExecutionEntityManager executionEntityManager = CommandContextUtil.getExecutionEntityManager(commandContext);
         ExecutionEntity processInstance = executionEntityManager.findById(processInstanceId);
 
         if (processInstance == null) {
@@ -79,9 +81,8 @@ public class AddIdentityLinkForProcessInstanceCmd implements Command<Void>, Seri
             return null;
         }
 
-        IdentityLinkEntityManager identityLinkEntityManager = commandContext.getIdentityLinkEntityManager();
-        identityLinkEntityManager.addIdentityLink(processInstance, userId, groupId, type);
-        commandContext.getHistoryManager().createProcessInstanceIdentityLinkComment(processInstanceId, userId, groupId, type, true);
+        IdentityLinkUtil.createProcessInstanceIdentityLink(processInstance, userId, groupId, type);
+        CommandContextUtil.getHistoryManager(commandContext).createProcessInstanceIdentityLinkComment(processInstance, userId, groupId, type, true);
 
         return null;
 

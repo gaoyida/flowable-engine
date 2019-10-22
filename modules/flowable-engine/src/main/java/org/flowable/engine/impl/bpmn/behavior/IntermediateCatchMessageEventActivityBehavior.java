@@ -16,17 +16,20 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.MessageEventDefinition;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.impl.context.Context;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.delegate.DelegateExecution;
-import org.flowable.engine.delegate.Expression;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
 import org.flowable.engine.history.DeleteReason;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.persistence.entity.EventSubscriptionEntity;
-import org.flowable.engine.impl.persistence.entity.EventSubscriptionEntityManager;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
-import org.flowable.engine.impl.persistence.entity.MessageEventSubscriptionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.impl.util.CountingEntityUtil;
+import org.flowable.eventsubscription.service.EventSubscriptionService;
+import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
+import org.flowable.eventsubscription.service.impl.persistence.entity.MessageEventSubscriptionEntity;
 
 public class IntermediateCatchMessageEventActivityBehavior extends IntermediateCatchEventActivityBehavior {
 
@@ -38,6 +41,7 @@ public class IntermediateCatchMessageEventActivityBehavior extends IntermediateC
         this.messageEventDefinition = messageEventDefinition;
     }
 
+    @Override
     public void execute(DelegateExecution execution) {
         CommandContext commandContext = Context.getCommandContext();
         ExecutionEntity executionEntity = (ExecutionEntity) execution;
@@ -46,15 +50,27 @@ public class IntermediateCatchMessageEventActivityBehavior extends IntermediateC
         if (StringUtils.isNotEmpty(messageEventDefinition.getMessageRef())) {
             messageName = messageEventDefinition.getMessageRef();
         } else {
-            Expression messageExpression = commandContext.getProcessEngineConfiguration().getExpressionManager()
+            Expression messageExpression = CommandContextUtil.getProcessEngineConfiguration(commandContext).getExpressionManager()
                     .createExpression(messageEventDefinition.getMessageExpression());
             messageName = messageExpression.getValue(execution).toString();
         }
 
-        commandContext.getEventSubscriptionEntityManager().insertMessageEvent(messageName, executionEntity);
+        EventSubscriptionEntity eventSubscription = (EventSubscriptionEntity) CommandContextUtil.getEventSubscriptionService(commandContext).createEventSubscriptionBuilder()
+                        .eventType(MessageEventSubscriptionEntity.EVENT_TYPE)
+                        .eventName(messageName)
+                        .executionId(executionEntity.getId())
+                        .processInstanceId(executionEntity.getProcessInstanceId())
+                        .activityId(executionEntity.getCurrentActivityId())
+                        .processDefinitionId(executionEntity.getProcessDefinitionId())
+                        .tenantId(executionEntity.getTenantId())
+                        .create();
+        
+        CountingEntityUtil.handleInsertEventSubscriptionEntityCount(eventSubscription);
+        executionEntity.getEventSubscriptions().add(eventSubscription);
 
-        if (commandContext.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-            commandContext.getProcessEngineConfiguration().getEventDispatcher()
+        FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration(commandContext).getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            eventDispatcher
                     .dispatchEvent(FlowableEventBuilder.createMessageEvent(FlowableEngineEventType.ACTIVITY_MESSAGE_WAITING, executionEntity.getActivityId(), messageName,
                             null, executionEntity.getId(), executionEntity.getProcessInstanceId(), executionEntity.getProcessDefinitionId()));
         }
@@ -69,18 +85,19 @@ public class IntermediateCatchMessageEventActivityBehavior extends IntermediateC
     @Override
     public void eventCancelledByEventGateway(DelegateExecution execution) {
         deleteMessageEventSubScription(execution);
-        Context.getCommandContext().getExecutionEntityManager().deleteExecutionAndRelatedData((ExecutionEntity) execution,
+        CommandContextUtil.getExecutionEntityManager().deleteExecutionAndRelatedData((ExecutionEntity) execution,
                 DeleteReason.EVENT_BASED_GATEWAY_CANCEL, false);
     }
 
     protected ExecutionEntity deleteMessageEventSubScription(DelegateExecution execution) {
         ExecutionEntity executionEntity = (ExecutionEntity) execution;
-        EventSubscriptionEntityManager eventSubscriptionEntityManager = Context.getCommandContext().getEventSubscriptionEntityManager();
+        EventSubscriptionService eventSubscriptionService = CommandContextUtil.getEventSubscriptionService();
         List<EventSubscriptionEntity> eventSubscriptions = executionEntity.getEventSubscriptions();
         for (EventSubscriptionEntity eventSubscription : eventSubscriptions) {
             if (eventSubscription instanceof MessageEventSubscriptionEntity && eventSubscription.getEventName().equals(messageEventDefinition.getMessageRef())) {
 
-                eventSubscriptionEntityManager.delete(eventSubscription);
+                eventSubscriptionService.deleteEventSubscription(eventSubscription);
+                CountingEntityUtil.handleDeleteEventSubscriptionEntityCount(eventSubscription);
             }
         }
         return executionEntity;

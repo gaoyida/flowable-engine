@@ -16,10 +16,11 @@ package org.flowable.dmn.engine.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
+import org.flowable.dmn.api.DmnDecisionTableQuery;
 
 /**
- * Contains the possible properties that can be used in a {@link ProcessDefinitionQuery}.
+ * Contains the possible properties that can be used in a {@link DmnDecisionTableQuery}.
  * 
  * @author Joram Barrez
  */
@@ -27,7 +28,7 @@ public class DecisionTableQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, DecisionTableQueryProperty> properties = new HashMap<String, DecisionTableQueryProperty>();
+    private static final Map<String, DecisionTableQueryProperty> properties = new HashMap<>();
 
     public static final DecisionTableQueryProperty DECISION_TABLE_KEY = new DecisionTableQueryProperty("RES.KEY_");
     public static final DecisionTableQueryProperty DECISION_TABLE_CATEGORY = new DecisionTableQueryProperty("RES.CATEGORY_");
@@ -44,6 +45,7 @@ public class DecisionTableQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

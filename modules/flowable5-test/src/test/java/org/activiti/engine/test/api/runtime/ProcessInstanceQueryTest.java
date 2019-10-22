@@ -25,9 +25,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.activiti.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.repository.DeploymentProperties;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
@@ -52,8 +52,8 @@ public class ProcessInstanceQueryTest extends PluggableFlowableTestCase {
     private static final String PROCESS_DEFINITION_KEY_2 = "oneTaskProcess2";
     private static final String PROCESS_DEFINITION_NAME = "oneTaskProcessName";
     private static final String PROCESS_DEFINITION_NAME_2 = "oneTaskProcess2Name";
-    private static final String PROCESS_DEFINITION_CATEGORY = "org.activiti.enginge.test.api.runtime.Category";
-    private static final String PROCESS_DEFINITION_CATEGORY_2 = "org.activiti.enginge.test.api.runtime.2Category";
+    private static final String PROCESS_DEFINITION_CATEGORY = "org.activiti.engine.test.api.runtime.Category";
+    private static final String PROCESS_DEFINITION_CATEGORY_2 = "org.activiti.engine.test.api.runtime.2Category";
 
     private org.flowable.engine.repository.Deployment deployment;
     private List<String> processInstanceIds;
@@ -349,7 +349,7 @@ public class ProcessInstanceQueryTest extends PluggableFlowableTestCase {
         assertEquals(PROCESS_DEPLOY_COUNT, instances.size());
         ProcessInstance processInstance = instances.get(0);
         assertEquals(deployment.getId(), processInstance.getDeploymentId());
-        assertEquals(new Integer(1), processInstance.getProcessDefinitionVersion());
+        assertEquals(Integer.valueOf(1), processInstance.getProcessDefinitionVersion());
         assertEquals(PROCESS_DEFINITION_KEY, processInstance.getProcessDefinitionKey());
         assertEquals("oneTaskProcessName", processInstance.getProcessDefinitionName());
         assertEquals(PROCESS_DEPLOY_COUNT, runtimeService.createProcessInstanceQuery().deploymentId(deployment.getId()).count());
@@ -363,7 +363,7 @@ public class ProcessInstanceQueryTest extends PluggableFlowableTestCase {
 
         ProcessInstance processInstance = instances.get(0);
         assertEquals(deployment.getId(), processInstance.getDeploymentId());
-        assertEquals(new Integer(1), processInstance.getProcessDefinitionVersion());
+        assertEquals(Integer.valueOf(1), processInstance.getProcessDefinitionVersion());
         assertEquals(PROCESS_DEFINITION_KEY, processInstance.getProcessDefinitionKey());
         assertEquals("oneTaskProcessName", processInstance.getProcessDefinitionName());
 
@@ -375,7 +375,7 @@ public class ProcessInstanceQueryTest extends PluggableFlowableTestCase {
         assertEquals(PROCESS_DEPLOY_COUNT, instances.size());
         ProcessInstance processInstance = instances.get(0);
         assertEquals(deployment.getId(), processInstance.getDeploymentId());
-        assertEquals(new Integer(1), processInstance.getProcessDefinitionVersion());
+        assertEquals(Integer.valueOf(1), processInstance.getProcessDefinitionVersion());
         assertEquals(PROCESS_DEFINITION_KEY, processInstance.getProcessDefinitionKey());
         assertEquals("oneTaskProcessName", processInstance.getProcessDefinitionName());
 
@@ -436,7 +436,7 @@ public class ProcessInstanceQueryTest extends PluggableFlowableTestCase {
 
         ProcessInstance processInstance = instances.get(0);
         assertEquals(deployment.getId(), processInstance.getDeploymentId());
-        assertEquals(new Integer(1), processInstance.getProcessDefinitionVersion());
+        assertEquals(Integer.valueOf(1), processInstance.getProcessDefinitionVersion());
         assertEquals(PROCESS_DEFINITION_KEY, processInstance.getProcessDefinitionKey());
         assertEquals("oneTaskProcessName", processInstance.getProcessDefinitionName());
 

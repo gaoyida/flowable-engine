@@ -15,13 +15,14 @@ package org.flowable.content.engine.impl.cmd;
 import java.io.InputStream;
 import java.io.Serializable;
 
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.content.api.ContentItem;
 import org.flowable.content.api.ContentObject;
 import org.flowable.content.api.ContentStorage;
-import org.flowable.content.engine.impl.interceptor.Command;
-import org.flowable.content.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
+import org.flowable.content.engine.impl.util.CommandContextUtil;
 
 /**
  * @author Tijs Rademakers
@@ -36,17 +37,18 @@ public class GetContentItemStreamCmd implements Command<InputStream>, Serializab
         this.contentItemId = contentItemId;
     }
 
+    @Override
     public InputStream execute(CommandContext commandContext) {
         if (contentItemId == null) {
             throw new FlowableIllegalArgumentException("contentItemId is null");
         }
 
-        ContentItem contentItem = commandContext.getContentItemEntityManager().findById(contentItemId);
+        ContentItem contentItem = CommandContextUtil.getContentItemEntityManager().findById(contentItemId);
         if (contentItem == null) {
             throw new FlowableObjectNotFoundException("content item could not be found with id " + contentItemId);
         }
 
-        ContentStorage contentStorage = commandContext.getContentEngineConfiguration().getContentStorage();
+        ContentStorage contentStorage = CommandContextUtil.getContentEngineConfiguration().getContentStorage();
         ContentObject contentObject = contentStorage.getContentObject(contentItem.getContentStoreId());
         return contentObject.getContent();
     }

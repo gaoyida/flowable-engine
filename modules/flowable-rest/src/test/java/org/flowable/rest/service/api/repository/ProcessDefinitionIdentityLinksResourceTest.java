@@ -1,4 +1,20 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.rest.service.api.repository;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
@@ -9,10 +25,11 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.task.IdentityLink;
 import org.flowable.engine.test.Deployment;
+import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -27,6 +44,7 @@ public class ProcessDefinitionIdentityLinksResourceTest extends BaseSpringRestTe
     /**
      * Test getting identitylinks for a process definition.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testGetIdentityLinksForProcessDefinition() throws Exception {
 
@@ -67,12 +85,14 @@ public class ProcessDefinitionIdentityLinksResourceTest extends BaseSpringRestTe
         assertTrue(userCandidateFound);
     }
 
+    @Test
     public void testGetIdentityLinksForUnexistingProcessDefinition() throws Exception {
         HttpGet httpGet = new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_PROCESS_DEFINITION_IDENTITYLINKS_COLLECTION, "unexisting"));
         CloseableHttpResponse response = executeRequest(httpGet, HttpStatus.SC_NOT_FOUND);
         closeResponse(response);
     }
-
+    
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testAddCandidateStarterToProcessDefinition() throws Exception {
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().singleResult();
@@ -119,6 +139,7 @@ public class ProcessDefinitionIdentityLinksResourceTest extends BaseSpringRestTe
         repositoryService.deleteCandidateStarterUser(processDefinition.getId(), "admin");
     }
 
+    @Test
     public void testAddCandidateStarterToUnexistingProcessDefinition() throws Exception {
         // Create user candidate
         ObjectNode requestNode = objectMapper.createObjectNode();
@@ -130,6 +151,7 @@ public class ProcessDefinitionIdentityLinksResourceTest extends BaseSpringRestTe
         closeResponse(response);
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testGetCandidateStarterFromProcessDefinition() throws Exception {
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().singleResult();
@@ -159,6 +181,7 @@ public class ProcessDefinitionIdentityLinksResourceTest extends BaseSpringRestTe
         assertTrue(responseNode.get("url").asText().endsWith(RestUrls.createRelativeResourceUrl(RestUrls.URL_PROCESS_DEFINITION_IDENTITYLINK, processDefinition.getId(), "groups", "admin")));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml" })
     public void testDeleteCandidateStarterFromProcessDefinition() throws Exception {
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().singleResult();
@@ -185,12 +208,14 @@ public class ProcessDefinitionIdentityLinksResourceTest extends BaseSpringRestTe
         assertEquals(0, remainingLinks.size());
     }
 
+    @Test
     public void testDeleteCandidateStarterFromUnexistingProcessDefinition() throws Exception {
         HttpDelete httpDelete = new HttpDelete(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_PROCESS_DEFINITION_IDENTITYLINK, "unexisting", "groups", "admin"));
         CloseableHttpResponse response = executeRequest(httpDelete, HttpStatus.SC_NOT_FOUND);
         closeResponse(response);
     }
 
+    @Test
     public void testGetCandidateStarterFromUnexistingProcessDefinition() throws Exception {
         HttpGet httpGet = new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_PROCESS_DEFINITION_IDENTITYLINK, "unexisting", "groups", "admin"));
         CloseableHttpResponse response = executeRequest(httpGet, HttpStatus.SC_NOT_FOUND);

@@ -12,39 +12,109 @@
  */
 package org.flowable.dmn.engine.impl;
 
+import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.service.CommonEngineServiceImpl;
+import org.flowable.dmn.api.DecisionExecutionAuditContainer;
 import org.flowable.dmn.api.DmnRuleService;
-import org.flowable.dmn.api.RuleEngineExecutionResult;
-import org.flowable.dmn.engine.RuleEngineExecutor;
+import org.flowable.dmn.api.ExecuteDecisionBuilder;
+import org.flowable.dmn.engine.DmnEngineConfiguration;
 import org.flowable.dmn.engine.impl.cmd.ExecuteDecisionCmd;
+import org.flowable.dmn.engine.impl.cmd.ExecuteDecisionSingleResultCmd;
+import org.flowable.dmn.engine.impl.cmd.ExecuteDecisionWithAuditTrailCmd;
 
 /**
  * @author Yvo Swillens
  */
-public class DmnRuleServiceImpl extends ServiceImpl implements DmnRuleService {
-
-    protected RuleEngineExecutor ruleEngineExecutor;
-
+public class DmnRuleServiceImpl extends CommonEngineServiceImpl<DmnEngineConfiguration> implements DmnRuleService {
+    
     @Override
-    public RuleEngineExecutionResult executeDecisionByKey(String decisionKey, Map<String, Object> variables) {
-        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, variables));
+    public ExecuteDecisionBuilder createExecuteDecisionBuilder() {
+        return new ExecuteDecisionBuilderImpl(this);
+    }
+    
+    @Override
+    @Deprecated
+    public List<Map<String, Object>> executeDecisionByKey(String decisionKey, Map<String, Object> inputVariables) {
+        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, inputVariables));
     }
 
     @Override
-    public RuleEngineExecutionResult executeDecisionByKeyAndTenantId(String decisionKey, Map<String, Object> variables, String tenantId) {
-        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, null, variables, tenantId));
+    @Deprecated
+    public Map<String, Object> executeDecisionByKeySingleResult(String decisionKey, Map<String, Object> inputVariables) {
+        return commandExecutor.execute(new ExecuteDecisionSingleResultCmd(decisionKey, inputVariables));
     }
 
     @Override
-    public RuleEngineExecutionResult executeDecisionByKeyAndParentDeploymentId(String decisionKey, String parentDeploymentId, Map<String, Object> variables) {
-        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, parentDeploymentId, variables));
+    @Deprecated
+    public DecisionExecutionAuditContainer executeDecisionByKeyWithAuditTrail(String decisionKey, Map<String, Object> inputVariables) {
+        return commandExecutor.execute(new ExecuteDecisionWithAuditTrailCmd(decisionKey, inputVariables));
     }
 
     @Override
-    public RuleEngineExecutionResult executeDecisionByKeyParentDeploymentIdAndTenantId(String decisionKey, String parentDeploymentId,
-            Map<String, Object> variables, String tenantId) {
+    @Deprecated
+    public List<Map<String, Object>> executeDecisionByKeyAndTenantId(String decisionKey, Map<String, Object> inputVariables, String tenantId) {
+        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, null, inputVariables, tenantId));
+    }
 
-        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, parentDeploymentId, variables, tenantId));
+    @Override
+    @Deprecated
+    public Map<String, Object> executeDecisionByKeyAndTenantIdSingleResult(String decisionKey, Map<String, Object> inputVariables, String tenantId) {
+        return commandExecutor.execute(new ExecuteDecisionSingleResultCmd(decisionKey, null, inputVariables, tenantId));
+    }
+
+    @Override
+    @Deprecated
+    public DecisionExecutionAuditContainer executeDecisionByKeyAndTenantIdWithAuditTrail(String decisionKey, Map<String, Object> inputVariables, String tenantId) {
+        return commandExecutor.execute(new ExecuteDecisionWithAuditTrailCmd(decisionKey, null, inputVariables, tenantId));
+    }
+
+    @Override
+    @Deprecated
+    public List<Map<String, Object>> executeDecisionByKeyAndParentDeploymentId(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables) {
+        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, parentDeploymentId, inputVariables));
+    }
+
+    @Override
+    @Deprecated
+    public Map<String, Object> executeDecisionByKeyAndParentDeploymentIdSingleResult(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables) {
+        return commandExecutor.execute(new ExecuteDecisionSingleResultCmd(decisionKey, parentDeploymentId, inputVariables));
+    }
+
+    @Override
+    @Deprecated
+    public DecisionExecutionAuditContainer executeDecisionByKeyAndParentDeploymentIdWithAuditTrail(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId) {
+        return commandExecutor.execute(new ExecuteDecisionWithAuditTrailCmd(decisionKey, parentDeploymentId, inputVariables, tenantId));
+    }
+    
+    @Override
+    @Deprecated
+    public List<Map<String, Object>> executeDecisionByKeyParentDeploymentIdAndTenantId(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId) {
+        return commandExecutor.execute(new ExecuteDecisionCmd(decisionKey, parentDeploymentId, inputVariables, tenantId));
+    }
+    
+    @Override
+    @Deprecated
+    public Map<String, Object> executeDecisionByKeyParentDeploymentIdAndTenantIdSingleResult(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId) {
+        return commandExecutor.execute(new ExecuteDecisionSingleResultCmd(decisionKey, parentDeploymentId, inputVariables, tenantId));
+    }
+    
+    @Override
+    @Deprecated
+    public DecisionExecutionAuditContainer executeDecisionByKeyParentDeploymentIdAndTenantIdWithAuditTrail(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId) {
+        return commandExecutor.execute(new ExecuteDecisionWithAuditTrailCmd(decisionKey, parentDeploymentId, inputVariables, tenantId));
+    }
+
+    public List<Map<String, Object>> executeDecision(ExecuteDecisionBuilderImpl executeDecisionBuilder) {
+        return commandExecutor.execute(new ExecuteDecisionCmd(executeDecisionBuilder));
+    }
+    
+    public Map<String, Object> executeDecisionWithSingleResult(ExecuteDecisionBuilderImpl executeDecisionBuilder) {
+        return commandExecutor.execute(new ExecuteDecisionSingleResultCmd(executeDecisionBuilder));
+    }
+    
+    public DecisionExecutionAuditContainer executeDecisionWithAuditTrail(ExecuteDecisionBuilderImpl executeDecisionBuilder) {
+        return commandExecutor.execute(new ExecuteDecisionWithAuditTrailCmd(executeDecisionBuilder));
     }
 }

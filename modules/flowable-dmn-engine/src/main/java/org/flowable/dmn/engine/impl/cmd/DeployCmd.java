@@ -19,14 +19,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.api.repository.EngineResource;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.dmn.api.DmnDeployment;
 import org.flowable.dmn.engine.DmnEngineConfiguration;
 import org.flowable.dmn.engine.impl.DeploymentSettings;
-import org.flowable.dmn.engine.impl.interceptor.Command;
-import org.flowable.dmn.engine.impl.interceptor.CommandContext;
+import org.flowable.dmn.engine.impl.DmnDeploymentQueryImpl;
 import org.flowable.dmn.engine.impl.persistence.entity.DmnDeploymentEntity;
-import org.flowable.dmn.engine.impl.persistence.entity.ResourceEntity;
+import org.flowable.dmn.engine.impl.persistence.entity.DmnResourceEntity;
 import org.flowable.dmn.engine.impl.repository.DmnDeploymentBuilderImpl;
+import org.flowable.dmn.engine.impl.util.CommandContextUtil;
 
 /**
  * @author Tijs Rademakers
@@ -41,22 +44,23 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
         this.deploymentBuilder = deploymentBuilder;
     }
 
+    @Override
     public DmnDeployment execute(CommandContext commandContext) {
 
         DmnDeploymentEntity deployment = deploymentBuilder.getDeployment();
 
-        deployment.setDeploymentTime(commandContext.getDmnEngineConfiguration().getClock().getCurrentTime());
+        deployment.setDeploymentTime(CommandContextUtil.getDmnEngineConfiguration().getClock().getCurrentTime());
 
         if (deploymentBuilder.isDuplicateFilterEnabled()) {
 
-            List<DmnDeployment> existingDeployments = new ArrayList<DmnDeployment>();
+            List<DmnDeployment> existingDeployments = new ArrayList<>();
             if (deployment.getTenantId() == null || DmnEngineConfiguration.NO_TENANT_ID.equals(deployment.getTenantId())) {
-                DmnDeploymentEntity existingDeployment = commandContext.getDeploymentEntityManager().findLatestDeploymentByName(deployment.getName());
-                if (existingDeployment != null) {
-                    existingDeployments.add(existingDeployment);
+                List<DmnDeployment> deploymentEntities = new DmnDeploymentQueryImpl(CommandContextUtil.getDmnEngineConfiguration().getCommandExecutor()).deploymentName(deployment.getName()).listPage(0, 1);
+                if (!deploymentEntities.isEmpty()) {
+                    existingDeployments.add(deploymentEntities.get(0));
                 }
             } else {
-                List<DmnDeployment> deploymentList = commandContext.getDmnEngineConfiguration().getDmnRepositoryService().createDeploymentQuery()
+                List<DmnDeployment> deploymentList = CommandContextUtil.getDmnEngineConfiguration().getDmnRepositoryService().createDeploymentQuery()
                         .deploymentName(deployment.getName())
                         .deploymentTenantId(deployment.getTenantId())
                         .orderByDeploymentId()
@@ -72,9 +76,9 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
             if (!existingDeployments.isEmpty()) {
                 existingDeployment = (DmnDeploymentEntity) existingDeployments.get(0);
 
-                Map<String, ResourceEntity> resourceMap = new HashMap<String, ResourceEntity>();
-                List<ResourceEntity> resourceList = commandContext.getResourceEntityManager().findResourcesByDeploymentId(existingDeployment.getId());
-                for (ResourceEntity resourceEntity : resourceList) {
+                Map<String, EngineResource> resourceMap = new HashMap<>();
+                List<DmnResourceEntity> resourceList = CommandContextUtil.getResourceEntityManager().findResourcesByDeploymentId(existingDeployment.getId());
+                for (DmnResourceEntity resourceEntity : resourceList) {
                     resourceMap.put(resourceEntity.getName(), resourceEntity);
                 }
                 existingDeployment.setResources(resourceMap);
@@ -88,14 +92,14 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
         deployment.setNew(true);
 
         // Save the data
-        commandContext.getDeploymentEntityManager().insert(deployment);
+        CommandContextUtil.getDeploymentEntityManager(commandContext).insert(deployment);
 
         // Deployment settings
-        Map<String, Object> deploymentSettings = new HashMap<String, Object>();
+        Map<String, Object> deploymentSettings = new HashMap<>();
         deploymentSettings.put(DeploymentSettings.IS_DMN_XSD_VALIDATION_ENABLED, deploymentBuilder.isDmnXsdValidationEnabled());
 
         // Actually deploy
-        commandContext.getDmnEngineConfiguration().getDeploymentManager().deploy(deployment, deploymentSettings);
+        CommandContextUtil.getDmnEngineConfiguration().getDeploymentManager().deploy(deployment, deploymentSettings);
 
         return deployment;
     }
@@ -106,16 +110,16 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
             return true;
         }
 
-        Map<String, ResourceEntity> resources = deployment.getResources();
-        Map<String, ResourceEntity> savedResources = saved.getResources();
+        Map<String, EngineResource> resources = deployment.getResources();
+        Map<String, EngineResource> savedResources = saved.getResources();
 
         for (String resourceName : resources.keySet()) {
-            ResourceEntity savedResource = savedResources.get(resourceName);
+            EngineResource savedResource = savedResources.get(resourceName);
 
             if (savedResource == null)
                 return true;
 
-            ResourceEntity resource = resources.get(resourceName);
+            EngineResource resource = resources.get(resourceName);
 
             byte[] bytes = resource.getBytes();
             byte[] savedBytes = savedResource.getBytes();

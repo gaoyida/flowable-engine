@@ -22,6 +22,7 @@ import java.util.Set;
 import org.flowable.engine.impl.bpmn.deployer.ResourceNameUtil;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tom Baeyens
@@ -33,8 +34,9 @@ public class ProcessDefinitionsTest extends PluggableFlowableTestCase {
 
     private static final String TARGET_NAMESPACE = "targetNamespace='http://activiti.org/BPMN20'";
 
+    @Test
     public void testGetProcessDefinitions() {
-        List<String> deploymentIds = new ArrayList<String>();
+        List<String> deploymentIds = new ArrayList<>();
         deploymentIds.add(deployProcessString(("<definitions " + NAMESPACE + " " + TARGET_NAMESPACE + ">" + "  <process id='IDR' name='Insurance Damage Report 1' />" + "</definitions>")));
         deploymentIds.add(deployProcessString(("<definitions " + NAMESPACE + " " + TARGET_NAMESPACE + ">" + "  <process id='IDR' name='Insurance Damage Report 2' />" + "</definitions>")));
         deploymentIds.add(deployProcessString(("<definitions " + NAMESPACE + " " + TARGET_NAMESPACE + ">" + "  <process id='IDR' name='Insurance Damage Report 3' />" + "</definitions>")));
@@ -77,7 +79,7 @@ public class ProcessDefinitionsTest extends PluggableFlowableTestCase {
         assertTrue(processDefinition.getId().startsWith("IDR:1"));
         assertEquals(1, processDefinition.getVersion());
 
-        Set<String> queryDeploymentIds = new HashSet<String>();
+        Set<String> queryDeploymentIds = new HashSet<>();
         queryDeploymentIds.add(processDefinitions.get(0).getDeploymentId());
         queryDeploymentIds.add(processDefinitions.get(1).getDeploymentId());
         List<ProcessDefinition> queryProcessDefinitions = repositoryService.createProcessDefinitionQuery().deploymentIds(queryDeploymentIds).orderByProcessDefinitionKey().asc()
@@ -92,7 +94,7 @@ public class ProcessDefinitionsTest extends PluggableFlowableTestCase {
         assertEquals("EN", processDefinition.getKey());
         assertEquals("Expense Note 1", processDefinition.getName());
 
-        queryDeploymentIds = new HashSet<String>();
+        queryDeploymentIds = new HashSet<>();
         queryDeploymentIds.add(processDefinitions.get(0).getDeploymentId());
         queryDeploymentIds.add(processDefinitions.get(3).getDeploymentId());
         queryDeploymentIds.add(processDefinitions.get(4).getDeploymentId());
@@ -114,8 +116,9 @@ public class ProcessDefinitionsTest extends PluggableFlowableTestCase {
         deleteDeployments(deploymentIds);
     }
 
+    @Test
     public void testDeployIdenticalProcessDefinitions() {
-        List<String> deploymentIds = new ArrayList<String>();
+        List<String> deploymentIds = new ArrayList<>();
         deploymentIds.add(deployProcessString(("<definitions " + NAMESPACE + " " + TARGET_NAMESPACE + ">" + "  <process id='IDR' name='Insurance Damage Report' />" + "</definitions>")));
         deploymentIds.add(deployProcessString(("<definitions " + NAMESPACE + " " + TARGET_NAMESPACE + ">" + "  <process id='IDR' name='Insurance Damage Report' />" + "</definitions>")));
 
@@ -139,6 +142,7 @@ public class ProcessDefinitionsTest extends PluggableFlowableTestCase {
         deleteDeployments(deploymentIds);
     }
 
+    @Test
     public void testProcessDefinitionDescription() {
         String deploymentId = deployProcessString(("<definitions " + NAMESPACE + " " + TARGET_NAMESPACE + ">" + "  <process id='test' name='test'><documentation>This is a test</documentation></process></definitions>"));
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().deploymentId(deploymentId).singleResult();

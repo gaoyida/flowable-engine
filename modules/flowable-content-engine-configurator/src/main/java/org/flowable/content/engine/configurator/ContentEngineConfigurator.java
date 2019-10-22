@@ -12,61 +12,63 @@
  */
 package org.flowable.content.engine.configurator;
 
-import javax.sql.DataSource;
+import java.util.List;
 
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.AbstractEngineConfiguration;
+import org.flowable.common.engine.impl.AbstractEngineConfigurator;
+import org.flowable.common.engine.impl.EngineDeployer;
+import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
+import org.flowable.common.engine.impl.persistence.entity.Entity;
 import org.flowable.content.engine.ContentEngine;
 import org.flowable.content.engine.ContentEngineConfiguration;
 import org.flowable.content.engine.impl.cfg.StandaloneContentEngineConfiguration;
-import org.flowable.engine.cfg.AbstractProcessEngineConfigurator;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.transaction.TransactionContextAwareDataSource;
-import org.flowable.engine.common.impl.transaction.TransactionContextAwareTransactionFactory;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.flowable.content.engine.impl.db.EntityDependencyOrder;
 
 /**
  * @author Tijs Rademakers
  * @author Joram Barrez
  */
-public class ContentEngineConfigurator extends AbstractProcessEngineConfigurator {
+public class ContentEngineConfigurator extends AbstractEngineConfigurator {
 
     protected ContentEngineConfiguration contentEngineConfiguration;
+    
+    @Override
+    public int getPriority() {
+        return EngineConfigurationConstants.PRIORITY_ENGINE_CONTENT;
+    }
+    
+    @Override
+    protected List<EngineDeployer> getCustomDeployers() {
+        return null;
+    }
+    
+    @Override
+    protected String getMybatisCfgPath() {
+        return ContentEngineConfiguration.DEFAULT_MYBATIS_MAPPING_FILE;
+    }
 
     @Override
-    public void configure(ProcessEngineConfigurationImpl processEngineConfiguration) {
+    public void configure(AbstractEngineConfiguration engineConfiguration) {
         if (contentEngineConfiguration == null) {
             contentEngineConfiguration = new StandaloneContentEngineConfiguration();
-
-            if (processEngineConfiguration.getDataSource() != null) {
-                DataSource originalDatasource = processEngineConfiguration.getDataSource();
-                if (processEngineConfiguration.isTransactionsExternallyManaged()) {
-                    contentEngineConfiguration.setDataSource(originalDatasource);
-                } else {
-                    contentEngineConfiguration.setDataSource(new TransactionContextAwareDataSource(originalDatasource));
-                }
-
-            } else {
-                throw new FlowableException("A datasource is required for initializing the Content engine ");
-            }
-
-            contentEngineConfiguration.setDatabaseCatalog(processEngineConfiguration.getDatabaseCatalog());
-            contentEngineConfiguration.setDatabaseSchema(processEngineConfiguration.getDatabaseSchema());
-            contentEngineConfiguration.setDatabaseSchemaUpdate(processEngineConfiguration.getDatabaseSchemaUpdate());
-            contentEngineConfiguration.setDatabaseTablePrefix(processEngineConfiguration.getDatabaseTablePrefix());
-            contentEngineConfiguration.setDatabaseWildcardEscapeCharacter(processEngineConfiguration.getDatabaseWildcardEscapeCharacter());
-
-            if (processEngineConfiguration.isTransactionsExternallyManaged()) {
-                contentEngineConfiguration.setTransactionsExternallyManaged(true);
-            } else {
-                contentEngineConfiguration.setTransactionFactory(
-                        new TransactionContextAwareTransactionFactory<org.flowable.content.engine.impl.cfg.TransactionContext>(
-                                org.flowable.content.engine.impl.cfg.TransactionContext.class));
-            }
-
         }
+        
+        initialiseCommonProperties(engineConfiguration, contentEngineConfiguration);
 
-        ContentEngine contentEngine = initContentEngine();
-        processEngineConfiguration.setContentEngineInitialized(true);
-        processEngineConfiguration.setContentService(contentEngine.getContentService());
+        initContentEngine();
+        
+        initServiceConfigurations(engineConfiguration, contentEngineConfiguration);
+    }
+    
+    @Override
+    protected List<Class<? extends Entity>> getEntityInsertionOrder() {
+        return EntityDependencyOrder.INSERT_ORDER;
+    }
+    
+    @Override
+    protected List<Class<? extends Entity>> getEntityDeletionOrder() {
+        return EntityDependencyOrder.DELETE_ORDER;
     }
 
     protected synchronized ContentEngine initContentEngine() {

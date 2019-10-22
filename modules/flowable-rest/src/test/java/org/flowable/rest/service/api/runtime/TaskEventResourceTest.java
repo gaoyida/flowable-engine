@@ -13,6 +13,10 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Calendar;
 import java.util.List;
 
@@ -21,9 +25,10 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.flowable.engine.task.Event;
-import org.flowable.engine.task.Task;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.flowable.task.api.Task;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -35,6 +40,7 @@ public class TaskEventResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting all events for a task. GET runtime/tasks/{taskId}/events
      */
+    @Test
     public void testGetEvents() throws Exception {
         try {
             Task task = taskService.newTask();
@@ -64,6 +70,7 @@ public class TaskEventResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting a single event for a task. GET runtime/tasks/{taskId}/events/{eventId}
      */
+    @Test
     public void testGetEvent() throws Exception {
         try {
             Calendar now = Calendar.getInstance();
@@ -100,6 +107,7 @@ public class TaskEventResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting an unexisting event for task and event for unexisting task. GET runtime/tasks/{taskId}/events/{eventId}
      */
+    @Test
     public void testGetUnexistingEventAndTask() throws Exception {
         try {
             Task task = taskService.newTask();
@@ -124,6 +132,7 @@ public class TaskEventResourceTest extends BaseSpringRestTestCase {
     /**
      * Test delete event for a task. DELETE runtime/tasks/{taskId}/events/{eventId}
      */
+    @Test
     public void testDeleteEvent() throws Exception {
         try {
             Task task = taskService.newTask();

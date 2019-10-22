@@ -15,10 +15,12 @@ package org.flowable.dmn.engine.impl;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.query.AbstractNativeQuery;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.dmn.api.DmnDeployment;
 import org.flowable.dmn.api.NativeDmnDeploymentQuery;
-import org.flowable.dmn.engine.impl.interceptor.CommandContext;
-import org.flowable.dmn.engine.impl.interceptor.CommandExecutor;
+import org.flowable.dmn.engine.impl.util.CommandContextUtil;
 
 public class NativeDmnDeploymentQueryImpl extends AbstractNativeQuery<NativeDmnDeploymentQuery, DmnDeployment> implements NativeDmnDeploymentQuery {
 
@@ -34,12 +36,14 @@ public class NativeDmnDeploymentQueryImpl extends AbstractNativeQuery<NativeDmnD
 
     // results ////////////////////////////////////////////////////////////////
 
-    public List<DmnDeployment> executeList(CommandContext commandContext, Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return commandContext.getDeploymentEntityManager().findDeploymentsByNativeQuery(parameterMap, firstResult, maxResults);
+    @Override
+    public List<DmnDeployment> executeList(CommandContext commandContext, Map<String, Object> parameterMap) {
+        return CommandContextUtil.getDeploymentEntityManager(commandContext).findDeploymentsByNativeQuery(parameterMap);
     }
 
+    @Override
     public long executeCount(CommandContext commandContext, Map<String, Object> parameterMap) {
-        return commandContext.getDeploymentEntityManager().findDeploymentCountByNativeQuery(parameterMap);
+        return CommandContextUtil.getDeploymentEntityManager(commandContext).findDeploymentCountByNativeQuery(parameterMap);
     }
 
 }

@@ -19,7 +19,9 @@ import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CancelEventDefinition;
 import org.flowable.bpmn.model.CompensateEventDefinition;
+import org.flowable.bpmn.model.ConditionalEventDefinition;
 import org.flowable.bpmn.model.ErrorEventDefinition;
+import org.flowable.bpmn.model.EscalationEventDefinition;
 import org.flowable.bpmn.model.EventDefinition;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.MessageEventDefinition;
@@ -42,11 +44,11 @@ public class BoundaryEventValidator extends ProcessLevelValidator {
 
         // Only one boundary event of type 'cancel' can be attached to the same
         // element, so we store the count temporarily here
-        HashMap<String, Integer> cancelBoundaryEventsCounts = new HashMap<String, Integer>();
+        HashMap<String, Integer> cancelBoundaryEventsCounts = new HashMap<>();
 
         // Only one boundary event of type 'compensate' can be attached to the
         // same element, so we store the count temporarily here
-        HashMap<String, Integer> compensateBoundaryEventsCounts = new HashMap<String, Integer>();
+        HashMap<String, Integer> compensateBoundaryEventsCounts = new HashMap<>();
 
         for (int i = 0; i < boundaryEvents.size(); i++) {
 
@@ -56,7 +58,9 @@ public class BoundaryEventValidator extends ProcessLevelValidator {
 
                 EventDefinition eventDefinition = boundaryEvent.getEventDefinitions().get(0);
                 if (!(eventDefinition instanceof TimerEventDefinition) && !(eventDefinition instanceof ErrorEventDefinition) && !(eventDefinition instanceof SignalEventDefinition)
-                        && !(eventDefinition instanceof CancelEventDefinition) && !(eventDefinition instanceof MessageEventDefinition) && !(eventDefinition instanceof CompensateEventDefinition)) {
+                        && !(eventDefinition instanceof CancelEventDefinition) && !(eventDefinition instanceof MessageEventDefinition) 
+                        && !(eventDefinition instanceof ConditionalEventDefinition) && !(eventDefinition instanceof CompensateEventDefinition) 
+                        && !(eventDefinition instanceof EscalationEventDefinition)) {
 
                     addError(errors, Problems.BOUNDARY_EVENT_INVALID_EVENT_DEFINITION, process, boundaryEvent, "Invalid or unsupported event definition");
 
@@ -69,15 +73,15 @@ public class BoundaryEventValidator extends ProcessLevelValidator {
                         addError(errors, Problems.BOUNDARY_EVENT_CANCEL_ONLY_ON_TRANSACTION, process, boundaryEvent, "boundary event with cancelEventDefinition only supported on transaction subprocesses");
                     } else {
                         if (!cancelBoundaryEventsCounts.containsKey(attachedToFlowElement.getId())) {
-                            cancelBoundaryEventsCounts.put(attachedToFlowElement.getId(), new Integer(0));
+                            cancelBoundaryEventsCounts.put(attachedToFlowElement.getId(), Integer.valueOf(0));
                         }
-                        cancelBoundaryEventsCounts.put(attachedToFlowElement.getId(), new Integer(cancelBoundaryEventsCounts.get(attachedToFlowElement.getId()) + 1));
+                        cancelBoundaryEventsCounts.put(attachedToFlowElement.getId(), Integer.valueOf(cancelBoundaryEventsCounts.get(attachedToFlowElement.getId()) + 1));
                     }
 
                 } else if (eventDefinition instanceof CompensateEventDefinition) {
 
                     if (!compensateBoundaryEventsCounts.containsKey(boundaryEvent.getAttachedToRefId())) {
-                        compensateBoundaryEventsCounts.put(boundaryEvent.getAttachedToRefId(), new Integer(0));
+                        compensateBoundaryEventsCounts.put(boundaryEvent.getAttachedToRefId(), Integer.valueOf(0));
                     }
                     compensateBoundaryEventsCounts.put(boundaryEvent.getAttachedToRefId(), compensateBoundaryEventsCounts.get(boundaryEvent.getAttachedToRefId()) + 1);
 

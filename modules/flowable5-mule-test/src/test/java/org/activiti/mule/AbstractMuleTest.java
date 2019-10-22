@@ -1,16 +1,29 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.activiti.mule;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.db.SchemaManager;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandConfig;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.engine.ProcessEngine;
-import org.flowable.engine.common.impl.interceptor.CommandConfig;
 import org.flowable.engine.impl.ProcessEngineImpl;
-import org.flowable.engine.impl.db.DbSqlSession;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.interceptor.CommandExecutor;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.junit.Assert;
 import org.mule.tck.junit4.FunctionalTestCase;
 import org.slf4j.Logger;
@@ -18,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AbstractMuleTest extends FunctionalTestCase {
 
-    protected static Logger log = LoggerFactory.getLogger(AbstractMuleTest.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractMuleTest.class);
 
     protected static final String EMPTY_LINE = "                                                                                           ";
     private static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = Arrays.asList("ACT_GE_PROPERTY", "ACT_ID_PROPERTY");
@@ -28,7 +41,7 @@ public abstract class AbstractMuleTest extends FunctionalTestCase {
      * the DB is not clean. If the DB is not clean, it is cleaned by performing a create a drop.
      */
     protected void assertAndEnsureCleanDb(ProcessEngine processEngine) throws Exception {
-        log.debug("verifying that db is clean after test");
+        LOGGER.debug("verifying that db is clean after test");
         Map<String, Long> tableCounts = processEngine.getManagementService().getTableCount();
         StringBuilder outputMessage = new StringBuilder();
         for (String tableName : tableCounts.keySet()) {
@@ -42,18 +55,18 @@ public abstract class AbstractMuleTest extends FunctionalTestCase {
         }
         if (outputMessage.length() > 0) {
             outputMessage.insert(0, "DB NOT CLEAN: \n");
-            log.error(EMPTY_LINE);
-            log.error(outputMessage.toString());
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error(outputMessage.toString());
 
-            log.info("dropping and recreating db");
+            LOGGER.info("dropping and recreating db");
 
             CommandExecutor commandExecutor = ((ProcessEngineImpl) processEngine).getProcessEngineConfiguration().getCommandExecutor();
             CommandConfig config = new CommandConfig().transactionNotSupported();
             commandExecutor.execute(config, new Command<Object>() {
                 public Object execute(CommandContext commandContext) {
-                    DbSqlSession session = commandContext.getSession(DbSqlSession.class);
-                    session.dbSchemaDrop();
-                    session.dbSchemaCreate();
+                    SchemaManager schemaManager = CommandContextUtil.getProcessEngineConfiguration(commandContext).getSchemaManager();
+                    schemaManager.schemaDrop();
+                    schemaManager.schemaCreate();
                     return null;
                 }
             });
@@ -61,7 +74,7 @@ public abstract class AbstractMuleTest extends FunctionalTestCase {
             Assert.fail(outputMessage.toString());
 
         } else {
-            log.info("database was clean");
+            LOGGER.info("database was clean");
         }
     }
 

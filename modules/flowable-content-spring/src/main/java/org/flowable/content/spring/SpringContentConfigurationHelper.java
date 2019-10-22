@@ -16,8 +16,8 @@ package org.flowable.content.spring;
 import java.net.URL;
 import java.util.Map;
 
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.content.engine.ContentEngine;
-import org.flowable.engine.common.api.FlowableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -29,20 +29,20 @@ import org.springframework.core.io.UrlResource;
  */
 public class SpringContentConfigurationHelper {
 
-    private static Logger log = LoggerFactory.getLogger(SpringContentConfigurationHelper.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpringContentConfigurationHelper.class);
 
     public static ContentEngine buildContentEngine(URL resource) {
-        log.debug("==== BUILDING SPRING APPLICATION CONTEXT AND CONTENT ENGINE =========================================");
+        LOGGER.debug("==== BUILDING SPRING APPLICATION CONTEXT AND CONTENT ENGINE =========================================");
 
         ApplicationContext applicationContext = new GenericXmlApplicationContext(new UrlResource(resource));
         Map<String, ContentEngine> beansOfType = applicationContext.getBeansOfType(ContentEngine.class);
-        if ((beansOfType == null) || (beansOfType.isEmpty())) {
+        if ((beansOfType == null) || beansOfType.isEmpty()) {
             throw new FlowableException("no " + ContentEngine.class.getName() + " defined in the application context " + resource.toString());
         }
 
         ContentEngine contentEngine = beansOfType.values().iterator().next();
 
-        log.debug("==== SPRING CONTENT ENGINE CREATED ==================================================================");
+        LOGGER.debug("==== SPRING CONTENT ENGINE CREATED ==================================================================");
         return contentEngine;
     }
 

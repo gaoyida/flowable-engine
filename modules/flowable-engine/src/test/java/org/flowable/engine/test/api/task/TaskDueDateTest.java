@@ -15,29 +15,33 @@ package org.flowable.engine.test.api.task;
 import java.util.Date;
 import java.util.List;
 
-import org.flowable.engine.history.HistoricTaskInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.task.Task;
+import org.flowable.task.api.history.HistoricTaskInstance;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 /**
  * @author Joram Barrez
  */
 public class TaskDueDateTest extends PluggableFlowableTestCase {
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
 
-        for (Task task : taskService.createTaskQuery().list()) {
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
             taskService.deleteTask(task.getId(), true);
         }
 
-        super.tearDown();
     }
 
     /**
      * See https://activiti.atlassian.net/browse/ACT-2089
      */
+    @Test
+    @DisabledIfSystemProperty(named = "database", matches = "cockroachdb")
     public void testDueDateSortingWithNulls() {
         Date now = processEngineConfiguration.getClock().getCurrentTime();
 
@@ -54,7 +58,7 @@ public class TaskDueDateTest extends PluggableFlowableTestCase {
         assertEquals(6, taskService.createTaskQuery().count());
 
         // Sorting on due date asc should put the nulls at the end
-        List<Task> tasks = taskService.createTaskQuery().orderByDueDateNullsLast().asc().list();
+        List<org.flowable.task.api.Task> tasks = taskService.createTaskQuery().orderByDueDateNullsLast().asc().list();
 
         for (int i = 0; i < 4; i++) {
             assertNotNull(tasks.get(i).getDueDate());
@@ -101,7 +105,7 @@ public class TaskDueDateTest extends PluggableFlowableTestCase {
         assertEquals("task1", tasks.get(4).getName());
         assertEquals("task3", tasks.get(5).getName());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             // And now the same, but for history!
             List<HistoricTaskInstance> historicTasks = historyService.createHistoricTaskInstanceQuery().orderByDueDateNullsLast().asc().list();
 
@@ -152,8 +156,8 @@ public class TaskDueDateTest extends PluggableFlowableTestCase {
         }
     }
 
-    private Task createTask(String name, Date dueDate) {
-        Task task = taskService.newTask();
+    private org.flowable.task.api.Task createTask(String name, Date dueDate) {
+        org.flowable.task.api.Task task = taskService.newTask();
         task.setName(name);
         task.setDueDate(dueDate);
         taskService.saveTask(task);

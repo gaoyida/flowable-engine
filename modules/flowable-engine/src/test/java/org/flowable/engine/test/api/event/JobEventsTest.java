@@ -12,24 +12,27 @@
  */
 package org.flowable.engine.test.api.event;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEntityEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.common.impl.util.DefaultClockImpl;
-import org.flowable.engine.common.runtime.Clock;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.common.engine.impl.runtime.Clock;
+import org.flowable.common.engine.impl.util.DefaultClockImpl;
 import org.flowable.engine.delegate.event.FlowableActivityEvent;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
-import org.flowable.engine.impl.delegate.event.FlowableEngineEvent;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.flowable.job.api.Job;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Test case for all {@link FlowableEvent}s related to jobs.
@@ -39,10 +42,12 @@ import org.flowable.engine.test.Deployment;
 public class JobEventsTest extends PluggableFlowableTestCase {
 
     private TestFlowableEntityEventListener listener;
+    private SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     /**
      * Test create, update and delete events of jobs entities.
      */
+    @Test
     @Deployment
     public void testJobEntityEvents() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("testJobEvents");
@@ -117,6 +122,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
     /**
      * Test job canceled and timer scheduled events for reschedule.
      */
+    @Test
     @Deployment
     public void testJobEntityEventsForRescheduleTimer() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("testJobEventsForReschedule");
@@ -171,7 +177,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
         Job newTimerJob = (Job) ((FlowableEntityEvent) event).getEntity();
         checkEventContext(event, rescheduledJob);
         assertEquals(rescheduledJob.getId(), newTimerJob.getId());
-        assertEquals(rescheduledJob.getDuedate(), newTimerJob.getDuedate());
+        assertEquals(simpleDateFormat.format(rescheduledJob.getDuedate()), simpleDateFormat.format(newTimerJob.getDuedate()));
 
         event = (FlowableEngineEvent) listener.getEventsReceived().get(4);
         assertEquals(FlowableEngineEventType.TIMER_SCHEDULED, event.getType());
@@ -219,6 +225,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
     /**
      * Timer repetition
      */
+    @Test
     @Deployment
     public void testRepetitionJobEntityEvents() throws Exception {
         Clock previousClock = processEngineConfiguration.getClock();
@@ -300,6 +307,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
         processEngineConfiguration.setClock(previousClock);
     }
 
+    @Test
     @Deployment
     public void testJobCanceledEventOnBoundaryEvent() throws Exception {
         Clock testClock = new DefaultClockImpl();
@@ -310,13 +318,14 @@ public class JobEventsTest extends PluggableFlowableTestCase {
         runtimeService.startProcessInstanceByKey("testTimerCancelledEvent");
         listener.clearEventsReceived();
 
-        Task task = taskService.createTaskQuery().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().singleResult();
 
         taskService.complete(task.getId());
 
         checkEventCount(1, FlowableEngineEventType.JOB_CANCELED);
     }
 
+    @Test
     @Deployment(resources = "org/flowable/engine/test/api/event/JobEventsTest.testJobCanceledEventOnBoundaryEvent.bpmn20.xml")
     public void testJobCanceledEventByManagementService() throws Exception {
         // GIVEN
@@ -333,6 +342,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
         checkEventCount(1, FlowableEngineEventType.JOB_CANCELED);
     }
 
+    @Test
     public void testJobCanceledAndTimerStartEventOnProcessRedeploy() throws Exception {
         // GIVEN deploy process definition
         String deployment1 = repositoryService.createDeployment().addClasspathResource("org/flowable/engine/test/api/event/JobEventsTest.testTimerFiredForTimerStart.bpmn20.xml").deploy().getId();
@@ -386,6 +396,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
     /**
      * /** Test TIMER_FIRED event for timer start bpmn event.
      */
+    @Test
     @Deployment
     public void testTimerFiredForTimerStart() throws Exception {
         // there should be one job after process definition deployment
@@ -416,6 +427,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
     /**
      * Test TIMER_FIRED event for intermediate timer bpmn event.
      */
+    @Test
     @Deployment
     public void testTimerFiredForIntermediateTimer() throws Exception {
         runtimeService.startProcessInstanceByKey("testTimerFiredForIntermediateTimer");
@@ -434,6 +446,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
     /**
      * Test create, update and delete events of jobs entities.
      */
+    @Test
     @Deployment
     public void testJobEntityEventsException() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("testJobEvents");
@@ -461,6 +474,8 @@ public class JobEventsTest extends PluggableFlowableTestCase {
 
         theJob = managementService.createDeadLetterJobQuery().processInstanceId(processInstance.getId()).singleResult();
         assertNotNull(theJob);
+        assertEquals("timer", theJob.getElementId());
+        assertEquals("Timer", theJob.getElementName());
 
         // Check delete-event has been dispatched
         assertEquals(8, listener.getEventsReceived().size());
@@ -505,6 +520,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
         checkEventContext(event, theJob);
     }
 
+    @Test
     @Deployment
     public void testTerminateEndEvent() throws Exception {
         Clock previousClock = processEngineConfiguration.getClock();
@@ -519,7 +535,7 @@ public class JobEventsTest extends PluggableFlowableTestCase {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("testTerminateEndEvent");
         listener.clearEventsReceived();
 
-        Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
         assertEquals("Inside Task", task.getName());
 
         // Force timer to trigger so that subprocess will flow to terminate end event
@@ -568,16 +584,14 @@ public class JobEventsTest extends PluggableFlowableTestCase {
         assertEquals(entity.getId(), ((Job) entityEvent.getEntity()).getId());
     }
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
         listener = new TestFlowableEntityEventListener(Job.class);
         processEngineConfiguration.getEventDispatcher().addEventListener(listener);
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
 
         if (listener != null) {
             processEngineConfiguration.getEventDispatcher().removeEventListener(listener);

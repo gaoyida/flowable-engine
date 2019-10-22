@@ -1,3 +1,15 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.bpmn.model;
 
 import java.util.ArrayList;
@@ -13,7 +25,7 @@ public class ExtensionElement extends BaseElement {
     protected String namespacePrefix;
     protected String namespace;
     protected String elementText;
-    protected Map<String, List<ExtensionElement>> childElements = new LinkedHashMap<String, List<ExtensionElement>>();
+    protected Map<String, List<ExtensionElement>> childElements = new LinkedHashMap<>();
 
     public String getElementText() {
         return elementText;
@@ -55,7 +67,7 @@ public class ExtensionElement extends BaseElement {
         if (childElement != null && StringUtils.isNotEmpty(childElement.getName())) {
             List<ExtensionElement> elementList = null;
             if (!this.childElements.containsKey(childElement.getName())) {
-                elementList = new ArrayList<ExtensionElement>();
+                elementList = new ArrayList<>();
                 this.childElements.put(childElement.getName(), elementList);
             }
             this.childElements.get(childElement.getName()).add(childElement);
@@ -66,6 +78,7 @@ public class ExtensionElement extends BaseElement {
         this.childElements = childElements;
     }
 
+    @Override
     public ExtensionElement clone() {
         ExtensionElement clone = new ExtensionElement();
         clone.setValues(this);
@@ -79,12 +92,12 @@ public class ExtensionElement extends BaseElement {
         setElementText(otherElement.getElementText());
         setAttributes(otherElement.getAttributes());
 
-        childElements = new LinkedHashMap<String, List<ExtensionElement>>();
+        childElements = new LinkedHashMap<>();
         if (otherElement.getChildElements() != null && !otherElement.getChildElements().isEmpty()) {
             for (String key : otherElement.getChildElements().keySet()) {
                 List<ExtensionElement> otherElementList = otherElement.getChildElements().get(key);
                 if (otherElementList != null && !otherElementList.isEmpty()) {
-                    List<ExtensionElement> elementList = new ArrayList<ExtensionElement>();
+                    List<ExtensionElement> elementList = new ArrayList<>();
                     for (ExtensionElement extensionElement : otherElementList) {
                         elementList.add(extensionElement.clone());
                     }

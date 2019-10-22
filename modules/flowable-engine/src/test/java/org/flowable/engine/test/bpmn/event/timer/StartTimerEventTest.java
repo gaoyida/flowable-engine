@@ -14,32 +14,40 @@ package org.flowable.engine.test.bpmn.event.timer;
 
 import java.io.ByteArrayInputStream;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import org.flowable.engine.common.impl.util.IoUtil;
-import org.flowable.engine.impl.cmd.CancelJobsCmd;
-import org.flowable.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.impl.util.IoUtil;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.runtime.ProcessInstanceQuery;
-import org.flowable.engine.runtime.TimerJobQuery;
 import org.flowable.engine.test.Deployment;
+import org.flowable.job.api.Job;
+import org.flowable.job.api.TimerJobQuery;
+import org.flowable.job.service.impl.cmd.CancelJobsCmd;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
  */
 public class StartTimerEventTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testDurationStartTimerEvent() throws Exception {
 
         // Set the clock fixed
-        Date startTime = new Date();
+        // We need to make sure the time ends on .000, .003 or .007 due to SQL Server rounding to that
+        Date startTime = Date.from(Instant.now().truncatedTo(ChronoUnit.SECONDS).plusMillis(373));
 
         // After process start, there should be timer created
         TimerJobQuery jobQuery = managementService.createTimerJobQuery();
@@ -47,7 +55,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
 
         // After setting the clock to time '50 minutes and 5 seconds', the second timer should fire
         processEngineConfiguration.getClock().setCurrentTime(new Date(startTime.getTime() + ((50 * 60 * 1000) + 5000)));
-        waitForJobExecutorToProcessAllJobs(5000L, 200L);
+        waitForJobExecutorToProcessAllJobs(7000L, 200L);
 
         List<ProcessInstance> pi = runtimeService.createProcessInstanceQuery().processDefinitionKey("startTimerEventExample").list();
         assertEquals(1, pi.size());
@@ -56,6 +64,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     @Deployment
     public void testFixedDateStartTimerEvent() throws Exception {
         // After process start, there should be timer created
@@ -63,7 +72,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         assertEquals(1, jobQuery.count());
 
         processEngineConfiguration.getClock().setCurrentTime(new SimpleDateFormat("dd/MM/yyyy hh:mm:ss").parse("15/11/2036 11:12:30"));
-        waitForJobExecutorToProcessAllJobs(5000L, 200L);
+        waitForJobExecutorToProcessAllJobs(7000L, 200L);
 
         List<ProcessInstance> pi = runtimeService.createProcessInstanceQuery().processDefinitionKey("startTimerEventExample").list();
         assertEquals(1, pi.size());
@@ -73,9 +82,11 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
 
     // FIXME: This test likes to run in an endless loop when invoking the
     // waitForJobExecutorOnCondition method
+    @Test
     @Deployment
     public void testCycleDateStartTimerEvent() throws Exception {
-        processEngineConfiguration.getClock().setCurrentTime(new Date());
+        // We need to make sure the time ends on .000, .003 or .007 due to SQL Server rounding to that
+        processEngineConfiguration.getClock().setCurrentTime(Date.from(Instant.now().truncatedTo(ChronoUnit.SECONDS).plusMillis(730)));
 
         // After process start, there should be timer created
         TimerJobQuery jobQuery = managementService.createTimerJobQuery();
@@ -85,6 +96,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
 
         moveByMinutes(5);
         waitForJobExecutorOnCondition(10000, 500, new Callable<Boolean>() {
+            @Override
             public Boolean call() throws Exception {
                 return 1 == piq.count();
             }
@@ -94,6 +106,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
 
         moveByMinutes(5);
         waitForJobExecutorOnCondition(10000, 500, new Callable<Boolean>() {
+            @Override
             public Boolean call() throws Exception {
                 return 2 == piq.count();
             }
@@ -108,9 +121,11 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         processEngineConfiguration.getClock().setCurrentTime(new Date(processEngineConfiguration.getClock().getCurrentTime().getTime() + ((minutes * 60 * 1000) + 5000)));
     }
 
+    @Test
     @Deployment
     public void testCycleWithLimitStartTimerEvent() throws Exception {
-        processEngineConfiguration.getClock().setCurrentTime(new Date());
+        // We need to make sure the time ends on .000, .003 or .007 due to SQL Server rounding to that
+        processEngineConfiguration.getClock().setCurrentTime(Date.from(Instant.now().truncatedTo(ChronoUnit.SECONDS).plusMillis(620)));
 
         // After process start, there should be timer created
         TimerJobQuery jobQuery = managementService.createTimerJobQuery();
@@ -129,6 +144,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         assertEquals(0, jobQuery.count());
     }
 
+    @Test
     @Deployment
     public void testExpressionStartTimerEvent() throws Exception {
         // ACT-1415: fixed start-date is an expression
@@ -136,7 +152,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         assertEquals(1, jobQuery.count());
 
         processEngineConfiguration.getClock().setCurrentTime(new SimpleDateFormat("dd/MM/yyyy hh:mm:ss").parse("15/11/2036 11:12:30"));
-        waitForJobExecutorToProcessAllJobs(5000L, 200L);
+        waitForJobExecutorToProcessAllJobs(7000L, 200L);
 
         List<ProcessInstance> pi = runtimeService.createProcessInstanceQuery().processDefinitionKey("startTimerEventExample").list();
         assertEquals(1, pi.size());
@@ -144,9 +160,11 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         assertEquals(0, jobQuery.count());
     }
 
+    @Test
     @Deployment
     public void testVersionUpgradeShouldCancelJobs() throws Exception {
-        processEngineConfiguration.getClock().setCurrentTime(new Date());
+        // We need to make sure the time ends on .000, .003 or .007 due to SQL Server rounding to that
+        processEngineConfiguration.getClock().setCurrentTime(Date.from(Instant.now().truncatedTo(ChronoUnit.SECONDS).plusMillis(293)));
 
         // After process start, there should be timer created
         TimerJobQuery jobQuery = managementService.createTimerJobQuery();
@@ -160,6 +178,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
 
         moveByMinutes(5);
         waitForJobExecutorOnCondition(10000, 500, new Callable<Boolean>() {
+            @Override
             public Boolean call() throws Exception {
                 // we check that correct version was started
                 ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processDefinitionKey("startTimerEventExample").singleResult();
@@ -185,6 +204,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         repositoryService.deleteDeployment(id, true);
     }
 
+    @Test
     @Deployment
     public void testTimerShouldNotBeRecreatedOnDeploymentCacheReboot() {
 
@@ -207,6 +227,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
     }
 
     // Test for ACT-1533
+    @Test
     public void testTimerShouldNotBeRemovedWhenUndeployingOldVersion() throws Exception {
         // Deploy test process
         String processXml = new String(IoUtil.readInputStream(getClass().getResourceAsStream("StartTimerEventTest.testTimerShouldNotBeRemovedWhenUndeployingOldVersion.bpmn20.xml"), ""));
@@ -235,6 +256,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         repositoryService.deleteDeployment(secondDeploymentId, true);
     }
 
+    @Test
     public void testOldJobsDeletedOnRedeploy() {
 
         for (int i = 0; i < 3; i++) {
@@ -259,6 +281,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
 
     }
 
+    @Test
     public void testTimersRecreatedOnDeploymentDelete() {
 
         // v1 has timer
@@ -267,7 +290,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         // v4 has no timer
 
         // Deploy v1
-        String deployment1 = repositoryService.createDeployment()
+        repositoryService.createDeployment()
                 .addClasspathResource("org/flowable/engine/test/bpmn/event/timer/StartTimerEventTest.testTimersRecreatedOnDeploymentDelete_v1.bpmn20.xml")
                 .deploy().getId();
 
@@ -330,6 +353,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
     }
 
     // Same test as above, but now with tenants
+    @Test
     public void testTimersRecreatedOnDeploymentDeleteWithTenantId() {
 
         // Deploy 4 versions without tenantId
@@ -342,7 +366,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
         String testTenant = "Activiti-tenant";
 
         // Deploy v1
-        String deployment1 = repositoryService.createDeployment()
+        repositoryService.createDeployment()
                 .addClasspathResource("org/flowable/engine/test/bpmn/event/timer/StartTimerEventTest.testTimersRecreatedOnDeploymentDelete_v1.bpmn20.xml")
                 .tenantId(testTenant)
                 .deploy().getId();
@@ -409,6 +433,7 @@ public class StartTimerEventTest extends PluggableFlowableTestCase {
     }
 
     // Can't use @Deployment, we need to control the clock very strict to have a good test
+    @Test
     public void testMultipleStartEvents() {
 
         // Human time (GMT): Tue, 10 May 2016 18:50:01 GMT

@@ -16,9 +16,10 @@ package org.flowable.engine.impl.cmd;
 import java.io.InputStream;
 import java.io.Serializable;
 
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
 public class GetDeploymentProcessDiagramCmd implements Command<InputStream>, Serializable {
 
     private static final long serialVersionUID = 1L;
-    private static Logger log = LoggerFactory.getLogger(GetDeploymentProcessDiagramCmd.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GetDeploymentProcessDiagramCmd.class);
 
     protected String processDefinitionId;
 
@@ -42,12 +43,13 @@ public class GetDeploymentProcessDiagramCmd implements Command<InputStream>, Ser
         this.processDefinitionId = processDefinitionId;
     }
 
+    @Override
     public InputStream execute(CommandContext commandContext) {
-        ProcessDefinition processDefinition = commandContext.getProcessEngineConfiguration().getDeploymentManager().findDeployedProcessDefinitionById(processDefinitionId);
+        ProcessDefinition processDefinition = CommandContextUtil.getProcessEngineConfiguration(commandContext).getDeploymentManager().findDeployedProcessDefinitionById(processDefinitionId);
         String deploymentId = processDefinition.getDeploymentId();
         String resourceName = processDefinition.getDiagramResourceName();
         if (resourceName == null) {
-            log.info("Resource name is null! No process diagram stream exists.");
+            LOGGER.info("Resource name is null! No process diagram stream exists.");
             return null;
         } else {
             InputStream processDiagramStream = new GetDeploymentResourceCmd(deploymentId, resourceName).execute(commandContext);

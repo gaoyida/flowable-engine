@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 public class Utils {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
 
     public static String getHostName() {
 
@@ -34,8 +34,7 @@ public class Utils {
         String hostName = null;
         boolean canAccessSystemProps = true;
         try {
-            // we'll do it this way mostly to determine if we should lookup the
-            // hostName
+            // we'll do it this way mostly to determine if we should lookup the hostName
             SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
                 sm.checkPropertiesAccess();
@@ -48,7 +47,7 @@ public class Utils {
             try {
                 hostName = InetAddress.getLocalHost().getHostName();
             } catch (UnknownHostException uhe) {
-                LOG.info("Cannot determine localhost name. Fallback to: " + DEFAULT_HOST, uhe);
+                LOGGER.info("Cannot determine localhost name. Fallback to: " + DEFAULT_HOST, uhe);
                 hostName = DEFAULT_HOST;
             }
         } else {

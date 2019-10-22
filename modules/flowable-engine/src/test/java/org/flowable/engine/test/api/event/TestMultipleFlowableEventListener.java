@@ -12,23 +12,23 @@
  */
 package org.flowable.engine.test.api.event;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEntityEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEventListener;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public class TestMultipleFlowableEventListener implements FlowableEventListener {
+import org.flowable.common.engine.api.delegate.event.FlowableEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.engine.delegate.event.AbstractFlowableEngineEventListener;
+
+public class TestMultipleFlowableEventListener extends AbstractFlowableEngineEventListener {
 
     private List<FlowableEvent> eventsReceived;
     private List<Class<?>> entityClasses;
     private List<Class<?>> eventClasses;
 
     public TestMultipleFlowableEventListener() {
-        eventsReceived = new ArrayList<FlowableEvent>();
+        eventsReceived = new ArrayList<>();
     }
 
     public List<FlowableEvent> getEventsReceived() {

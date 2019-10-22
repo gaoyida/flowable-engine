@@ -16,7 +16,7 @@ package org.flowable.idm.spring;
 import java.net.URL;
 import java.util.Map;
 
-import org.flowable.engine.common.api.FlowableException;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.idm.engine.IdmEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,20 +29,20 @@ import org.springframework.core.io.UrlResource;
  */
 public class SpringIdmConfigurationHelper {
 
-    private static Logger log = LoggerFactory.getLogger(SpringIdmConfigurationHelper.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpringIdmConfigurationHelper.class);
 
     public static IdmEngine buildIdmEngine(URL resource) {
-        log.debug("==== BUILDING SPRING APPLICATION CONTEXT AND IDM ENGINE =========================================");
+        LOGGER.debug("==== BUILDING SPRING APPLICATION CONTEXT AND IDM ENGINE =========================================");
 
         ApplicationContext applicationContext = new GenericXmlApplicationContext(new UrlResource(resource));
         Map<String, IdmEngine> beansOfType = applicationContext.getBeansOfType(IdmEngine.class);
-        if ((beansOfType == null) || (beansOfType.isEmpty())) {
-            throw new FlowableException("no " + IdmEngine.class.getName() + " defined in the application context " + resource.toString());
+        if ((beansOfType == null) || beansOfType.isEmpty()) {
+            throw new FlowableException("no " + IdmEngine.class.getName() + " defined in the application context " + resource);
         }
 
         IdmEngine idmEngine = beansOfType.values().iterator().next();
 
-        log.debug("==== SPRING IDM ENGINE CREATED ==================================================================");
+        LOGGER.debug("==== SPRING IDM ENGINE CREATED ==================================================================");
         return idmEngine;
     }
 

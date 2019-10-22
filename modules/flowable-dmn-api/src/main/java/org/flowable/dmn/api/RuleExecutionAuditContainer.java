@@ -16,18 +16,32 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * @author Yvo Swillens
  */
+@JsonInclude(Include.NON_NULL)
 public class RuleExecutionAuditContainer {
 
     protected Date startTime;
     protected Date endTime;
 
-    protected List<ExpressionExecution> conditionResults = new ArrayList<ExpressionExecution>();
-    protected List<ExpressionExecution> conclusionResults = new ArrayList<ExpressionExecution>();
+    protected int ruleNumber;
+    protected Boolean valid = Boolean.FALSE;
 
-    public RuleExecutionAuditContainer() {
+    @JsonProperty("exception")
+    protected String exceptionMessage;
+
+    protected String validationMessage;
+
+    protected List<ExpressionExecution> conditionResults = new ArrayList<>();
+    protected List<ExpressionExecution> conclusionResults = new ArrayList<>();
+
+    public RuleExecutionAuditContainer(int ruleNumber) {
+        this.ruleNumber = ruleNumber;
         this.startTime = new Date();
     }
 
@@ -59,19 +73,40 @@ public class RuleExecutionAuditContainer {
         this.endTime = endTime;
     }
 
-    public List<ExpressionExecution> getConditionResults() {
-        return conditionResults;
+    public int getRuleNumber() {
+        return ruleNumber;
     }
 
-    public void setConditionResults(List<ExpressionExecution> conditionResults) {
-        this.conditionResults = conditionResults;
+    public Boolean isValid() {
+        return valid;
+    }
+
+    public void setValid() {
+        this.valid = Boolean.TRUE;
+    }
+
+    public String getExceptionMessage() {
+        return exceptionMessage;
+    }
+
+    public void setExceptionMessage(String exceptionMessage) {
+        this.exceptionMessage = exceptionMessage;
+    }
+
+    public String getValidationMessage() {
+        return validationMessage;
+    }
+
+    public void setValidationMessage(String validationMessage) {
+        this.validationMessage = validationMessage;
+    }
+
+    public List<ExpressionExecution> getConditionResults() {
+        return conditionResults;
     }
 
     public List<ExpressionExecution> getConclusionResults() {
         return conclusionResults;
     }
 
-    public void setConclusionResults(List<ExpressionExecution> conclusionResults) {
-        this.conclusionResults = conclusionResults;
-    }
 }

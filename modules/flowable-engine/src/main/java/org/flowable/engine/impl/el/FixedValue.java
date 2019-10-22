@@ -13,34 +13,15 @@
 
 package org.flowable.engine.impl.el;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.delegate.Expression;
-import org.flowable.engine.delegate.VariableScope;
-
 /**
  * Expression that always returns the same value when <code>getValue</code> is called. Setting of the value is not supported.
  * 
  * @author Frederik Heremans
  */
-public class FixedValue implements Expression {
-
-    private static final long serialVersionUID = 1L;
-    private Object value;
+public class FixedValue extends org.flowable.common.engine.impl.el.FixedValue {
 
     public FixedValue(Object value) {
-        this.value = value;
-    }
-
-    public Object getValue(VariableScope variableScope) {
-        return value;
-    }
-
-    public void setValue(Object value, VariableScope variableScope) {
-        throw new FlowableException("Cannot change fixed value");
-    }
-
-    public String getExpressionText() {
-        return value.toString();
+        super(value);
     }
 
 }

@@ -18,21 +18,21 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.util.io.InputStreamSource;
+import org.flowable.common.engine.impl.util.io.StreamSource;
+import org.flowable.common.engine.impl.util.io.StringStreamSource;
+import org.flowable.common.engine.impl.util.io.UrlStreamSource;
 import org.flowable.dmn.engine.DmnEngineConfiguration;
-import org.flowable.dmn.engine.impl.context.Context;
 import org.flowable.dmn.engine.impl.io.ResourceStreamSource;
 import org.flowable.dmn.engine.impl.persistence.entity.DecisionTableEntity;
 import org.flowable.dmn.engine.impl.persistence.entity.DmnDeploymentEntity;
+import org.flowable.dmn.engine.impl.util.CommandContextUtil;
 import org.flowable.dmn.model.Decision;
 import org.flowable.dmn.model.DmnDefinition;
 import org.flowable.dmn.xml.constants.DmnXMLConstants;
 import org.flowable.dmn.xml.converter.DmnXMLConverter;
 import org.flowable.dmn.xml.exception.DmnXMLException;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.util.io.InputStreamSource;
-import org.flowable.engine.common.impl.util.io.StreamSource;
-import org.flowable.engine.common.impl.util.io.StringStreamSource;
-import org.flowable.engine.common.impl.util.io.UrlStreamSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +61,7 @@ public class DmnParse implements DmnXMLConstants {
     protected DmnDeploymentEntity deployment;
 
     /** The end result of the parsing: a list of decision tables. */
-    protected List<DecisionTableEntity> decisionTables = new ArrayList<DecisionTableEntity>();
+    protected List<DecisionTableEntity> decisionTables = new ArrayList<>();
 
     public DmnParse deployment(DmnDeploymentEntity deployment) {
         this.deployment = deployment;
@@ -84,12 +84,11 @@ public class DmnParse implements DmnXMLConstants {
 
             if (dmnDefinition != null && dmnDefinition.getDecisions() != null) {
                 for (Decision decision : dmnDefinition.getDecisions()) {
-                    DecisionTableEntity decisionTableEntity = Context.getDmnEngineConfiguration().getDecisionTableEntityManager().create();
+                    DecisionTableEntity decisionTableEntity = CommandContextUtil.getDmnEngineConfiguration().getDecisionTableEntityManager().create();
                     decisionTableEntity.setKey(decision.getId());
                     decisionTableEntity.setName(decision.getName());
                     decisionTableEntity.setResourceName(name);
                     decisionTableEntity.setDeploymentId(deployment.getId());
-                    decisionTableEntity.setParentDeploymentId(deployment.getParentDeploymentId());
                     decisionTableEntity.setDescription(decision.getDescription());
                     decisionTables.add(decisionTableEntity);
                 }

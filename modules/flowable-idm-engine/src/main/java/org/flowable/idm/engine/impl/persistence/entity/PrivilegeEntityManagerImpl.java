@@ -15,8 +15,7 @@ package org.flowable.idm.engine.impl.persistence.entity;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.idm.api.Privilege;
 import org.flowable.idm.api.PrivilegeQuery;
 import org.flowable.idm.engine.IdmEngineConfiguration;
@@ -46,8 +45,8 @@ public class PrivilegeEntityManagerImpl extends AbstractEntityManager<PrivilegeE
     }
 
     @Override
-    public List<Privilege> findPrivilegeByQueryCriteria(PrivilegeQueryImpl query, Page page) {
-        return privilegeDataManager.findPrivilegeByQueryCriteria(query, page);
+    public List<Privilege> findPrivilegeByQueryCriteria(PrivilegeQueryImpl query) {
+        return privilegeDataManager.findPrivilegeByQueryCriteria(query);
     }
 
     @Override
@@ -56,8 +55,8 @@ public class PrivilegeEntityManagerImpl extends AbstractEntityManager<PrivilegeE
     }
 
     @Override
-    public List<Privilege> findPrivilegeByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return privilegeDataManager.findPrivilegeByNativeQuery(parameterMap, firstResult, maxResults);
+    public List<Privilege> findPrivilegeByNativeQuery(Map<String, Object> parameterMap) {
+        return privilegeDataManager.findPrivilegeByNativeQuery(parameterMap);
     }
 
     @Override

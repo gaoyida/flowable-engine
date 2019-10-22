@@ -16,20 +16,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.Page;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.engine.impl.ProcessDefinitionQueryImpl;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntityImpl;
-import org.flowable.engine.impl.persistence.entity.data.AbstractDataManager;
+import org.flowable.engine.impl.persistence.entity.data.AbstractProcessDataManager;
 import org.flowable.engine.impl.persistence.entity.data.ProcessDefinitionDataManager;
 import org.flowable.engine.repository.ProcessDefinition;
 
 /**
  * @author Joram Barrez
  */
-public class MybatisProcessDefinitionDataManager extends AbstractDataManager<ProcessDefinitionEntity> implements ProcessDefinitionDataManager {
+public class MybatisProcessDefinitionDataManager extends AbstractProcessDataManager<ProcessDefinitionEntity> implements ProcessDefinitionDataManager {
 
     public MybatisProcessDefinitionDataManager(ProcessEngineConfigurationImpl processEngineConfiguration) {
         super(processEngineConfiguration);
@@ -52,10 +51,23 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
 
     @Override
     public ProcessDefinitionEntity findLatestProcessDefinitionByKeyAndTenantId(String processDefinitionKey, String tenantId) {
-        Map<String, Object> params = new HashMap<String, Object>(2);
+        Map<String, Object> params = new HashMap<>(2);
         params.put("processDefinitionKey", processDefinitionKey);
         params.put("tenantId", tenantId);
         return (ProcessDefinitionEntity) getDbSqlSession().selectOne("selectLatestProcessDefinitionByKeyAndTenantId", params);
+    }
+    
+    @Override
+    public ProcessDefinitionEntity findLatestDerivedProcessDefinitionByKey(String processDefinitionKey) {
+        return (ProcessDefinitionEntity) getDbSqlSession().selectOne("selectLatestDerivedProcessDefinitionByKey", processDefinitionKey);
+    }
+
+    @Override
+    public ProcessDefinitionEntity findLatestDerivedProcessDefinitionByKeyAndTenantId(String processDefinitionKey, String tenantId) {
+        Map<String, Object> params = new HashMap<>(2);
+        params.put("processDefinitionKey", processDefinitionKey);
+        params.put("tenantId", tenantId);
+        return (ProcessDefinitionEntity) getDbSqlSession().selectOne("selectLatestDerivedProcessDefinitionByKeyAndTenantId", params);
     }
 
     @Override
@@ -65,24 +77,8 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<ProcessDefinition> findProcessDefinitionsByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery, Page page) {
-        // List<ProcessDefinition> processDefinitions =
-        return getDbSqlSession().selectList("selectProcessDefinitionsByQueryCriteria", processDefinitionQuery, page);
-
-        // skipped this after discussion within the team
-        // // retrieve process definitions from cache
-        // (https://activiti.atlassian.net/browse/ACT-1020) to have all available
-        // information
-        // ArrayList<ProcessDefinition> result = new
-        // ArrayList<ProcessDefinition>();
-        // for (ProcessDefinition processDefinitionEntity : processDefinitions)
-        // {
-        // ProcessDefinitionEntity fullProcessDefinition = Context
-        // .getProcessEngineConfiguration()
-        // .getDeploymentCache().resolveProcessDefinition((ProcessDefinitionEntity)processDefinitionEntity);
-        // result.add(fullProcessDefinition);
-        // }
-        // return result;
+    public List<ProcessDefinition> findProcessDefinitionsByQueryCriteria(ProcessDefinitionQueryImpl processDefinitionQuery) {
+        return getDbSqlSession().selectList("selectProcessDefinitionsByQueryCriteria", processDefinitionQuery);
     }
 
     @Override
@@ -92,7 +88,7 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
 
     @Override
     public ProcessDefinitionEntity findProcessDefinitionByDeploymentAndKey(String deploymentId, String processDefinitionKey) {
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, Object> parameters = new HashMap<>();
         parameters.put("deploymentId", deploymentId);
         parameters.put("processDefinitionKey", processDefinitionKey);
         return (ProcessDefinitionEntity) getDbSqlSession().selectOne("selectProcessDefinitionByDeploymentAndKey", parameters);
@@ -100,7 +96,7 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
 
     @Override
     public ProcessDefinitionEntity findProcessDefinitionByDeploymentAndKeyAndTenantId(String deploymentId, String processDefinitionKey, String tenantId) {
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, Object> parameters = new HashMap<>();
         parameters.put("deploymentId", deploymentId);
         parameters.put("processDefinitionKey", processDefinitionKey);
         parameters.put("tenantId", tenantId);
@@ -109,7 +105,7 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
 
     @Override
     public ProcessDefinitionEntity findProcessDefinitionByKeyAndVersion(String processDefinitionKey, Integer processDefinitionVersion) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("processDefinitionKey", processDefinitionKey);
         params.put("processDefinitionVersion", processDefinitionVersion);
         List<ProcessDefinitionEntity> results = getDbSqlSession().selectList("selectProcessDefinitionsByKeyAndVersion", params);
@@ -124,7 +120,7 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
     @Override
     @SuppressWarnings("unchecked")
     public ProcessDefinitionEntity findProcessDefinitionByKeyAndVersionAndTenantId(String processDefinitionKey, Integer processDefinitionVersion, String tenantId) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("processDefinitionKey", processDefinitionKey);
         params.put("processDefinitionVersion", processDefinitionVersion);
         params.put("tenantId", tenantId);
@@ -139,8 +135,8 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<ProcessDefinition> findProcessDefinitionsByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return getDbSqlSession().selectListWithRawParameter("selectProcessDefinitionByNativeQuery", parameterMap, firstResult, maxResults);
+    public List<ProcessDefinition> findProcessDefinitionsByNativeQuery(Map<String, Object> parameterMap) {
+        return getDbSqlSession().selectListWithRawParameter("selectProcessDefinitionByNativeQuery", parameterMap);
     }
 
     @Override
@@ -150,7 +146,7 @@ public class MybatisProcessDefinitionDataManager extends AbstractDataManager<Pro
 
     @Override
     public void updateProcessDefinitionTenantIdForDeployment(String deploymentId, String newTenantId) {
-        HashMap<String, Object> params = new HashMap<String, Object>();
+        HashMap<String, Object> params = new HashMap<>();
         params.put("deploymentId", deploymentId);
         params.put("tenantId", newTenantId);
         getDbSqlSession().update("updateProcessDefinitionTenantIdForDeploymentId", params);

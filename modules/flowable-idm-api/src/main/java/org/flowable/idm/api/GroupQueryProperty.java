@@ -16,7 +16,7 @@ package org.flowable.idm.api;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
 
 /**
  * Contains the possible properties that can be used by the {@link GroupQuery}.
@@ -27,7 +27,7 @@ public class GroupQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, GroupQueryProperty> properties = new HashMap<String, GroupQueryProperty>();
+    private static final Map<String, GroupQueryProperty> properties = new HashMap<>();
 
     public static final GroupQueryProperty GROUP_ID = new GroupQueryProperty("RES.ID_");
     public static final GroupQueryProperty NAME = new GroupQueryProperty("RES.NAME_");
@@ -40,6 +40,7 @@ public class GroupQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

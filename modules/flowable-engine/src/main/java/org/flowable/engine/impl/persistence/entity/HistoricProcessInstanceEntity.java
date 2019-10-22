@@ -16,12 +16,14 @@ package org.flowable.engine.impl.persistence.entity;
 
 import java.util.List;
 
+import org.flowable.common.engine.impl.db.HasRevision;
 import org.flowable.engine.history.HistoricProcessInstance;
+import org.flowable.variable.service.impl.persistence.entity.HistoricVariableInstanceEntity;
 
 /**
  * @author Joram Barrez
  */
-public interface HistoricProcessInstanceEntity extends HistoricScopeInstanceEntity, HistoricProcessInstance {
+public interface HistoricProcessInstanceEntity extends HistoricScopeInstanceEntity, HistoricProcessInstance, HasRevision {
 
     void setEndActivityId(String endActivityId);
 
@@ -43,22 +45,18 @@ public interface HistoricProcessInstanceEntity extends HistoricScopeInstanceEnti
 
     void setLocalizedDescription(String localizedDescription);
 
-    String getProcessDefinitionKey();
-
     void setProcessDefinitionKey(String processDefinitionKey);
-
-    String getProcessDefinitionName();
 
     void setProcessDefinitionName(String processDefinitionName);
 
-    Integer getProcessDefinitionVersion();
-
     void setProcessDefinitionVersion(Integer processDefinitionVersion);
 
-    String getDeploymentId();
-
     void setDeploymentId(String deploymentId);
-
+    
+    void setCallbackId(String callbackId);
+    
+    void setCallbackType(String callbackType);
+    
     List<HistoricVariableInstanceEntity> getQueryVariables();
 
     void setQueryVariables(List<HistoricVariableInstanceEntity> queryVariables);

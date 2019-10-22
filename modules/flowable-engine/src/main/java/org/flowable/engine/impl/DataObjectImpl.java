@@ -15,18 +15,24 @@ package org.flowable.engine.impl;
 import org.flowable.engine.runtime.DataObject;
 
 public class DataObjectImpl implements DataObject {
-    private String name;
-    private Object value;
-    private String description;
-    private String localizedName;
-    private String localizedDescription;
-    private String dataObjectDefinitionKey;
+    protected String id;
+    protected String processInstanceId;
+    protected String executionId;
+    protected String name;
+    protected Object value;
+    protected String description;
+    protected String localizedName;
+    protected String localizedDescription;
+    protected String dataObjectDefinitionKey;
 
     private String type;
 
-    public DataObjectImpl(String name, Object value, String description, String type, String localizedName,
+    public DataObjectImpl(String id, String processInstanceId, String executionId, String name, Object value, String description, String type, String localizedName,
             String localizedDescription, String dataObjectDefinitionKey) {
 
+        this.id = id;
+        this.processInstanceId = processInstanceId;
+        this.executionId = executionId;
         this.name = name;
         this.value = value;
         this.type = type;
@@ -36,6 +42,34 @@ public class DataObjectImpl implements DataObject {
         this.dataObjectDefinitionKey = dataObjectDefinitionKey;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    public void setProcessInstanceId(String processInstanceId) {
+        this.processInstanceId = processInstanceId;
+    }
+
+    @Override
+    public String getProcessInstanceId() {
+        return processInstanceId;
+    }
+
+    public void setExecutionId(String executionId) {
+        this.executionId = executionId;
+    }
+
+    @Override
+    public String getExecutionId() {
+        return executionId;
+    }
+
+    @Override
     public String getName() {
         return name;
     }
@@ -44,6 +78,7 @@ public class DataObjectImpl implements DataObject {
         this.name = name;
     }
 
+    @Override
     public String getLocalizedName() {
         if (localizedName != null && localizedName.length() > 0) {
             return localizedName;
@@ -56,6 +91,7 @@ public class DataObjectImpl implements DataObject {
         this.localizedName = localizedName;
     }
 
+    @Override
     public String getDescription() {
         if (localizedDescription != null && localizedDescription.length() > 0) {
             return localizedDescription;
@@ -68,6 +104,7 @@ public class DataObjectImpl implements DataObject {
         this.description = description;
     }
 
+    @Override
     public Object getValue() {
         return value;
     }
@@ -76,6 +113,7 @@ public class DataObjectImpl implements DataObject {
         this.value = value;
     }
 
+    @Override
     public String getType() {
         return type;
     }
@@ -84,6 +122,7 @@ public class DataObjectImpl implements DataObject {
         this.type = type;
     }
 
+    @Override
     public String getDataObjectDefinitionKey() {
         return dataObjectDefinitionKey;
     }

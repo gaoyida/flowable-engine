@@ -22,6 +22,7 @@ public class LongFormType extends AbstractFormType {
 
     private static final long serialVersionUID = 1L;
 
+    @Override
     public String getName() {
         return "long";
     }
@@ -30,13 +31,15 @@ public class LongFormType extends AbstractFormType {
         return "plain/text";
     }
 
+    @Override
     public Object convertFormValueToModelValue(String propertyValue) {
         if (propertyValue == null || "".equals(propertyValue)) {
             return null;
         }
-        return new Long(propertyValue);
+        return Long.valueOf(propertyValue);
     }
 
+    @Override
     public String convertModelValueToFormValue(Object modelValue) {
         if (modelValue == null) {
             return null;

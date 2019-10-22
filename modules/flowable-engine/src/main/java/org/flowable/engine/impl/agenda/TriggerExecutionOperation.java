@@ -15,11 +15,16 @@ package org.flowable.engine.impl.agenda;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.FlowNode;
-import org.flowable.engine.common.api.FlowableException;
+import org.flowable.bpmn.model.ServiceTask;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.delegate.ActivityBehavior;
 import org.flowable.engine.impl.delegate.TriggerableActivityBehavior;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.jobexecutor.AsyncTriggerJobHandler;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.job.service.JobService;
+import org.flowable.job.service.impl.persistence.entity.JobEntity;
 
 /**
  * Operation that triggers a wait state and continues the process, leaving that activity.
@@ -30,9 +35,16 @@ import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
  * @author Joram Barrez
  */
 public class TriggerExecutionOperation extends AbstractOperation {
+    
+    protected boolean triggerAsync;
 
     public TriggerExecutionOperation(CommandContext commandContext, ExecutionEntity execution) {
         super(commandContext, execution);
+    }
+
+    public TriggerExecutionOperation(CommandContext commandContext, ExecutionEntity execution, boolean triggerAsync) {
+        super(commandContext, execution);
+        this.triggerAsync = triggerAsync;
     }
 
     @Override
@@ -43,22 +55,51 @@ public class TriggerExecutionOperation extends AbstractOperation {
             ActivityBehavior activityBehavior = (ActivityBehavior) ((FlowNode) currentFlowElement).getBehavior();
             if (activityBehavior instanceof TriggerableActivityBehavior) {
 
-                if (currentFlowElement instanceof BoundaryEvent) {
-                    commandContext.getHistoryManager().recordActivityStart(execution);
+                if (currentFlowElement instanceof BoundaryEvent
+                        || currentFlowElement instanceof ServiceTask) { // custom service task with no automatic leave (will not have a activity-start history entry in ContinueProcessOperation)
+                    
+                    CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityStart(execution);
                 }
 
-                ((TriggerableActivityBehavior) activityBehavior).trigger(execution, null, null);
+                if (!triggerAsync) {
+                    ((TriggerableActivityBehavior) activityBehavior).trigger(execution, null, null);
+                    
+                } else {
+                    JobService jobService = CommandContextUtil.getJobService();
+                    JobEntity job = jobService.createJob();
+                    job.setExecutionId(execution.getId());
+                    job.setProcessInstanceId(execution.getProcessInstanceId());
+                    job.setProcessDefinitionId(execution.getProcessDefinitionId());
+                    job.setElementId(currentFlowElement.getId());
+                    job.setElementName(currentFlowElement.getName());
+                    job.setJobHandlerType(AsyncTriggerJobHandler.TYPE);
+                    
+                    // Inherit tenant id (if applicable)
+                    if(execution.getTenantId() != null) {
+                        job.setTenantId(execution.getTenantId());
+                    }
 
-                if (currentFlowElement instanceof BoundaryEvent) {
-                    commandContext.getHistoryManager().recordActivityEnd(execution, null);
+                    jobService.createAsyncJob(job, true);
+                    jobService.scheduleAsyncJob(job);
                 }
+
 
             } else {
-                throw new FlowableException("Invalid behavior: " + activityBehavior + " should implement " + TriggerableActivityBehavior.class.getName());
+                throw new FlowableException("Cannot trigger execution with id " + execution.getId()
+                    + " : the activityBehavior " + activityBehavior.getClass() + " does not implement the "
+                    + TriggerableActivityBehavior.class.getName() + " interface");
+
             }
 
+        } else if (currentFlowElement == null) {
+            throw new FlowableException("Cannot trigger execution with id " + execution.getId()
+                    + " : no current flow element found. Check the execution id that is being passed "
+                    + "(it should not be a process instance execution, but a child execution currently referencing a flow element).");
+
         } else {
-            throw new FlowableException("Programmatic error: no current flow element found or invalid type: " + currentFlowElement + ". Halting.");
+            throw new FlowableException("Programmatic error: cannot trigger execution, invalid flowelement type found: "
+                    + currentFlowElement.getClass().getName() + ".");
+
         }
     }
 

@@ -13,6 +13,10 @@
 
 package org.flowable.rest.service.api.history;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,10 +24,11 @@ import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.flowable.task.api.Task;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
@@ -40,9 +45,10 @@ public class HistoricProcessInstanceIdentityLinkCollectionResourceTest extends B
     /**
      * GET history/historic-process-instances/{processInstanceId}/identitylinks
      */
+    @Test
     @Deployment
     public void testGetIdentityLinks() throws Exception {
-        HashMap<String, Object> processVariables = new HashMap<String, Object>();
+        HashMap<String, Object> processVariables = new HashMap<>();
         processVariables.put("stringVar", "Azerty");
         processVariables.put("intVar", 67890);
         processVariables.put("booleanVar", false);
@@ -61,7 +67,7 @@ public class HistoricProcessInstanceIdentityLinkCollectionResourceTest extends B
         JsonNode linksArray = objectMapper.readTree(response.getEntity().getContent());
         closeResponse(response);
         assertEquals(3, linksArray.size());
-        Map<String, JsonNode> linksMap = new HashMap<String, JsonNode>();
+        Map<String, JsonNode> linksMap = new HashMap<>();
         for (JsonNode linkNode : linksArray) {
             linksMap.put(linkNode.get("userId").asText(), linkNode);
         }

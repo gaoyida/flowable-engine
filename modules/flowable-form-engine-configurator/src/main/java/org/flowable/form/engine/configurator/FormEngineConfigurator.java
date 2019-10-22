@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,79 +15,64 @@ package org.flowable.form.engine.configurator;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.sql.DataSource;
-
-import org.flowable.engine.cfg.AbstractProcessEngineConfigurator;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.transaction.TransactionContextAwareDataSource;
-import org.flowable.engine.common.impl.transaction.TransactionContextAwareTransactionFactory;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.persistence.deploy.Deployer;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.AbstractEngineConfiguration;
+import org.flowable.common.engine.impl.AbstractEngineConfigurator;
+import org.flowable.common.engine.impl.EngineDeployer;
+import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
+import org.flowable.common.engine.impl.persistence.entity.Entity;
 import org.flowable.form.engine.FormEngine;
 import org.flowable.form.engine.FormEngineConfiguration;
 import org.flowable.form.engine.deployer.FormDeployer;
 import org.flowable.form.engine.impl.cfg.StandaloneFormEngineConfiguration;
+import org.flowable.form.engine.impl.db.EntityDependencyOrder;
 
 /**
  * @author Tijs Rademakers
  * @author Joram Barrez
  */
-public class FormEngineConfigurator extends AbstractProcessEngineConfigurator {
+public class FormEngineConfigurator extends AbstractEngineConfigurator {
 
     protected FormEngineConfiguration formEngineConfiguration;
 
     @Override
-    public void beforeInit(ProcessEngineConfigurationImpl processEngineConfiguration) {
-
-        // Custom deployers need to be added before the process engine boots
-        List<Deployer> deployers = null;
-        if (processEngineConfiguration.getCustomPostDeployers() != null) {
-            deployers = processEngineConfiguration.getCustomPostDeployers();
-        } else {
-            deployers = new ArrayList<Deployer>();
-        }
-        deployers.add(new FormDeployer());
-        processEngineConfiguration.setCustomPostDeployers(deployers);
-
+    public int getPriority() {
+        return EngineConfigurationConstants.PRIORITY_ENGINE_FORM;
     }
 
     @Override
-    public void configure(ProcessEngineConfigurationImpl processEngineConfiguration) {
+    protected List<EngineDeployer> getCustomDeployers() {
+        List<EngineDeployer> deployers = new ArrayList<>();
+        deployers.add(new FormDeployer());
+        return deployers;
+    }
+
+    @Override
+    protected String getMybatisCfgPath() {
+        return FormEngineConfiguration.DEFAULT_MYBATIS_MAPPING_FILE;
+    }
+
+    @Override
+    public void configure(AbstractEngineConfiguration engineConfiguration) {
         if (formEngineConfiguration == null) {
             formEngineConfiguration = new StandaloneFormEngineConfiguration();
-
-            if (processEngineConfiguration.getDataSource() != null) {
-                DataSource originalDatasource = processEngineConfiguration.getDataSource();
-                if (processEngineConfiguration.isTransactionsExternallyManaged()) {
-                    formEngineConfiguration.setDataSource(originalDatasource);
-                } else {
-                    formEngineConfiguration.setDataSource(new TransactionContextAwareDataSource(originalDatasource));
-                }
-
-            } else {
-                throw new FlowableException("A datasource is required for initializing the Form engine ");
-            }
-
-            formEngineConfiguration.setDatabaseCatalog(processEngineConfiguration.getDatabaseCatalog());
-            formEngineConfiguration.setDatabaseSchema(processEngineConfiguration.getDatabaseSchema());
-            formEngineConfiguration.setDatabaseSchemaUpdate(processEngineConfiguration.getDatabaseSchemaUpdate());
-            formEngineConfiguration.setDatabaseTablePrefix(processEngineConfiguration.getDatabaseTablePrefix());
-            formEngineConfiguration.setDatabaseWildcardEscapeCharacter(processEngineConfiguration.getDatabaseWildcardEscapeCharacter());
-
-            if (processEngineConfiguration.isTransactionsExternallyManaged()) {
-                formEngineConfiguration.setTransactionsExternallyManaged(true);
-            } else {
-                formEngineConfiguration.setTransactionFactory(
-                        new TransactionContextAwareTransactionFactory<org.flowable.form.engine.impl.cfg.TransactionContext>(
-                                org.flowable.form.engine.impl.cfg.TransactionContext.class));
-            }
-
         }
 
-        FormEngine formEngine = initFormEngine();
-        processEngineConfiguration.setFormEngineInitialized(true);
-        processEngineConfiguration.setFormEngineRepositoryService(formEngine.getFormRepositoryService());
-        processEngineConfiguration.setFormEngineFormService(formEngine.getFormService());
+        initialiseCommonProperties(engineConfiguration, formEngineConfiguration);
+
+        initFormEngine();
+
+        initServiceConfigurations(engineConfiguration, formEngineConfiguration);
+    }
+
+    @Override
+    protected List<Class<? extends Entity>> getEntityInsertionOrder() {
+        return EntityDependencyOrder.INSERT_ORDER;
+    }
+
+    @Override
+    protected List<Class<? extends Entity>> getEntityDeletionOrder() {
+        return EntityDependencyOrder.DELETE_ORDER;
     }
 
     protected synchronized FormEngine initFormEngine() {

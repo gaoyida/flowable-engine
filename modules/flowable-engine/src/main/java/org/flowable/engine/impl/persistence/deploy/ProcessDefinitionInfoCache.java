@@ -17,13 +17,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.context.Context;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionInfoEntity;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionInfoEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class ProcessDefinitionInfoCache {
 
-    private static final Logger logger = LoggerFactory.getLogger(ProcessDefinitionInfoCache.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessDefinitionInfoCache.class);
 
     protected Map<String, ProcessDefinitionInfoCacheObject> cache;
     protected CommandExecutor commandExecutor;
@@ -45,7 +46,7 @@ public class ProcessDefinitionInfoCache {
     /** Cache with no limit */
     public ProcessDefinitionInfoCache(CommandExecutor commandExecutor) {
         this.commandExecutor = commandExecutor;
-        this.cache = Collections.synchronizedMap(new HashMap<String, ProcessDefinitionInfoCacheObject>());
+        this.cache = Collections.synchronizedMap(new HashMap<>());
     }
 
     /** Cache which has a hard limit: no more elements will be cached than the limit. */
@@ -57,10 +58,11 @@ public class ProcessDefinitionInfoCache {
             // true will keep the 'access-order', which is needed to have a real LRU cache
             private static final long serialVersionUID = 1L;
 
+            @Override
             protected boolean removeEldestEntry(Map.Entry<String, ProcessDefinitionInfoCacheObject> eldest) {
                 boolean removeEldest = size() > limit;
                 if (removeEldest) {
-                    logger.trace("Cache limit is reached, {} will be evicted", eldest.getKey());
+                    LOGGER.trace("Cache limit is reached, {} will be evicted", eldest.getKey());
                 }
                 return removeEldest;
             }
@@ -105,8 +107,8 @@ public class ProcessDefinitionInfoCache {
     }
 
     protected ProcessDefinitionInfoCacheObject retrieveProcessDefinitionInfoCacheObject(String processDefinitionId, CommandContext commandContext) {
-        ProcessDefinitionInfoEntityManager infoEntityManager = commandContext.getProcessDefinitionInfoEntityManager();
-        ObjectMapper objectMapper = commandContext.getProcessEngineConfiguration().getObjectMapper();
+        ProcessDefinitionInfoEntityManager infoEntityManager = CommandContextUtil.getProcessDefinitionInfoEntityManager(commandContext);
+        ObjectMapper objectMapper = CommandContextUtil.getProcessEngineConfiguration(commandContext).getObjectMapper();
 
         ProcessDefinitionInfoCacheObject cacheObject = null;
         if (cache.containsKey(processDefinitionId)) {

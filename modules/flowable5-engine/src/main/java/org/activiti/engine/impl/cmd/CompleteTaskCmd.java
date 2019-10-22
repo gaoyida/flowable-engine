@@ -42,6 +42,7 @@ public class CompleteTaskCmd extends NeedsActiveTaskCmd<Void> {
         this.transientVariables = transientVariables;
     }
 
+    @Override
     protected Void execute(CommandContext commandContext, TaskEntity task) {
         if (variables != null) {
             if (localScope) {
@@ -61,7 +62,7 @@ public class CompleteTaskCmd extends NeedsActiveTaskCmd<Void> {
             }
         }
 
-        task.complete(variables, localScope);
+        task.complete(variables, localScope, true);
         return null;
     }
 

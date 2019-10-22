@@ -13,16 +13,19 @@
 
 package org.flowable.engine.test.json;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.history.HistoricVariableInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -39,14 +42,10 @@ public class JsonTest extends PluggableFlowableTestCase {
 
     protected ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-    }
-
+    @Test
     @Deployment
     public void testJsonObjectAvailable() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
 
         ObjectNode varNode = objectMapper.createObjectNode();
         varNode.put("var", "myValue");
@@ -69,14 +68,14 @@ public class JsonTest extends PluggableFlowableTestCase {
         assertEquals("myValue", value.get("var").asText());
         assertEquals("myOtherValue", value.get("var2").asText());
 
-        Task task = taskService.createTaskQuery().active().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().active().singleResult();
         assertNotNull(task);
         ObjectNode var3Node = objectMapper.createObjectNode();
         var3Node.put("var", "myValue");
         var3Node.put("var2", "myOtherValue");
         var3Node.put("var3", "myThirdValue");
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put(MY_JSON_OBJ, var3Node);
         vars.put(BIG_JSON_OBJ, createBigJsonObject());
         taskService.complete(task.getId(), vars);
@@ -94,7 +93,7 @@ public class JsonTest extends PluggableFlowableTestCase {
         assertNotNull(task);
         assertEquals("userTaskSuccess", task.getTaskDefinitionKey());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             List<HistoricVariableInstance> historicVariableInstances = historyService.createHistoricVariableInstanceQuery()
                     .processInstanceId(processInstance.getProcessInstanceId()).orderByVariableName().asc().list();
             assertEquals(2, historicVariableInstances.size());
@@ -121,9 +120,10 @@ public class JsonTest extends PluggableFlowableTestCase {
         assertNull(runtimeService.getVariable(processInstance.getId(), BIG_JSON_OBJ));
     }
 
+    @Test
     @Deployment
     public void testDirectJsonPropertyAccess() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
 
         ObjectNode varNode = objectMapper.createObjectNode();
         varNode.put("var", "myValue");
@@ -135,7 +135,7 @@ public class JsonTest extends PluggableFlowableTestCase {
         assertNotNull(value);
         assertEquals("myValue", value.get("var").asText());
 
-        Task task = taskService.createTaskQuery().active().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().active().singleResult();
         assertNotNull(task);
         ObjectNode var3Node = objectMapper.createObjectNode();
         var3Node.put("var", "myValue");
@@ -156,9 +156,10 @@ public class JsonTest extends PluggableFlowableTestCase {
         assertEquals("userTaskSuccess", task.getTaskDefinitionKey());
     }
 
+    @Test
     @Deployment
     public void testJsonArrayAvailable() {
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
 
         ArrayNode varArray = objectMapper.createArrayNode();
         ObjectNode varNode = objectMapper.createObjectNode();
@@ -187,7 +188,7 @@ public class JsonTest extends PluggableFlowableTestCase {
         assertEquals("myValue", value.get(0).get("var").asText());
         assertEquals("myOtherValue", value.get(1).get("var").asText());
 
-        Task task = taskService.createTaskQuery().active().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().active().singleResult();
         assertNotNull(task);
         ArrayNode varArray3 = objectMapper.createArrayNode();
         varNode = objectMapper.createObjectNode();
@@ -199,7 +200,7 @@ public class JsonTest extends PluggableFlowableTestCase {
         varNode = objectMapper.createObjectNode();
         varNode.put("var", "myThirdValue");
         varArray3.add(varNode);
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("myJsonArr", varArray3);
         taskService.complete(task.getId(), vars);
         value = (ArrayNode) runtimeService.getVariable(processInstance.getId(), "myJsonArr");
@@ -212,7 +213,7 @@ public class JsonTest extends PluggableFlowableTestCase {
         assertNotNull(task);
         assertEquals("userTaskSuccess", task.getTaskDefinitionKey());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             HistoricVariableInstance historicVariableInstance = historyService.createHistoricVariableInstanceQuery()
                     .processInstanceId(processInstance.getProcessInstanceId()).singleResult();
             value = (ArrayNode) historicVariableInstance.getValue();
@@ -221,6 +222,37 @@ public class JsonTest extends PluggableFlowableTestCase {
             assertEquals("myOtherValue", value.get(1).get("var").asText());
             assertEquals("myThirdValue", value.get(2).get("var").asText());
         }
+    }
+    @Test
+    @Deployment
+    public void testJsonArrayAccessByIndex() {
+        Map<String, Object> vars = new HashMap<>();
+
+        ArrayNode varArray = objectMapper.createArrayNode();
+        ObjectNode varNode = objectMapper.createObjectNode();
+        varNode.put("var", "myValue");
+        varArray.add(varNode);
+        vars.put("myJsonArr", varArray);
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("testJsonAvailableProcess", vars);
+
+        // Check JSON has been parsed as expected
+        ArrayNode value = (ArrayNode) runtimeService.getVariable(processInstance.getId(), "myJsonArr");
+        assertThat(value).isNotNull();
+        assertThat(value.get(0).get("var").asText()).isEqualTo("myValue");
+
+        org.flowable.task.api.Task task = taskService.createTaskQuery().active().singleResult();
+        assertThat(task).isNotNull();
+        ArrayNode taskVarArray = objectMapper.createArrayNode();
+        taskVarArray.addObject().put("var", "firstValue");
+        taskVarArray.addObject().put("var", "secondValue");
+        taskVarArray.addObject().put("var", "thirdValue");
+        vars = new HashMap<>();
+        vars.put("myJsonArr", taskVarArray);
+        taskService.complete(task.getId(), vars);
+
+        task = taskService.createTaskQuery().active().singleResult();
+        assertThat(task).isNotNull();
+        assertThat(task.getTaskDefinitionKey()).isEqualTo("userTaskSuccess");
     }
 
     protected ObjectNode createBigJsonObject() {

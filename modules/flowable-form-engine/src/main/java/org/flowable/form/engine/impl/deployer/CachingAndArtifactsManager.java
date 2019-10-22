@@ -12,14 +12,14 @@
  */
 package org.flowable.form.engine.impl.deployer;
 
+import org.flowable.common.engine.impl.persistence.deploy.DeploymentCache;
 import org.flowable.editor.form.converter.FormJsonConverter;
 import org.flowable.form.engine.FormEngineConfiguration;
-import org.flowable.form.engine.impl.context.Context;
-import org.flowable.form.engine.impl.persistence.deploy.DeploymentCache;
 import org.flowable.form.engine.impl.persistence.deploy.FormDefinitionCacheEntry;
 import org.flowable.form.engine.impl.persistence.entity.FormDefinitionEntity;
 import org.flowable.form.engine.impl.persistence.entity.FormDeploymentEntity;
-import org.flowable.form.model.FormModel;
+import org.flowable.form.engine.impl.util.CommandContextUtil;
+import org.flowable.form.model.SimpleFormModel;
 
 /**
  * Updates caches and artifacts for a deployment and its forms
@@ -32,13 +32,12 @@ public class CachingAndArtifactsManager {
      * Ensures that the decision table is cached in the appropriate places, including the deployment's collection of deployed artifacts and the deployment manager's cache.
      */
     public void updateCachingAndArtifacts(ParsedDeployment parsedDeployment) {
-        final FormEngineConfiguration formEngineConfiguration = Context.getFormEngineConfiguration();
+        final FormEngineConfiguration formEngineConfiguration = CommandContextUtil.getFormEngineConfiguration();
         DeploymentCache<FormDefinitionCacheEntry> formDefinitionCache = formEngineConfiguration.getDeploymentManager().getFormCache();
         FormDeploymentEntity deployment = parsedDeployment.getDeployment();
 
         for (FormDefinitionEntity formDefinition : parsedDeployment.getAllFormDefinitions()) {
-            FormModel formModel = parsedDeployment.getFormModelForFormDefinition(formDefinition);
-            formModel.setId(formDefinition.getId());
+            SimpleFormModel formModel = parsedDeployment.getFormModelForFormDefinition(formDefinition);
             FormDefinitionCacheEntry cacheEntry = new FormDefinitionCacheEntry(formDefinition, formJsonConverter.convertToJson(formModel));
             formDefinitionCache.add(formDefinition.getId(), cacheEntry);
 

@@ -17,15 +17,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.compatibility.Flowable5CompatibilityHandler;
 import org.flowable.engine.impl.event.MessageEventHandler;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.persistence.entity.EventSubscriptionEntity;
-import org.flowable.engine.impl.persistence.entity.EventSubscriptionEntityManager;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.impl.util.EventSubscriptionUtil;
 import org.flowable.engine.impl.util.Flowable5Util;
+import org.flowable.eventsubscription.service.EventSubscriptionService;
+import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
 
 /**
  * @author Daniel Meyer
@@ -44,7 +46,7 @@ public class MessageEventReceivedCmd extends NeedsActiveExecutionCmd<Void> {
         this.messageName = messageName;
 
         if (processVariables != null) {
-            this.payload = new HashMap<String, Object>(processVariables);
+            this.payload = new HashMap<>(processVariables);
 
         } else {
             this.payload = null;
@@ -59,6 +61,7 @@ public class MessageEventReceivedCmd extends NeedsActiveExecutionCmd<Void> {
         this.async = async;
     }
 
+    @Override
     protected Void execute(CommandContext commandContext, ExecutionEntity execution) {
         if (messageName == null) {
             throw new FlowableIllegalArgumentException("messageName cannot be null");
@@ -70,8 +73,8 @@ public class MessageEventReceivedCmd extends NeedsActiveExecutionCmd<Void> {
             return null;
         }
 
-        EventSubscriptionEntityManager eventSubscriptionEntityManager = commandContext.getEventSubscriptionEntityManager();
-        List<EventSubscriptionEntity> eventSubscriptions = eventSubscriptionEntityManager.findEventSubscriptionsByNameAndExecution(MessageEventHandler.EVENT_HANDLER_TYPE, messageName, executionId);
+        EventSubscriptionService eventSubscriptionService = CommandContextUtil.getEventSubscriptionService(commandContext);
+        List<EventSubscriptionEntity> eventSubscriptions = eventSubscriptionService.findEventSubscriptionsByNameAndExecution(MessageEventHandler.EVENT_HANDLER_TYPE, messageName, executionId);
 
         if (eventSubscriptions.isEmpty()) {
             throw new FlowableException("Execution with id '" + executionId + "' does not have a subscription to a message event with name '" + messageName + "'");
@@ -79,7 +82,7 @@ public class MessageEventReceivedCmd extends NeedsActiveExecutionCmd<Void> {
 
         // there can be only one:
         EventSubscriptionEntity eventSubscriptionEntity = eventSubscriptions.get(0);
-        eventSubscriptionEntityManager.eventReceived(eventSubscriptionEntity, payload, async);
+        EventSubscriptionUtil.eventReceived(eventSubscriptionEntity, payload, async);
 
         return null;
     }

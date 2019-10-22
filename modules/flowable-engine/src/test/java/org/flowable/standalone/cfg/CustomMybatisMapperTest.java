@@ -15,10 +15,10 @@ package org.flowable.standalone.cfg;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.cmd.CustomSqlExecution;
+import org.flowable.common.engine.impl.cmd.CustomSqlExecution;
 import org.flowable.engine.impl.cmd.AbstractCustomSqlExecution;
 import org.flowable.engine.impl.test.ResourceFlowableTestCase;
-import org.flowable.engine.task.Task;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author jbarrez
@@ -29,11 +29,12 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
         super("org/flowable/standalone/cfg/custom-mybatis-mappers-flowable.cfg.xml");
     }
 
+    @Test
     public void testSelectTaskColumns() {
 
         // Create test data
         for (int i = 0; i < 5; i++) {
-            Task task = taskService.newTask();
+            org.flowable.task.api.Task task = taskService.newTask();
             task.setName(String.valueOf(i));
             taskService.saveTask(task);
         }
@@ -41,6 +42,7 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
         // Fetch the columns we're interested in
         CustomSqlExecution<MyTestMapper, List<Map<String, Object>>> customSqlExecution = new AbstractCustomSqlExecution<MyTestMapper, List<Map<String, Object>>>(MyTestMapper.class) {
 
+            @Override
             public List<Map<String, Object>> execute(MyTestMapper customMapper) {
                 return customMapper.selectTasks();
             }
@@ -51,24 +53,24 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
         assertEquals(5, tasks.size());
         for (int i = 0; i < 5; i++) {
             Map<String, Object> task = tasks.get(i);
-            assertNotNull(task.get("ID"));
-            assertNotNull(task.get("NAME"));
-            assertNotNull(task.get("CREATETIME"));
+            assertNotNull(getValue(task, "id"));
+            assertNotNull(getValue(task, "name"));
+            assertNotNull(getValue(task, "createTime"));
         }
 
         // Cleanup
-        for (Task task : taskService.createTaskQuery().list()) {
-            taskService.deleteTask(task.getId());
-            historyService.deleteHistoricTaskInstance(task.getId());
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
+            taskService.deleteTask(task.getId(), true);
         }
 
     }
 
+    @Test
     public void testFetchTaskWithSpecificVariable() {
 
         // Create test data
         for (int i = 0; i < 5; i++) {
-            Task task = taskService.newTask();
+            org.flowable.task.api.Task task = taskService.newTask();
             task.setName(String.valueOf(i));
             taskService.saveTask(task);
 
@@ -79,6 +81,7 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
         // Fetch data with custom query
         CustomSqlExecution<MyTestMapper, List<Map<String, Object>>> customSqlExecution = new AbstractCustomSqlExecution<MyTestMapper, List<Map<String, Object>>>(MyTestMapper.class) {
 
+            @Override
             public List<Map<String, Object>> execute(MyTestMapper customMapper) {
                 return customMapper.selectTaskWithSpecificVariable("myVar");
             }
@@ -90,17 +93,35 @@ public class CustomMybatisMapperTest extends ResourceFlowableTestCase {
         assertEquals(5, results.size());
         for (int i = 0; i < 5; i++) {
             Map<String, Object> result = results.get(i);
-            Long id = Long.valueOf((String) result.get("TASKID"));
-            Long variableValue = ((Number) result.get("VARIABLEVALUE")).longValue();
+            Long id = Long.valueOf((String) getValue(result, "taskId"));
+            Long variableValue = ((Number) getValue(result, "variableValue")).longValue();
             assertEquals(id * 2, variableValue.longValue());
         }
 
         // Cleanup
-        for (Task task : taskService.createTaskQuery().list()) {
-            taskService.deleteTask(task.getId());
-            historyService.deleteHistoricTaskInstance(task.getId());
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
+            taskService.deleteTask(task.getId(), true);
         }
 
+    }
+
+    protected Object getValue(Map<String, Object> map, String key) {
+        if (map.containsKey(key)) {
+            return map.get(key);
+        }
+
+        String upperCaseKey = key.toUpperCase();
+        if (map.containsKey(upperCaseKey)) {
+            return map.get(upperCaseKey);
+        }
+
+        String lowerCaseKey = key.toLowerCase();
+        if (map.containsKey(lowerCaseKey)) {
+            return map.get(lowerCaseKey);
+        }
+
+        fail("Map with keys " + map.keySet() + " does not contain key " + key);
+        return null;
     }
 
 }

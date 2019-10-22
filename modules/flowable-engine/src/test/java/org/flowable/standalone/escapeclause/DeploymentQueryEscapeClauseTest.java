@@ -13,6 +13,9 @@
 package org.flowable.standalone.escapeclause;
 
 import org.flowable.engine.repository.DeploymentQuery;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class DeploymentQueryEscapeClauseTest extends AbstractEscapeClauseTestCase {
 
@@ -20,7 +23,7 @@ public class DeploymentQueryEscapeClauseTest extends AbstractEscapeClauseTestCas
 
     private String deploymentTwoId;
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
         deploymentOneId = repositoryService
                 .createDeployment()
@@ -39,41 +42,42 @@ public class DeploymentQueryEscapeClauseTest extends AbstractEscapeClauseTestCas
                 .deploy()
                 .getId();
 
-        super.setUp();
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
         repositoryService.deleteDeployment(deploymentOneId, true);
         repositoryService.deleteDeployment(deploymentTwoId, true);
     }
 
+    @Test
     public void testQueryByNameLike() {
-        DeploymentQuery query = repositoryService.createDeploymentQuery().deploymentNameLike("%\\%%");
+        DeploymentQuery query = repositoryService.createDeploymentQuery().deploymentNameLike("%|%%");
         assertEquals("one%", query.singleResult().getName());
         assertEquals(1, query.list().size());
         assertEquals(1, query.count());
 
-        query = repositoryService.createDeploymentQuery().deploymentNameLike("%\\_%");
+        query = repositoryService.createDeploymentQuery().deploymentNameLike("%|_%");
         assertEquals("two_", query.singleResult().getName());
         assertEquals(1, query.list().size());
         assertEquals(1, query.count());
     }
 
+    @Test
     public void testQueryByProcessDefinitionKeyLike() {
-        DeploymentQuery query = repositoryService.createDeploymentQuery().processDefinitionKeyLike("%\\_%");
+        DeploymentQuery query = repositoryService.createDeploymentQuery().processDefinitionKeyLike("%|_%");
         assertEquals(1, query.list().size());
         assertEquals(1, query.count());
     }
 
+    @Test
     public void testQueryByTenantIdLike() {
-        DeploymentQuery query = repositoryService.createDeploymentQuery().deploymentTenantIdLike("%\\%%");
+        DeploymentQuery query = repositoryService.createDeploymentQuery().deploymentTenantIdLike("%|%%");
         assertEquals("One%", query.singleResult().getTenantId());
         assertEquals(1, query.list().size());
         assertEquals(1, query.count());
 
-        query = repositoryService.createDeploymentQuery().deploymentTenantIdLike("%\\_%");
+        query = repositoryService.createDeploymentQuery().deploymentTenantIdLike("%|_%");
         assertEquals("Two_", query.singleResult().getTenantId());
         assertEquals(1, query.list().size());
         assertEquals(1, query.count());

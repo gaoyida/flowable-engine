@@ -13,11 +13,14 @@
 package org.flowable.dmn.engine.test.runtime;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import org.flowable.dmn.api.RuleEngineExecutionResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.flowable.dmn.api.DecisionExecutionAuditContainer;
 import org.flowable.dmn.engine.test.AbstractFlowableDmnTest;
-import org.flowable.dmn.engine.test.DmnDeploymentAnnotation;
+import org.flowable.dmn.engine.test.DmnDeployment;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -29,242 +32,369 @@ import org.junit.Test;
  */
 public class RuntimeTest extends AbstractFlowableDmnTest {
 
+    public ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/multiple_conclusions.dmn")
-    public void executeDecision_multiple_conclusions() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-        processVariablesInput.put("input1", 10);
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test3", result.getResultVariables().get("output1"));
-        Assert.assertSame(Double.class, result.getResultVariables().get("output2").getClass());
-        Assert.assertEquals(3D, result.getResultVariables().get("output2"));
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/multiple_conclusions.dmn")
+    public void multipleConclusions() {
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", 10)
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test3", result.get("output1"));
+        Assert.assertSame(Double.class, result.get("output2").getClass());
+        Assert.assertEquals(3D, result.get("output2"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/dates_1.dmn")
-    public void executeDecision_static_dates() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/dates_1.dmn")
+    public void staticDates() {
         DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
         LocalDate localDate = dateTimeFormatter.parseLocalDate("2015-09-18");
 
-        processVariablesInput.put("input1", localDate.toDate());
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test2", result.getResultVariables().get("output1"));
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", localDate.toDate())
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/dates_2.dmn")
-    public void executeDecision_dynamic_dates_add() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/dates_2.dmn")
+    public void dynamicDatesAdd() {
         DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
         LocalDate localDate = dateTimeFormatter.parseLocalDate("2015-09-18");
 
-        processVariablesInput.put("input1", localDate.toDate());
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test2", result.getResultVariables().get("output1"));
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", localDate.toDate())
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/dates_3.dmn")
-    public void executeDecision_dynamic_dates_subtract() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/dates_3.dmn")
+    public void dynamicDatesSubtract() {
         DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
         LocalDate localDate = dateTimeFormatter.parseLocalDate("2015-09-18");
 
-        processVariablesInput.put("input1", localDate.toDate());
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test2", result.getResultVariables().get("output1"));
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", localDate.toDate())
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/strings_1.dmn")
-    public void executeDecision_String_on_input() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/dates_5.dmn")
+    public void datesEquals() {
+        DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+        LocalDate localDate = dateTimeFormatter.parseLocalDate("2015-09-18");
 
-        processVariablesInput.put("input1", "testString");
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test1", result.getResultVariables().get("output1"));
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", localDate.toDate())
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/strings_2.dmn")
-    public void executeDecision_empty_strings() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/dates_5.dmn")
+    public void localDatesEquals() {
+        DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
+        LocalDate localDate = dateTimeFormatter.parseLocalDate("2015-09-18");
+
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", localDate)
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/strings_1.dmn")
+    public void stringOnInput() {
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", "testString")
+                .executeWithSingleResult();
+        Assert.assertNotNull(result);
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test1", result.get("output1"));
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/strings_2.dmn")
+    public void emptyStrings() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
 
         processVariablesInput.put("input1", "");
         processVariablesInput.put("input2", "This is a sentence containing foobar words.");
 
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test2", result.getResultVariables().get("output1"));
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variables(processVariablesInput)
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_1.dmn")
-    public void executeDecision_conlusion_expression_double() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_1.dmn")
+    public void conlusionExpressionDouble() {
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", "blablatest")
+                .executeWithSingleResult();
+        Assert.assertSame(Double.class, result.get("output1").getClass());
+        Assert.assertEquals(5D, result.get("output1"));
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_2.dmn")
+    public void conclusionExpressionCastException() {
+        DecisionExecutionAuditContainer result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", "blablatest")
+                .executeWithAuditTrail();
+        Assert.assertNotNull(result.getRuleExecutions().get(2).getConclusionResults().iterator().next().getException());
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_2.dmn")
+    public void failedStateMissingInputVariable() {
+        DecisionExecutionAuditContainer result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .executeWithAuditTrail();
+        Assert.assertEquals(true, result.isFailed());
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_3.dmn")
+    public void missingInputVariableBoolean() {
+        DecisionExecutionAuditContainer result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variables(new HashMap<>())
+                .executeWithAuditTrail();
+        Assert.assertEquals(false, result.isFailed());
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_4.dmn")
+    public void failedStateUnknownFunctionOutcomeExpression() {
+        DecisionExecutionAuditContainer result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", "blablatest")
+                .executeWithAuditTrail();
+        Assert.assertEquals(true, result.isFailed());
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_5.dmn")
+    public void outcomeVariableReference() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
 
         processVariablesInput.put("input1", "blablatest");
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(Double.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals(5D, result.getResultVariables().get("output1"));
+        processVariablesInput.put("referenceVar1", 10D);
+        processVariablesInput.put("referenceVar2", 20D);
+        
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variables(processVariablesInput)
+                .executeWithSingleResult();
+        
+        Assert.assertEquals(200D, result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_2.dmn")
-    public void executeDecision_conclusion_expression_cast_exception() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
-        processVariablesInput.put("input1", "blablatest");
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertNotNull(result.getAuditTrail().getRuleExecutions().get(1).getConclusionResults().get(0).getException());
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_2.dmn")
+    public void failedStateCouldNotCreateOutcome() {
+        DecisionExecutionAuditContainer result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", "blablatest")
+                .executeWithAuditTrail();
+        Assert.assertEquals(true, result.isFailed());
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_2.dmn")
-    public void executeDecision_failed_state_missing_input_variable() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertEquals(true, result.getAuditTrail().isFailed());
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/empty_expressions.dmn")
+    public void emptyExpressions() {
+        DecisionExecutionAuditContainer result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", "testblabla")
+                .executeWithAuditTrail();
+        Assert.assertEquals(false, result.isFailed());
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_3.dmn")
-    public void executeDecision_missing_input_variable_boolean() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertEquals(false, result.getAuditTrail().isFailed());
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/dates_4.dmn")
+    public void inputNull() {
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("input1", null)
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_4.dmn")
-    public void executeDecision_failed_state_unknown_function_outcome_expression() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
-        processVariablesInput.put("input1", "blablatest");
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertEquals(true, result.getAuditTrail().isFailed());
-    }
-
-    @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/outcome_expression_2.dmn")
-    public void executeDecision_failed_state_could_not_create_outcome() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
-        processVariablesInput.put("input1", "blablatest");
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertEquals(true, result.getAuditTrail().isFailed());
-    }
-
-    @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/empty_expressions.dmn")
-    public void executeDecision_empty_expressions() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
-        processVariablesInput.put("input1", "testblabla");
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertEquals(false, result.getAuditTrail().isFailed());
-    }
-
-    @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/dates_4.dmn")
-    public void executeDecision_input_null() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-        processVariablesInput.put("input1", null);
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test2", result.getResultVariables().get("output1"));
-    }
-
-    @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/reservered_word.dmn")
-    public void executeDecision_reserved_word() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
-
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/reservered_word.dmn")
+    public void reservedWord() {
         DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd");
         LocalDate localDate = dateTimeFormatter.parseLocalDate("2015-09-18");
 
-        processVariablesInput.put("date", localDate.toDate());
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(String.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals("test2", result.getResultVariables().get("output1"));
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variable("date", localDate.toDate())
+                .executeWithSingleResult();
+        Assert.assertSame(String.class, result.get("output1").getClass());
+        Assert.assertEquals("test2", result.get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/stack_update.dmn")
-    public void executeDecision_stack_update() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/empty_tokens.dmn")
+    public void emptyTokens() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
+        processVariablesInput.put("input1", "AAA");
+        processVariablesInput.put("input2", "BBB");
+        
+        List<Map<String, Object>> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variables(processVariablesInput)
+                .execute();
 
-        processVariablesInput.put("input1", 5);
-        processVariablesInput.put("output1", 0);
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("decision", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertSame(Double.class, result.getResultVariables().get("output1").getClass());
-        Assert.assertEquals(30D, result.getResultVariables().get("output1"));
+        Assert.assertEquals(3, result.size());
+        Assert.assertEquals("THIRD", result.get(0).get("output1"));
+        Assert.assertEquals("FIRST", result.get(1).get("output1"));
+        Assert.assertEquals("SECOND", result.get(2).get("output1"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/refer_new_var.dmn")
-    public void executeDecision_variable_references() {
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/risk_rating_spec_example.dmn")
+    public void riskRating() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
+        processVariablesInput.put("age", 17);
+        processVariablesInput.put("riskcategory", "HIGH");
+        processVariablesInput.put("debtreview", true);
 
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
+        List<Map<String, Object>> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("RiskRatingDecisionTable")
+                .variables(processVariablesInput)
+                .execute();
+        
+        Map<String, Object> ruleResult1 = result.get(0);
+        Map<String, Object> ruleResult2 = result.get(1);
+        Map<String, Object> ruleResult3 = result.get(2);
+        Map<String, Object> ruleResult4 = result.get(3);
 
-        processVariablesInput.put("ordersize", 1000);
+        Assert.assertEquals("DECLINE", ruleResult1.get("routing"));
+        Assert.assertEquals("Applicant too young", ruleResult1.get("reason"));
+        Assert.assertEquals("NONE", ruleResult1.get("reviewlevel"));
 
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("OrderCalculation", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertEquals(100000D, result.getResultVariables().get("totalordersum"));
+        Assert.assertEquals("REFER", ruleResult2.get("routing"));
+        Assert.assertEquals("Applicant under debt review", ruleResult2.get("reason"));
+        Assert.assertEquals("LEVEL 2", ruleResult2.get("reviewlevel"));
+
+        Assert.assertEquals("REFER", ruleResult3.get("routing"));
+        Assert.assertEquals("High risk application", ruleResult3.get("reason"));
+        Assert.assertEquals("LEVEL 1", ruleResult3.get("reviewlevel"));
+
+        Assert.assertEquals("ACCEPT", ruleResult4.get("routing"));
+        Assert.assertEquals("Acceptable", ruleResult4.get("reason"));
+        Assert.assertEquals("NONE", ruleResult4.get("reviewlevel"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/null_value_variables.dmn")
-    public void executeDecision_outcome_null_variables() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/risk_rating_spec_example_DMN12.dmn")
+    public void riskRatingDMN12() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
+        processVariablesInput.put("age", 17);
+        processVariablesInput.put("riskcategory", "HIGH");
+        processVariablesInput.put("debtreview", true);
 
-        processVariablesInput.put("input1", "low");
-        processVariablesInput.put("input2", "blue");
-        processVariablesInput.put("addedPerc", null);
-        processVariablesInput.put("amountDue", null);
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("RiskAssessmentUpdated", processVariablesInput);
-        Assert.assertNotNull(result);
-        Assert.assertEquals(15D, result.getResultVariables().get("addedPerc"));
+        List<Map<String, Object>> result = ruleService.createExecuteDecisionBuilder()
+            .decisionKey("RiskRatingDecisionTable")
+            .variables(processVariablesInput)
+            .execute();
+
+        Map<String, Object> ruleResult1 = result.get(0);
+        Map<String, Object> ruleResult2 = result.get(1);
+        Map<String, Object> ruleResult3 = result.get(2);
+        Map<String, Object> ruleResult4 = result.get(3);
+
+        Assert.assertEquals("DECLINE", ruleResult1.get("routing"));
+        Assert.assertEquals("Applicant too young", ruleResult1.get("reason"));
+        Assert.assertEquals("NONE", ruleResult1.get("reviewlevel"));
+
+        Assert.assertEquals("REFER", ruleResult2.get("routing"));
+        Assert.assertEquals("Applicant under debt review", ruleResult2.get("reason"));
+        Assert.assertEquals("LEVEL 2", ruleResult2.get("reviewlevel"));
+
+        Assert.assertEquals("REFER", ruleResult3.get("routing"));
+        Assert.assertEquals("High risk application", ruleResult3.get("reason"));
+        Assert.assertEquals("LEVEL 1", ruleResult3.get("reviewlevel"));
+
+        Assert.assertEquals("ACCEPT", ruleResult4.get("routing"));
+        Assert.assertEquals("Acceptable", ruleResult4.get("reason"));
+        Assert.assertEquals("NONE", ruleResult4.get("reviewlevel"));
     }
 
     @Test
-    @DmnDeploymentAnnotation(resources = "org/flowable/dmn/engine/test/deployment/null_value_variables.dmn")
-    public void executeDecision_outcome_null_variables_not_on_execution_context() {
-        Map<String, Object> processVariablesInput = new HashMap<String, Object>();
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/numbers_1.dmn")
+    public void testNumbers1() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
+        processVariablesInput.put("count", 101L);
+        processVariablesInput.put("price", 100L);
+        processVariablesInput.put("status", "");
 
-        processVariablesInput.put("input1", "very high");
-        processVariablesInput.put("input2", null);
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("ad")
+                .variables(processVariablesInput)
+                .executeWithSingleResult();
 
-        RuleEngineExecutionResult result = ruleService.executeDecisionByKey("RiskAssessmentUpdated", processVariablesInput);
+        Assert.assertEquals(500D, result.get("total"));
+        Assert.assertEquals(0D, result.get("discount"));
+    }
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/simple.dmn")
+    public void testEqualsStringImplicitOperator() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
+        processVariablesInput.put("inputVariable1", 1D);
+        processVariablesInput.put("inputVariable2", "test2");
+
+        DecisionExecutionAuditContainer result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variables(processVariablesInput)
+                .executeWithAuditTrail();
+
         Assert.assertNotNull(result);
-        Assert.assertEquals(0, result.getResultVariables().size());
+        Assert.assertEquals(true, result.getRuleExecutions().get(1).getConditionResults().get(0).getResult());
+        Assert.assertEquals(true, result.getRuleExecutions().get(2).getConditionResults().get(0).getResult());
+        Assert.assertEquals(true, result.getRuleExecutions().get(3).getConditionResults().get(0).getResult());
+    }
+
+
+    @Test
+    @DmnDeployment(resources = "org/flowable/dmn/engine/test/deployment/json.dmn")
+    public void testJsonNumbers1() {
+        Map<String, Object> processVariablesInput = new HashMap<>();
+        ObjectNode inputNode = objectMapper.createObjectNode();
+        inputNode.put("value", 5L);
+
+        processVariablesInput.put("inputVariable1", inputNode);
+
+        Map<String, Object> result = ruleService.createExecuteDecisionBuilder()
+                .decisionKey("decision")
+                .variables(processVariablesInput)
+                .executeWithSingleResult();
+
+        Assert.assertEquals("result2", result.get("outputVariable1"));
     }
 }

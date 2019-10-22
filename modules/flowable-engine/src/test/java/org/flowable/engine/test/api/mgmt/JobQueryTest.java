@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,19 +20,23 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.impl.cmd.CancelJobsCmd;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.interceptor.CommandExecutor;
-import org.flowable.engine.impl.persistence.entity.JobEntity;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.runtime.Job;
-import org.flowable.engine.runtime.JobQuery;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.runtime.TimerJobQuery;
 import org.flowable.engine.test.Deployment;
+import org.flowable.job.api.Job;
+import org.flowable.job.api.JobQuery;
+import org.flowable.job.api.TimerJobQuery;
+import org.flowable.job.service.impl.cmd.CancelJobsCmd;
+import org.flowable.job.service.impl.persistence.entity.JobEntity;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
@@ -61,8 +65,8 @@ public class JobQueryTest extends PluggableFlowableTestCase {
     /**
      * Setup will create - 3 process instances, each with one timer, each firing at t1/t2/t3 + 1 hour (see process) - 1 message
      */
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
 
         this.commandExecutor = processEngineConfiguration.getCommandExecutor();
 
@@ -95,23 +99,24 @@ public class JobQueryTest extends PluggableFlowableTestCase {
 
         // Create one message
         messageId = commandExecutor.execute(new Command<String>() {
+            @Override
             public String execute(CommandContext commandContext) {
-                JobEntity message = commandContext.getJobEntityManager().create();
+                JobEntity message = CommandContextUtil.getJobService(commandContext).createJob();
                 message.setJobType(Job.JOB_TYPE_MESSAGE);
                 message.setRetries(3);
-                commandContext.getJobManager().scheduleAsyncJob(message);
+                CommandContextUtil.getJobService(commandContext).scheduleAsyncJob(message);
                 return message.getId();
             }
         });
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
         repositoryService.deleteDeployment(deploymentId, true);
         commandExecutor.execute(new CancelJobsCmd(messageId));
-        super.tearDown();
     }
 
+    @Test
     public void testQueryByNoCriteria() {
         JobQuery query = managementService.createJobQuery();
         verifyQueryResults(query, 1);
@@ -120,11 +125,13 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(timerQuery, 3);
     }
 
+    @Test
     public void testQueryByProcessInstanceId() {
         TimerJobQuery query = managementService.createTimerJobQuery().processInstanceId(processInstanceIdOne);
         verifyQueryResults(query, 1);
     }
 
+    @Test
     public void testQueryByInvalidProcessInstanceId() {
         TimerJobQuery query = managementService.createTimerJobQuery().processInstanceId("invalid");
         verifyQueryResults(query, 0);
@@ -136,6 +143,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testQueryByExecutionId() {
         Job job = managementService.createTimerJobQuery().processInstanceId(processInstanceIdOne).singleResult();
         TimerJobQuery query = managementService.createTimerJobQuery().executionId(job.getExecutionId());
@@ -143,6 +151,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(query, 1);
     }
 
+    @Test
     public void testQueryByInvalidExecutionId() {
         JobQuery query = managementService.createJobQuery().executionId("invalid");
         verifyQueryResults(query, 0);
@@ -162,7 +171,70 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         } catch (FlowableIllegalArgumentException e) {
         }
     }
+    
+    @Test
+    public void testQueryByElementId() {
+        TimerJobQuery query = managementService.createTimerJobQuery().elementId("escalationTimer");
+        verifyQueryResults(query, 3);
+    }
+    
+    @Test
+    public void testQueryByInvalidElementId() {
+        TimerJobQuery query = managementService.createTimerJobQuery().elementId("unknown");
+        verifyQueryResults(query, 0);
+    }
+    
+    @Test
+    public void testQueryByElementName() {
+        TimerJobQuery query = managementService.createTimerJobQuery().elementName("Escalation");
+        verifyQueryResults(query, 3);
+    }
+    
+    public void testQueryByInvalidElementName() {
+        TimerJobQuery query = managementService.createTimerJobQuery().elementName("unknown");
+        verifyQueryResults(query, 0);
+    }
 
+    @Test
+    public void testQueryByHandlerType() {
+        final JobEntity job = (JobEntity) managementService.createJobQuery().singleResult();
+        job.setJobHandlerType("test");
+        managementService.executeCommand(new Command<Void>() {
+
+            @Override
+            public Void execute(CommandContext commandContext) {
+                CommandContextUtil.getJobService(commandContext).updateJob(job);
+                return null;
+            }
+            
+        });
+        
+        Job handlerTypeJob = managementService.createJobQuery().handlerType("test").singleResult();
+        assertNotNull(handlerTypeJob);
+    }
+
+    @Test
+    public void testQueryByInvalidJobType() {
+        JobQuery query = managementService.createJobQuery().handlerType("invalid");
+        verifyQueryResults(query, 0);
+
+        TimerJobQuery timerQuery = managementService.createTimerJobQuery().executionId("invalid");
+        verifyQueryResults(timerQuery, 0);
+
+        try {
+            managementService.createJobQuery().executionId(null).list();
+            fail();
+        } catch (FlowableIllegalArgumentException e) {
+        }
+
+        try {
+            managementService.createTimerJobQuery().executionId(null).list();
+            fail();
+        } catch (FlowableIllegalArgumentException e) {
+        }
+    }
+
+    @Test
     public void testQueryByRetriesLeft() {
         JobQuery query = managementService.createJobQuery();
         verifyQueryResults(query, 1);
@@ -179,6 +251,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(timerQuery, 2);
     }
 
+    @Test
     public void testQueryByExecutable() {
         processEngineConfiguration.getClock().setCurrentTime(new Date(timerThreeFireTime.getTime() + ONE_SECOND)); // all obs should be executable at t3 + 1hour.1second
         JobQuery query = managementService.createJobQuery();
@@ -207,6 +280,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(timerQuery, 0);
     }
 
+    @Test
     public void testQueryByOnlyTimers() {
         JobQuery query = managementService.createJobQuery().timers();
         verifyQueryResults(query, 0);
@@ -215,11 +289,13 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(timerQuery, 3);
     }
 
+    @Test
     public void testQueryByOnlyMessages() {
         JobQuery query = managementService.createJobQuery().messages();
         verifyQueryResults(query, 1);
     }
 
+    @Test
     public void testInvalidOnlyTimersUsage() {
         try {
             managementService.createJobQuery().timers().messages().list();
@@ -229,6 +305,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testQueryByDuedateLowerThan() {
         JobQuery query = managementService.createJobQuery().duedateLowerThan(testStartTime);
         verifyQueryResults(query, 0);
@@ -246,6 +323,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(timerQuery, 3);
     }
 
+    @Test
     public void testQueryByDuedateHigherThan() {
         JobQuery query = managementService.createJobQuery().duedateHigherThan(testStartTime);
         verifyQueryResults(query, 0);
@@ -269,6 +347,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(timerQuery, 0);
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/mgmt/ManagementServiceTest.testGetJobExceptionStacktrace.bpmn20.xml" })
     public void testQueryByException() {
         TimerJobQuery query = managementService.createTimerJobQuery().withException();
@@ -280,6 +359,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyFailedJob(query, processInstance);
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/mgmt/ManagementServiceTest.testGetJobExceptionStacktrace.bpmn20.xml" })
     public void testQueryByExceptionMessage() {
         TimerJobQuery query = managementService.createTimerJobQuery().exceptionMessage(EXCEPTION_MESSAGE);
@@ -291,6 +371,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyFailedJob(query, processInstance);
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/api/mgmt/ManagementServiceTest.testGetJobExceptionStacktrace.bpmn20.xml" })
     public void testQueryByExceptionMessageEmpty() {
         JobQuery query = managementService.createJobQuery().exceptionMessage("");
@@ -302,6 +383,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         verifyQueryResults(query, 0);
     }
 
+    @Test
     public void testQueryByExceptionMessageNull() {
         try {
             managementService.createJobQuery().exceptionMessage(null);
@@ -311,6 +393,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         }
     }
 
+    @Test
     public void testJobQueryWithExceptions() throws Throwable {
 
         createJobWithoutExceptionMsg();
@@ -339,6 +422,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
 
     // sorting //////////////////////////////////////////
 
+    @Test
     public void testQuerySorting() {
         // asc
         assertEquals(1, managementService.createJobQuery().orderByJobId().asc().count());
@@ -384,6 +468,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
         assertEquals(processInstanceIdOne, jobs.get(2).getProcessInstanceId());
     }
 
+    @Test
     public void testQueryInvalidSortingUsage() {
         try {
             managementService.createJobQuery().orderByJobId().list();
@@ -484,8 +569,9 @@ public class JobQueryTest extends PluggableFlowableTestCase {
     private void createJobWithoutExceptionMsg() {
         CommandExecutor commandExecutor = processEngineConfiguration.getCommandExecutor();
         commandExecutor.execute(new Command<Void>() {
+            @Override
             public Void execute(CommandContext commandContext) {
-                jobEntity = commandContext.getJobEntityManager().create();
+                jobEntity = CommandContextUtil.getJobService(commandContext).createJob();
                 jobEntity.setJobType(Job.JOB_TYPE_MESSAGE);
                 jobEntity.setLockOwner(UUID.randomUUID().toString());
                 jobEntity.setRetries(0);
@@ -495,7 +581,7 @@ public class JobQueryTest extends PluggableFlowableTestCase {
                 exception.printStackTrace(new PrintWriter(stringWriter));
                 jobEntity.setExceptionStacktrace(stringWriter.toString());
 
-                commandContext.getJobEntityManager().insert(jobEntity);
+                CommandContextUtil.getJobService(commandContext).insertJob(jobEntity);
 
                 assertNotNull(jobEntity.getId());
 
@@ -509,15 +595,16 @@ public class JobQueryTest extends PluggableFlowableTestCase {
     private void createJobWithoutExceptionStacktrace() {
         CommandExecutor commandExecutor = processEngineConfiguration.getCommandExecutor();
         commandExecutor.execute(new Command<Void>() {
+            @Override
             public Void execute(CommandContext commandContext) {
-                jobEntity = commandContext.getJobEntityManager().create();
+                jobEntity = CommandContextUtil.getJobService(commandContext).createJob();
                 jobEntity.setJobType(Job.JOB_TYPE_MESSAGE);
                 jobEntity.setLockOwner(UUID.randomUUID().toString());
                 jobEntity.setRetries(0);
 
                 jobEntity.setExceptionMessage("I'm supposed to fail");
 
-                commandContext.getJobEntityManager().insert(jobEntity);
+                CommandContextUtil.getJobService(commandContext).insertJob(jobEntity);
 
                 assertNotNull(jobEntity.getId());
 
@@ -531,9 +618,10 @@ public class JobQueryTest extends PluggableFlowableTestCase {
     private void deleteJobInDatabase() {
         CommandExecutor commandExecutor = processEngineConfiguration.getCommandExecutor();
         commandExecutor.execute(new Command<Void>() {
+            @Override
             public Void execute(CommandContext commandContext) {
 
-                commandContext.getJobEntityManager().delete(jobEntity.getId());
+                CommandContextUtil.getJobService(commandContext).deleteJob(jobEntity.getId());
                 return null;
             }
         });

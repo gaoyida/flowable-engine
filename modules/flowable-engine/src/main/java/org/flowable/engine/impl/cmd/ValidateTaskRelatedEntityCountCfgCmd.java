@@ -12,10 +12,11 @@
  */
 package org.flowable.engine.impl.cmd;
 
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.persistence.entity.PropertyEntity;
 import org.flowable.engine.impl.persistence.entity.PropertyEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,16 +25,16 @@ import org.slf4j.LoggerFactory;
  */
 public class ValidateTaskRelatedEntityCountCfgCmd implements Command<Void> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ValidateTaskRelatedEntityCountCfgCmd.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ValidateTaskRelatedEntityCountCfgCmd.class);
 
-    public static String PROPERTY_TASK_RELATED_ENTITY_COUNT = "cfg.task-related-entities-count";
+    public static final String PROPERTY_TASK_RELATED_ENTITY_COUNT = "cfg.task-related-entities-count";
 
     @Override
     public Void execute(CommandContext commandContext) {
 
-        PropertyEntityManager propertyEntityManager = commandContext.getPropertyEntityManager();
+        PropertyEntityManager propertyEntityManager = CommandContextUtil.getPropertyEntityManager(commandContext);
 
-        boolean configProperty = commandContext.getProcessEngineConfiguration().getPerformanceSettings().isEnableTaskRelationshipCounts();
+        boolean configProperty = CommandContextUtil.getProcessEngineConfiguration(commandContext).getPerformanceSettings().isEnableTaskRelationshipCounts();
         PropertyEntity propertyEntity = propertyEntityManager.findById(PROPERTY_TASK_RELATED_ENTITY_COUNT);
 
         if (propertyEntity == null) {
@@ -50,11 +51,11 @@ public class ValidateTaskRelatedEntityCountCfgCmd implements Command<Void> {
             // TODO: is this required since we check the global "task count" flag each time we read/update?
             // might have a serious performance impact when thousands of tasks are present.
             if (!configProperty && propertyValue) {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Configuration change: task related entity counting feature was enabled before, but now disabled. "
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info("Configuration change: task related entity counting feature was enabled before, but now disabled. "
                             + "Updating all task entities.");
                 }
-                commandContext.getProcessEngineConfiguration().getTaskDataManager().updateAllTaskRelatedEntityCountFlags(configProperty);
+                CommandContextUtil.getTaskService().updateAllTaskRelatedEntityCountFlags(configProperty);
             }
 
             // Update property

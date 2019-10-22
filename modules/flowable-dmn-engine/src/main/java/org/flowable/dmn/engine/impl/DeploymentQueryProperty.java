@@ -29,8 +29,8 @@ package org.flowable.dmn.engine.impl;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.flowable.common.engine.api.query.QueryProperty;
 import org.flowable.dmn.api.DmnDeploymentQuery;
-import org.flowable.engine.common.api.query.QueryProperty;
 
 /**
  * Contains the possible properties that can be used in a {@link DmnDeploymentQuery}.
@@ -41,7 +41,7 @@ public class DeploymentQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, DeploymentQueryProperty> properties = new HashMap<String, DeploymentQueryProperty>();
+    private static final Map<String, DeploymentQueryProperty> properties = new HashMap<>();
 
     public static final DeploymentQueryProperty DEPLOYMENT_ID = new DeploymentQueryProperty("RES.ID_");
     public static final DeploymentQueryProperty DEPLOYMENT_NAME = new DeploymentQueryProperty("RES.NAME_");
@@ -55,6 +55,7 @@ public class DeploymentQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

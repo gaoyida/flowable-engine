@@ -15,16 +15,16 @@ package org.flowable.engine.test.api.event;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEventListener;
-import org.flowable.engine.delegate.event.FlowableVariableEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.engine.delegate.event.AbstractFlowableEngineEventListener;
+import org.flowable.variable.api.event.FlowableVariableEvent;
 
-public class TestVariableEventListener implements FlowableEventListener {
+public class TestVariableEventListener extends AbstractFlowableEngineEventListener {
 
     private List<FlowableEvent> eventsReceived;
 
     public TestVariableEventListener() {
-        eventsReceived = new ArrayList<FlowableEvent>();
+        eventsReceived = new ArrayList<>();
     }
 
     public List<FlowableEvent> getEventsReceived() {
@@ -36,10 +36,18 @@ public class TestVariableEventListener implements FlowableEventListener {
     }
 
     @Override
-    public void onEvent(FlowableEvent event) {
-        if (event instanceof FlowableVariableEvent) {
-            eventsReceived.add(event);
-        }
+    protected void variableCreated(FlowableVariableEvent event) {
+        eventsReceived.add(event);
+    }
+
+    @Override
+    protected void variableUpdatedEvent(FlowableVariableEvent event) {
+        eventsReceived.add(event);
+    }
+
+    @Override
+    protected void variableDeletedEvent(FlowableVariableEvent event) {
+        eventsReceived.add(event);
     }
 
     @Override

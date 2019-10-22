@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,7 +27,7 @@ import org.junit.Test;
 public class CallActivityConverterTest extends AbstractConverterTest {
 
     @Test
-    public void connvertJsonToModel() throws Exception {
+    public void convertJsonToModel() throws Exception {
         BpmnModel bpmnModel = readJsonFile();
         validateModel(bpmnModel);
     }
@@ -39,6 +39,7 @@ public class CallActivityConverterTest extends AbstractConverterTest {
         validateModel(bpmnModel);
     }
 
+    @Override
     protected String getResource() {
         return "test.callactivitymodel.json";
     }
@@ -52,6 +53,12 @@ public class CallActivityConverterTest extends AbstractConverterTest {
         assertEquals("Call activity", callActivity.getName());
 
         assertEquals("processId", callActivity.getCalledElement());
+        assertEquals("id", callActivity.getCalledElementType());
+        assertTrue(callActivity.getFallbackToDefaultTenant());
+        assertTrue(callActivity.isInheritVariables());
+        assertTrue(callActivity.isSameDeployment());
+        assertTrue(callActivity.isInheritBusinessKey());
+        assertTrue(callActivity.isUseLocalScopeForOutParameters());
 
         List<IOParameter> parameters = callActivity.getInParameters();
         assertEquals(2, parameters.size());

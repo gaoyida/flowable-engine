@@ -21,7 +21,7 @@ import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 
-import org.flowable.engine.common.api.FlowableException;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.GroupQuery;
 import org.flowable.idm.api.NativeGroupQuery;
@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 public class LDAPIdentityServiceImpl extends IdmIdentityServiceImpl {
 
-    private static Logger logger = LoggerFactory.getLogger(LDAPIdentityServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LDAPIdentityServiceImpl.class);
 
     protected LDAPConfiguration ldapConfigurator;
     protected LDAPGroupCache ldapGroupCache;
@@ -146,6 +146,7 @@ public class LDAPIdentityServiceImpl extends IdmIdentityServiceImpl {
             LDAPTemplate ldapTemplate = new LDAPTemplate(ldapConfigurator);
             return ldapTemplate.execute(new LDAPCallBack<Boolean>() {
 
+                @Override
                 public Boolean executeInContext(InitialDirContext initialDirContext) {
 
                     if (initialDirContext == null) {
@@ -167,7 +168,7 @@ public class LDAPIdentityServiceImpl extends IdmIdentityServiceImpl {
                         namingEnum.close();
 
                     } catch (NamingException ne) {
-                        logger.info("Could not authenticate user {} : {}", userId, ne.getMessage(), ne);
+                        LOGGER.info("Could not authenticate user {} : {}", userId, ne.getMessage(), ne);
                         return false;
                     }
 
@@ -192,7 +193,7 @@ public class LDAPIdentityServiceImpl extends IdmIdentityServiceImpl {
             });
 
         } catch (FlowableException e) {
-            logger.info("Could not authenticate user : {}", userId, e);
+            LOGGER.info("Could not authenticate user : {}", userId, e);
             return false;
         }
     }

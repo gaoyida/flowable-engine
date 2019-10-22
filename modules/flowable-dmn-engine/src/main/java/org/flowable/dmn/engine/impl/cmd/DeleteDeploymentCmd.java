@@ -14,9 +14,10 @@ package org.flowable.dmn.engine.impl.cmd;
 
 import java.io.Serializable;
 
-import org.flowable.dmn.engine.impl.interceptor.Command;
-import org.flowable.dmn.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.dmn.engine.impl.util.CommandContextUtil;
 
 /**
  * @author Joram Barrez
@@ -30,13 +31,14 @@ public class DeleteDeploymentCmd implements Command<Void>, Serializable {
         this.deploymentId = deploymentId;
     }
 
+    @Override
     public Void execute(CommandContext commandContext) {
         if (deploymentId == null) {
             throw new FlowableIllegalArgumentException("deploymentId is null");
         }
 
         // Remove process definitions from cache:
-        commandContext.getDmnEngineConfiguration().getDeploymentManager().removeDeployment(deploymentId);
+        CommandContextUtil.getDmnEngineConfiguration().getDeploymentManager().removeDeployment(deploymentId);
 
         return null;
     }

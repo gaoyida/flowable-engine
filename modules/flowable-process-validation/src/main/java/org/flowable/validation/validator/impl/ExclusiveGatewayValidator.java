@@ -49,16 +49,16 @@ public class ExclusiveGatewayValidator extends ProcessLevelValidator {
         } else {
             String defaultSequenceFlow = exclusiveGateway.getDefaultFlow();
 
-            List<SequenceFlow> flowsWithoutCondition = new ArrayList<SequenceFlow>();
+            List<SequenceFlow> flowsWithoutCondition = new ArrayList<>();
             for (SequenceFlow flow : exclusiveGateway.getOutgoingFlows()) {
                 String condition = flow.getConditionExpression();
                 boolean isDefaultFlow = flow.getId() != null && flow.getId().equals(defaultSequenceFlow);
-                boolean hasConditon = StringUtils.isNotEmpty(condition);
+                boolean hasCondition = StringUtils.isNotEmpty(condition);
 
-                if (!hasConditon && !isDefaultFlow) {
+                if (!hasCondition && !isDefaultFlow) {
                     flowsWithoutCondition.add(flow);
                 }
-                if (hasConditon && isDefaultFlow) {
+                if (hasCondition && isDefaultFlow) {
                     addError(errors, Problems.EXCLUSIVE_GATEWAY_CONDITION_ON_DEFAULT_SEQ_FLOW, process, exclusiveGateway, "Default sequenceflow has a condition, which is not allowed");
                 }
             }

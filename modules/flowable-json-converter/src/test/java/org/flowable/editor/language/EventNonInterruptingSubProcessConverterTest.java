@@ -13,6 +13,7 @@
 package org.flowable.editor.language;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -26,7 +27,7 @@ import org.junit.Test;
 public class EventNonInterruptingSubProcessConverterTest extends AbstractConverterTest {
 
     @Test
-    public void connvertJsonToModel() throws Exception {
+    public void convertJsonToModel() throws Exception {
         BpmnModel bpmnModel = readJsonFile();
         validateModel(bpmnModel);
     }
@@ -38,6 +39,7 @@ public class EventNonInterruptingSubProcessConverterTest extends AbstractConvert
         validateModel(bpmnModel);
     }
 
+    @Override
     protected String getResource() {
         return "test.eventnoninterruptingsubprocessmodel.json";
     }
@@ -59,7 +61,7 @@ public class EventNonInterruptingSubProcessConverterTest extends AbstractConvert
         assertTrue(signalStartEvent instanceof StartEvent);
         StartEvent startEvent = (StartEvent) signalStartEvent;
         assertEquals("eventSignalStart", startEvent.getId());
-        assertTrue(!startEvent.isInterrupting());
+        assertFalse(startEvent.isInterrupting());
         assertEquals(eventSubProcess.getId(), startEvent.getSubProcess().getId());
     }
 }

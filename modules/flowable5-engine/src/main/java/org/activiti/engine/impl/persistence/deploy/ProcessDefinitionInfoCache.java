@@ -36,7 +36,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class ProcessDefinitionInfoCache {
 
-    private static final Logger logger = LoggerFactory.getLogger(ProcessDefinitionInfoCache.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessDefinitionInfoCache.class);
 
     protected Map<String, ProcessDefinitionInfoCacheObject> cache;
     protected CommandExecutor commandExecutor;
@@ -44,7 +44,7 @@ public class ProcessDefinitionInfoCache {
     /** Cache with no limit */
     public ProcessDefinitionInfoCache(CommandExecutor commandExecutor) {
         this.commandExecutor = commandExecutor;
-        this.cache = Collections.synchronizedMap(new HashMap<String, ProcessDefinitionInfoCacheObject>());
+        this.cache = Collections.synchronizedMap(new HashMap<>());
     }
 
     /** Cache which has a hard limit: no more elements will be cached than the limit. */
@@ -56,10 +56,11 @@ public class ProcessDefinitionInfoCache {
             // true will keep the 'access-order', which is needed to have a real LRU cache
             private static final long serialVersionUID = 1L;
 
+            @Override
             protected boolean removeEldestEntry(Map.Entry<String, ProcessDefinitionInfoCacheObject> eldest) {
                 boolean removeEldest = size() > limit;
                 if (removeEldest) {
-                    logger.trace("Cache limit is reached, {} will be evicted", eldest.getKey());
+                    LOGGER.trace("Cache limit is reached, {} will be evicted", eldest.getKey());
                 }
                 return removeEldest;
             }

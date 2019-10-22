@@ -17,7 +17,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.persistence.entity.Entity;
+import org.flowable.common.engine.impl.persistence.entity.Entity;
 import org.flowable.form.api.FormDeployment;
 
 /**
@@ -26,9 +26,9 @@ import org.flowable.form.api.FormDeployment;
  */
 public interface FormDeploymentEntity extends FormDeployment, Entity {
 
-    void addResource(ResourceEntity resource);
+    void addResource(FormResourceEntity resource);
 
-    Map<String, ResourceEntity> getResources();
+    Map<String, FormResourceEntity> getResources();
 
     void addDeployedArtifact(Object deployedArtifact);
 
@@ -42,7 +42,7 @@ public interface FormDeploymentEntity extends FormDeployment, Entity {
 
     void setParentDeploymentId(String parentDeploymentId);
 
-    void setResources(Map<String, ResourceEntity> resources);
+    void setResources(Map<String, FormResourceEntity> resources);
 
     void setDeploymentTime(Date deploymentTime);
 

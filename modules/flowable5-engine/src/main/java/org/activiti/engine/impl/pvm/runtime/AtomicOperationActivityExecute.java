@@ -19,7 +19,7 @@ import org.activiti.engine.impl.context.Context;
 import org.activiti.engine.impl.pvm.PvmException;
 import org.activiti.engine.impl.pvm.process.ActivityImpl;
 import org.activiti.engine.logging.LogMDC;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.impl.delegate.ActivityBehavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,12 +29,14 @@ import org.slf4j.LoggerFactory;
  */
 public class AtomicOperationActivityExecute implements AtomicOperation {
 
-    private static Logger log = LoggerFactory.getLogger(AtomicOperationActivityExecute.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AtomicOperationActivityExecute.class);
 
+    @Override
     public boolean isAsync(InterpretableExecution execution) {
         return false;
     }
 
+    @Override
     public void execute(InterpretableExecution execution) {
         ActivityImpl activity = (ActivityImpl) execution.getActivity();
 
@@ -43,7 +45,7 @@ public class AtomicOperationActivityExecute implements AtomicOperation {
             throw new PvmException("no behavior specified in " + activity);
         }
 
-        log.debug("{} executes {}: {}", execution, activity, activityBehavior.getClass().getName());
+        LOGGER.debug("{} executes {}: {}", execution, activity, activityBehavior.getClass().getName());
 
         try {
             if (Context.getProcessEngineConfiguration() != null && Context.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {

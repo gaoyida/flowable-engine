@@ -14,8 +14,6 @@ package org.flowable.dmn.engine;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -28,24 +26,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
-import org.flowable.dmn.engine.impl.util.ReflectUtil;
-import org.flowable.engine.common.EngineInfo;
-import org.flowable.engine.common.api.FlowableException;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.EngineInfo;
+import org.flowable.common.engine.impl.util.ReflectUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class DmnEngines {
 
-    private static Logger log = LoggerFactory.getLogger(DmnEngines.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DmnEngines.class);
 
     public static final String NAME_DEFAULT = "default";
 
     protected static boolean isInitialized;
-    protected static Map<String, DmnEngine> dmnEngines = new HashMap<String, DmnEngine>();
-    protected static Map<String, EngineInfo> dmnEngineInfosByName = new HashMap<String, EngineInfo>();
-    protected static Map<String, EngineInfo> dmnEngineInfosByResourceUrl = new HashMap<String, EngineInfo>();
-    protected static List<EngineInfo> dmnEngineInfos = new ArrayList<EngineInfo>();
+    protected static Map<String, DmnEngine> dmnEngines = new HashMap<>();
+    protected static Map<String, EngineInfo> dmnEngineInfosByName = new HashMap<>();
+    protected static Map<String, EngineInfo> dmnEngineInfosByResourceUrl = new HashMap<>();
+    protected static List<EngineInfo> dmnEngineInfos = new ArrayList<>();
 
     /**
      * Initializes all dmn engines that can be found on the classpath for resources <code>flowable.dmn.cfg.xml</code> and for resources <code>flowable-dmn-context.xml</code> (Spring style
@@ -55,7 +53,7 @@ public abstract class DmnEngines {
         if (!isInitialized()) {
             if (dmnEngines == null) {
                 // Create new map to store dmn engines if current map is null
-                dmnEngines = new HashMap<String, DmnEngine>();
+                dmnEngines = new HashMap<>();
             }
             ClassLoader classLoader = DmnEngines.class.getClassLoader();
             Enumeration<URL> resources = null;
@@ -67,13 +65,13 @@ public abstract class DmnEngines {
 
             // Remove duplicated configuration URL's using set. Some
             // classloaders may return identical URL's twice, causing duplicate startups
-            Set<URL> configUrls = new HashSet<URL>();
+            Set<URL> configUrls = new HashSet<>();
             while (resources.hasMoreElements()) {
                 configUrls.add(resources.nextElement());
             }
             for (Iterator<URL> iterator = configUrls.iterator(); iterator.hasNext();) {
                 URL resource = iterator.next();
-                log.info("Initializing dmn engine using configuration '{}'", resource.toString());
+                LOGGER.info("Initializing dmn engine using configuration '{}'", resource);
                 initDmnEngineFromResource(resource);
             }
 
@@ -85,13 +83,13 @@ public abstract class DmnEngines {
 
             while (resources.hasMoreElements()) {
                 URL resource = resources.nextElement();
-                log.info("Initializing dmn engine using Spring configuration '{}'", resource.toString());
+                LOGGER.info("Initializing dmn engine using Spring configuration '{}'", resource);
                 initDmnEngineFromSpringResource(resource);
             }
 
             setInitialized(true);
         } else {
-            log.info("DMN engines already initialized");
+            LOGGER.info("DMN engines already initialized");
         }
     }
 
@@ -107,7 +105,7 @@ public abstract class DmnEngines {
             dmnEngineInfosByResourceUrl.put(resource.toString(), dmnEngineInfo);
 
         } catch (Exception e) {
-            throw new FlowableException("couldn't initialize dmn engine from spring configuration resource " + resource.toString() + ": " + e.getMessage(), e);
+            throw new FlowableException("couldn't initialize dmn engine from spring configuration resource " + resource + ": " + e.getMessage(), e);
         }
     }
 
@@ -141,40 +139,29 @@ public abstract class DmnEngines {
 
         String resourceUrlString = resourceUrl.toString();
         try {
-            log.info("initializing dmn engine for resource {}", resourceUrl);
+            LOGGER.info("initializing dmn engine for resource {}", resourceUrl);
             DmnEngine dmnEngine = buildDmnEngine(resourceUrl);
             String dmnEngineName = dmnEngine.getName();
-            log.info("initialised dmn engine {}", dmnEngineName);
+            LOGGER.info("initialised dmn engine {}", dmnEngineName);
             dmnEngineInfo = new EngineInfo(dmnEngineName, resourceUrlString, null);
             dmnEngines.put(dmnEngineName, dmnEngine);
             dmnEngineInfosByName.put(dmnEngineName, dmnEngineInfo);
         } catch (Throwable e) {
-            log.error("Exception while initializing dmn engine: {}", e.getMessage(), e);
-            dmnEngineInfo = new EngineInfo(null, resourceUrlString, getExceptionString(e));
+            LOGGER.error("Exception while initializing dmn engine: {}", e.getMessage(), e);
+            dmnEngineInfo = new EngineInfo(null, resourceUrlString, ExceptionUtils.getStackTrace(e));
         }
         dmnEngineInfosByResourceUrl.put(resourceUrlString, dmnEngineInfo);
         dmnEngineInfos.add(dmnEngineInfo);
         return dmnEngineInfo;
     }
 
-    private static String getExceptionString(Throwable e) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
-        return sw.toString();
-    }
-
     protected static DmnEngine buildDmnEngine(URL resource) {
-        InputStream inputStream = null;
-        try {
-            inputStream = resource.openStream();
+        try (InputStream inputStream = resource.openStream()) {
             DmnEngineConfiguration dmnEngineConfiguration = DmnEngineConfiguration.createDmnEngineConfigurationFromInputStream(inputStream);
             return dmnEngineConfiguration.buildDmnEngine();
 
         } catch (IOException e) {
             throw new FlowableException("couldn't open resource stream: " + e.getMessage(), e);
-        } finally {
-            IOUtils.closeQuietly(inputStream);
         }
     }
 
@@ -212,7 +199,7 @@ public abstract class DmnEngines {
      * retries to initialize a dmn engine that previously failed.
      */
     public static EngineInfo retry(String resourceUrl) {
-        log.debug("retying initializing of resource {}", resourceUrl);
+        LOGGER.debug("retying initializing of resource {}", resourceUrl);
         try {
             return initDmnEngineFromResource(new URL(resourceUrl));
         } catch (MalformedURLException e) {
@@ -232,15 +219,15 @@ public abstract class DmnEngines {
      */
     public static synchronized void destroy() {
         if (isInitialized()) {
-            Map<String, DmnEngine> engines = new HashMap<String, DmnEngine>(dmnEngines);
-            dmnEngines = new HashMap<String, DmnEngine>();
+            Map<String, DmnEngine> engines = new HashMap<>(dmnEngines);
+            dmnEngines = new HashMap<>();
 
             for (String dmnEngineName : engines.keySet()) {
                 DmnEngine dmnEngine = engines.get(dmnEngineName);
                 try {
                     dmnEngine.close();
                 } catch (Exception e) {
-                    log.error("exception while closing {}", (dmnEngineName == null ? "the default dmn engine" : "dmn engine " + dmnEngineName), e);
+                    LOGGER.error("exception while closing {}", (dmnEngineName == null ? "the default dmn engine" : "dmn engine " + dmnEngineName), e);
                 }
             }
 

@@ -12,27 +12,37 @@
  */
 package org.flowable.engine.impl.util;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
 
 import org.apache.commons.lang3.StringUtils;
+import org.flowable.bpmn.model.BoundaryEvent;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.Event;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.IntermediateCatchEvent;
 import org.flowable.bpmn.model.TimerEventDefinition;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.runtime.Clock;
-import org.flowable.engine.delegate.Expression;
-import org.flowable.engine.delegate.VariableScope;
-import org.flowable.engine.impl.calendar.BusinessCalendar;
-import org.flowable.engine.impl.calendar.CycleBusinessCalendar;
-import org.flowable.engine.impl.calendar.DueDateBusinessCalendar;
-import org.flowable.engine.impl.calendar.DurationBusinessCalendar;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.impl.calendar.BusinessCalendar;
+import org.flowable.common.engine.impl.calendar.CycleBusinessCalendar;
+import org.flowable.common.engine.impl.calendar.DueDateBusinessCalendar;
+import org.flowable.common.engine.impl.calendar.DurationBusinessCalendar;
+import org.flowable.common.engine.impl.el.ExpressionManager;
+import org.flowable.common.engine.impl.runtime.Clock;
+import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.el.ExpressionManager;
-import org.flowable.engine.impl.el.NoExecutionVariableScope;
+import org.flowable.engine.impl.jobexecutor.TimerEventHandler;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
-import org.flowable.engine.impl.persistence.entity.JobEntity;
-import org.flowable.engine.impl.persistence.entity.TimerJobEntity;
+import org.flowable.job.service.TimerJobService;
+import org.flowable.job.service.event.impl.FlowableJobEventBuilder;
+import org.flowable.job.service.impl.persistence.entity.JobEntity;
+import org.flowable.job.service.impl.persistence.entity.TimerJobEntity;
+import org.flowable.variable.api.delegate.VariableScope;
+import org.flowable.variable.service.impl.el.NoExecutionVariableScope;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormatter;
@@ -51,7 +61,7 @@ public class TimerUtil {
     public static TimerJobEntity createTimerEntityForTimerEventDefinition(TimerEventDefinition timerEventDefinition, boolean isInterruptingTimer,
             ExecutionEntity executionEntity, String jobHandlerType, String jobHandlerConfig) {
 
-        ProcessEngineConfigurationImpl processEngineConfiguration = Context.getProcessEngineConfiguration();
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration();
 
         String businessCalendarRef = null;
         Expression expression = null;
@@ -106,9 +116,14 @@ public class TimerUtil {
             // JodaTime support
             duedate = ((DateTime) dueDateValue).toDate();
 
+        } else if (dueDateValue instanceof Duration) {
+        	dueDateString = ((Duration) dueDateValue).toString();
+        } else if (dueDateValue instanceof Instant) {
+            duedate = Date.from((Instant) dueDateValue);
+            
         } else if (dueDateValue != null) {
             throw new FlowableException("Timer '" + executionEntity.getActivityId()
-                    + "' was not configured with a valid duration/time, either hand in a java.util.Date or a String in format 'yyyy-MM-dd'T'hh:mm:ss'");
+                    + "' was not configured with a valid duration/time, either hand in a java.util.Date or a java.time.Instant or a org.joda.time.DateTime or a String in format 'yyyy-MM-dd'T'hh:mm:ss'");
         }
 
         if (duedate == null && dueDateString != null) {
@@ -117,7 +132,7 @@ public class TimerUtil {
 
         TimerJobEntity timer = null;
         if (duedate != null) {
-            timer = Context.getCommandContext().getTimerJobEntityManager().create();
+            timer = CommandContextUtil.getTimerJobService().createTimerJob();
             timer.setJobType(JobEntity.JOB_TYPE_TIMER);
             timer.setRevision(1);
             timer.setJobHandlerType(jobHandlerType);
@@ -126,7 +141,7 @@ public class TimerUtil {
             timer.setRetries(processEngineConfiguration.getAsyncExecutorNumberOfRetries());
             timer.setDuedate(duedate);
             if (executionEntity != null) {
-                timer.setExecution(executionEntity);
+                timer.setExecutionId(executionEntity.getId());
                 timer.setProcessDefinitionId(executionEntity.getProcessDefinitionId());
                 timer.setProcessInstanceId(executionEntity.getProcessInstanceId());
 
@@ -135,6 +150,9 @@ public class TimerUtil {
                     timer.setTenantId(executionEntity.getTenantId());
                 }
             }
+            
+        } else {
+            throw new FlowableException("Due date could not be determined for timer job " + dueDateString);
         }
 
         if (StringUtils.isNotEmpty(timerEventDefinition.getTimeCycle())) {
@@ -156,9 +174,12 @@ public class TimerUtil {
         }
 
         if (timer != null && executionEntity != null) {
-            timer.setExecution(executionEntity);
+            timer.setExecutionId(executionEntity.getId());
             timer.setProcessDefinitionId(executionEntity.getProcessDefinitionId());
-
+            timer.setProcessInstanceId(executionEntity.getProcessInstanceId());
+            timer.setElementId(executionEntity.getCurrentFlowElement().getId());
+            timer.setElementName(executionEntity.getCurrentFlowElement().getName());
+            
             // Inherit tenant identifier (if applicable)
             if (executionEntity.getTenantId() != null) {
                 timer.setTenantId(executionEntity.getTenantId());
@@ -167,11 +188,44 @@ public class TimerUtil {
 
         return timer;
     }
+    
+    public static TimerJobEntity rescheduleTimerJob(String timerJobId, TimerEventDefinition timerEventDefinition) {
+        TimerJobService timerJobService = CommandContextUtil.getTimerJobService();
+        TimerJobEntity timerJob = timerJobService.findTimerJobById(timerJobId);
+        if (timerJob != null) {
+            BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(timerJob.getProcessDefinitionId());
+            Event eventElement = (Event) bpmnModel.getFlowElement(TimerEventHandler.getActivityIdFromConfiguration(timerJob.getJobHandlerConfiguration()));
+            boolean isInterruptingTimer = false;
+            if (eventElement instanceof BoundaryEvent) {
+                isInterruptingTimer = ((BoundaryEvent) eventElement).isCancelActivity();
+            }
+
+            ExecutionEntity execution = CommandContextUtil.getExecutionEntityManager().findById(timerJob.getExecutionId());
+            TimerJobEntity rescheduledTimerJob = TimerUtil.createTimerEntityForTimerEventDefinition(timerEventDefinition, isInterruptingTimer, execution,
+                    timerJob.getJobHandlerType(), timerJob.getJobHandlerConfiguration());
+
+            timerJobService.deleteTimerJob(timerJob);
+            timerJobService.insertTimerJob(rescheduledTimerJob);
+
+            FlowableEventDispatcher eventDispatcher = CommandContextUtil.getProcessEngineConfiguration().getEventDispatcher();
+            if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+                eventDispatcher.dispatchEvent(
+                        FlowableEventBuilder.createJobRescheduledEvent(FlowableEngineEventType.JOB_RESCHEDULED, rescheduledTimerJob, timerJob.getId()));
+                
+             // job rescheduled event should occur before new timer scheduled event
+                eventDispatcher.dispatchEvent(
+                                FlowableJobEventBuilder.createEntityEvent(FlowableEngineEventType.TIMER_SCHEDULED, rescheduledTimerJob));
+            }
+
+            return rescheduledTimerJob;
+        }
+        return null;
+    }
 
     public static String prepareRepeat(String dueDate) {
         if (dueDate.startsWith("R") && dueDate.split("/").length == 2) {
             DateTimeFormatter fmt = ISODateTimeFormat.dateTime();
-            Clock clock = Context.getProcessEngineConfiguration().getClock();
+            Clock clock = CommandContextUtil.getProcessEngineConfiguration().getClock();
             Date now = clock.getCurrentTime();
             return dueDate.replace("/", "/" + fmt.print(new DateTime(now,
                     DateTimeZone.forTimeZone(clock.getCurrentTimeZone()))) + "/");

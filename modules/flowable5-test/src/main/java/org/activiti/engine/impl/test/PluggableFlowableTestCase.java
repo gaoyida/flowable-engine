@@ -13,9 +13,9 @@
 
 package org.activiti.engine.impl.test;
 
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngines;
-import org.flowable.engine.common.api.FlowableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class PluggableFlowableTestCase extends AbstractFlowableTestCase {
 
-    private static Logger pluggableActivitiTestCaseLogger = LoggerFactory.getLogger(PluggableFlowableTestCase.class);
+    private static final Logger pluggableActivitiTestCaseLogger = LoggerFactory.getLogger(PluggableFlowableTestCase.class);
 
     protected static ProcessEngine cachedProcessEngine;
 

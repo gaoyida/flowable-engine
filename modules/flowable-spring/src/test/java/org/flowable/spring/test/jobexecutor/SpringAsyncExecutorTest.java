@@ -1,28 +1,39 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.spring.test.jobexecutor;
 
 import java.util.List;
 
+import org.flowable.common.engine.impl.test.CleanTest;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
-import org.flowable.spring.impl.test.CleanTestExecutionListener;
 import org.flowable.spring.impl.test.SpringFlowableTestCase;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.flowable.task.api.Task;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.TestExecutionListeners;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 /**
  * @author Pablo Ganga
  * @author Joram Barrez
  */
-@RunWith(SpringJUnit4ClassRunner.class)
-@TestExecutionListeners(CleanTestExecutionListener.class)
+@CleanTest
+// We need to use per class as the test uses auto deployments. If they are deleted then the other tests will fail
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ContextConfiguration("classpath:org/flowable/spring/test/components/SpringjobExecutorTest-context.xml")
 public class SpringAsyncExecutorTest extends SpringFlowableTestCase {
 

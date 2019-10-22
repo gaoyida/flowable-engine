@@ -15,6 +15,7 @@ package org.flowable.engine.impl.bpmn.parser.handler;
 import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.ErrorEventDefinition;
+import org.flowable.bpmn.model.EscalationEventDefinition;
 import org.flowable.bpmn.model.EventDefinition;
 import org.flowable.bpmn.model.EventSubProcess;
 import org.flowable.bpmn.model.Message;
@@ -23,7 +24,7 @@ import org.flowable.bpmn.model.Signal;
 import org.flowable.bpmn.model.SignalEventDefinition;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.TimerEventDefinition;
-import org.flowable.engine.common.impl.util.CollectionUtil;
+import org.flowable.common.engine.impl.util.CollectionUtil;
 import org.flowable.engine.impl.bpmn.parser.BpmnParse;
 
 /**
@@ -43,14 +44,7 @@ public class StartEventParseHandler extends AbstractActivityBpmnParseHandler<Sta
             if (CollectionUtil.isNotEmpty(element.getEventDefinitions())) {
                 EventDefinition eventDefinition = element.getEventDefinitions().get(0);
                 if (eventDefinition instanceof MessageEventDefinition) {
-                    MessageEventDefinition messageDefinition = (MessageEventDefinition) eventDefinition;
-                    BpmnModel bpmnModel = bpmnParse.getBpmnModel();
-                    String messageRef = messageDefinition.getMessageRef();
-                    if (bpmnModel.containsMessageId(messageRef)) {
-                        Message message = bpmnModel.getMessage(messageRef);
-                        messageDefinition.setMessageRef(message.getName());
-                        messageDefinition.setExtensionElements(message.getExtensionElements());
-                    }
+                    MessageEventDefinition messageDefinition = fillMessageRef(bpmnParse, eventDefinition);
                     element.setBehavior(bpmnParse.getActivityBehaviorFactory().createEventSubProcessMessageStartEventActivityBehavior(element, messageDefinition));
 
                 } else if (eventDefinition instanceof SignalEventDefinition) {
@@ -70,18 +64,40 @@ public class StartEventParseHandler extends AbstractActivityBpmnParseHandler<Sta
 
                 } else if (eventDefinition instanceof ErrorEventDefinition) {
                     element.setBehavior(bpmnParse.getActivityBehaviorFactory().createEventSubProcessErrorStartEventActivityBehavior(element));
+                
+                } else if (eventDefinition instanceof EscalationEventDefinition) {
+                    element.setBehavior(bpmnParse.getActivityBehaviorFactory().createEventSubProcessEscalationStartEventActivityBehavior(element));
                 }
             }
 
         } else if (CollectionUtil.isEmpty(element.getEventDefinitions())) {
             element.setBehavior(bpmnParse.getActivityBehaviorFactory().createNoneStartEventActivityBehavior(element));
+        
+        } else if (CollectionUtil.isNotEmpty(element.getEventDefinitions())) {
+            EventDefinition eventDefinition = element.getEventDefinitions().get(0);
+            if (eventDefinition instanceof MessageEventDefinition) {
+                fillMessageRef(bpmnParse, eventDefinition);
+            }
         }
 
         if (element.getSubProcess() == null && (CollectionUtil.isEmpty(element.getEventDefinitions()) ||
                 bpmnParse.getCurrentProcess().getInitialFlowElement() == null)) {
-
+            
             bpmnParse.getCurrentProcess().setInitialFlowElement(element);
         }
+    }
+    
+    protected MessageEventDefinition fillMessageRef(BpmnParse bpmnParse, EventDefinition eventDefinition) {
+        MessageEventDefinition messageDefinition = (MessageEventDefinition) eventDefinition;
+        BpmnModel bpmnModel = bpmnParse.getBpmnModel();
+        String messageRef = messageDefinition.getMessageRef();
+        if (bpmnModel.containsMessageId(messageRef)) {
+            Message message = bpmnModel.getMessage(messageRef);
+            messageDefinition.setMessageRef(message.getName());
+            messageDefinition.setExtensionElements(message.getExtensionElements());
+        }
+        
+        return messageDefinition;
     }
 
 }

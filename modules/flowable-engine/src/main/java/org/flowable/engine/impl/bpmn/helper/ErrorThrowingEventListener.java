@@ -12,14 +12,15 @@
  */
 package org.flowable.engine.impl.bpmn.helper;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEventListener;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
+import org.flowable.common.engine.impl.context.Context;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.compatibility.Flowable5CompatibilityHandler;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.delegate.event.FlowableEngineEvent;
-import org.flowable.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.Flowable5Util;
 
 /**
@@ -51,7 +52,7 @@ public class ErrorThrowingEventListener extends BaseDelegateEventListener {
 
             if (engineEvent.getExecutionId() != null) {
                 // Get the execution based on the event's execution ID instead
-                execution = Context.getCommandContext().getExecutionEntityManager().findById(engineEvent.getExecutionId());
+                execution = CommandContextUtil.getExecutionEntityManager().findById(engineEvent.getExecutionId());
             }
 
             if (execution == null) {

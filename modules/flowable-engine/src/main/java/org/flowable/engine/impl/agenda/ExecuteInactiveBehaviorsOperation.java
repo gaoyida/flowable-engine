@@ -17,10 +17,11 @@ import java.util.Collection;
 
 import org.flowable.bpmn.model.FlowNode;
 import org.flowable.bpmn.model.Process;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.delegate.InactiveActivityBehavior;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,13 +35,13 @@ import org.slf4j.LoggerFactory;
  */
 public class ExecuteInactiveBehaviorsOperation extends AbstractOperation {
 
-    private static final Logger logger = LoggerFactory.getLogger(ExecuteInactiveBehaviorsOperation.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExecuteInactiveBehaviorsOperation.class);
 
     protected Collection<ExecutionEntity> involvedExecutions;
 
     public ExecuteInactiveBehaviorsOperation(CommandContext commandContext) {
         super(commandContext, null);
-        this.involvedExecutions = commandContext.getInvolvedExecutions();
+        this.involvedExecutions = CommandContextUtil.getInvolvedExecutions(commandContext).values();
     }
 
     @Override
@@ -57,7 +58,7 @@ public class ExecuteInactiveBehaviorsOperation extends AbstractOperation {
         for (ExecutionEntity executionEntity : involvedExecutions) {
 
             Process process = ProcessDefinitionUtil.getProcess(executionEntity.getProcessDefinitionId());
-            Collection<String> flowNodeIdsWithInactivatedBehavior = new ArrayList<String>();
+            Collection<String> flowNodeIdsWithInactivatedBehavior = new ArrayList<>();
             for (FlowNode flowNode : process.findFlowElementsOfType(FlowNode.class)) {
                 if (flowNode.getBehavior() instanceof InactiveActivityBehavior) {
                     flowNodeIdsWithInactivatedBehavior.add(flowNode.getId());
@@ -65,7 +66,7 @@ public class ExecuteInactiveBehaviorsOperation extends AbstractOperation {
             }
 
             if (flowNodeIdsWithInactivatedBehavior.size() > 0) {
-                Collection<ExecutionEntity> inactiveExecutions = commandContext.getExecutionEntityManager().findInactiveExecutionsByProcessInstanceId(executionEntity.getProcessInstanceId());
+                Collection<ExecutionEntity> inactiveExecutions = CommandContextUtil.getExecutionEntityManager(commandContext).findInactiveExecutionsByProcessInstanceId(executionEntity.getProcessInstanceId());
                 for (ExecutionEntity inactiveExecution : inactiveExecutions) {
                     if (!inactiveExecution.isActive()
                             && flowNodeIdsWithInactivatedBehavior.contains(inactiveExecution.getActivityId())
@@ -73,7 +74,7 @@ public class ExecuteInactiveBehaviorsOperation extends AbstractOperation {
 
                         FlowNode flowNode = (FlowNode) process.getFlowElement(inactiveExecution.getActivityId(), true);
                         InactiveActivityBehavior inactiveActivityBehavior = ((InactiveActivityBehavior) flowNode.getBehavior());
-                        logger.debug("Found InactiveActivityBehavior instance of class {} that can be executed on activity '{}'", inactiveActivityBehavior.getClass(), flowNode.getId());
+                        LOGGER.debug("Found InactiveActivityBehavior instance of class {} that can be executed on activity '{}'", inactiveActivityBehavior.getClass(), flowNode.getId());
                         inactiveActivityBehavior.executeInactive(inactiveExecution);
                     }
                 }

@@ -18,15 +18,20 @@ package org.flowable.bpmn.model;
 
 public class MapExceptionEntry {
 
-    String errorCode;
-    String className;
-    boolean andChildren;
+    protected String errorCode;
+    protected String className;
+    protected boolean andChildren;
+    protected String rootCause;
 
-    public MapExceptionEntry(String errorCode, String className, boolean andChildren) {
+    public MapExceptionEntry(){
+        
+    }
 
+    public MapExceptionEntry(String errorCode, String className, boolean andChildren, String rootCause) {
         this.errorCode = errorCode;
         this.className = className;
         this.andChildren = andChildren;
+        this.rootCause = rootCause;
     }
 
     public String getErrorCode() {
@@ -51,6 +56,14 @@ public class MapExceptionEntry {
 
     public void setAndChildren(boolean andChildren) {
         this.andChildren = andChildren;
+    }
+
+    public String getRootCause() {
+        return rootCause;
+    }
+
+    public void setRootCause(String rootCause) {
+        this.rootCause = rootCause;
     }
 
 }

@@ -17,9 +17,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.activiti.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableOptimisticLockingException;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.Picture;
 import org.flowable.idm.api.User;
@@ -98,7 +98,7 @@ public class IdentityServiceTest extends PluggableFlowableTestCase {
         assertTrue("byte arrays differ", Arrays.equals("niceface".getBytes(), picture.getBytes()));
         assertEquals("image/string", picture.getMimeType());
 
-        // interface defintion states that setting picture to null should delete it
+        // interface definition states that setting picture to null should delete it
         identityService.setUserPicture(userId, null);
         assertNull("it should be possible to nullify user picture", identityService.getUserPicture(userId));
         user = identityService.createUserQuery().userId("johndoe").singleResult();

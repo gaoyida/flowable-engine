@@ -20,8 +20,8 @@ import org.activiti.engine.impl.pvm.PvmException;
 import org.activiti.engine.impl.pvm.process.ActivityImpl;
 import org.activiti.engine.impl.pvm.process.ScopeImpl;
 import org.activiti.engine.impl.pvm.process.TransitionImpl;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.delegate.ExecutionListener;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,12 +30,14 @@ import org.slf4j.LoggerFactory;
  */
 public class AtomicOperationTransitionNotifyListenerTake implements AtomicOperation {
 
-    private static Logger log = LoggerFactory.getLogger(AtomicOperationTransitionNotifyListenerTake.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AtomicOperationTransitionNotifyListenerTake.class);
 
+    @Override
     public boolean isAsync(InterpretableExecution execution) {
         return false;
     }
 
+    @Override
     public void execute(InterpretableExecution execution) {
         TransitionImpl transition = execution.getTransition();
 
@@ -57,8 +59,8 @@ public class AtomicOperationTransitionNotifyListenerTake implements AtomicOperat
             execution.performOperation(this);
 
         } else {
-            if (log.isDebugEnabled()) {
-                log.debug("{} takes transition {}", execution, transition);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("{} takes transition {}", execution, transition);
             }
             execution.setExecutionListenerIndex(0);
             execution.setEventName(null);

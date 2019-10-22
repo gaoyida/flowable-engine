@@ -15,7 +15,7 @@
     <property name="jdbcPassword" value=""/>
 
     <!-- Database configurations -->
-    <property name="databaseSchemaUpdate" value="true"/>
+    <property name="databaseSchemaUpdate" value="drop-create"/>
 
     <property name="beans">
       <map>
@@ -30,7 +30,7 @@
             <entry key="simulationRunFactory" value-ref="&amp;simulationRunFa"/>
           </map>
         </constructor-arg>
-        <constructor-arg name="processEngineConfiguration" ref="processEngineConfiguration" />
+        <constructor-arg name="delegateInterceptor" ref="delegateInterceptor" />
       </bean>
     </property>
 
@@ -69,6 +69,7 @@
         <property name="jdbcUsername" value="sa"/>
         <property name="jdbcPassword" value=""/>
 
+        <property name="delegateInterceptor" ref="delegateInterceptor"/>
         <property name="clock" ref="clock"/>
         <property name="disableIdmEngine" value="true"/>
 
@@ -77,18 +78,24 @@
         process definitions in the repository.
         -->
         <property name="defaultCommandConfig">
-          <bean class="org.flowable.engine.common.impl.interceptor.CommandConfig">
+          <bean class="org.flowable.common.engine.impl.interceptor.CommandConfig">
+            <constructor-arg name="contextReusePossible" value="false"/>
+          </bean>
+        </property>
+
+        <property name="schemaCommandConfig">
+          <bean class="org.flowable.common.engine.impl.interceptor.CommandConfig">
             <constructor-arg name="contextReusePossible" value="false"/>
           </bean>
         </property>
 
         <!-- Database configurations -->
-        <property name="databaseSchemaUpdate" value="true"/>
+        <property name="databaseSchemaUpdate" value="drop-create"/>
       </bean>
     </constructor-arg>
   </bean>
 
-  <bean id="clock" class="org.flowable.engine.common.impl.util.DefaultClockImpl"/>
+  <bean id="clock" class="org.flowable.common.engine.impl.util.DefaultClockImpl"/>
 
   <!-- simulation run is driven by event calendar. -->
   <bean id="eventCalendar" class="org.flowable.crystalball.simulator.SimpleEventCalendarFactory">
@@ -117,5 +124,7 @@
       </list>
     </constructor-arg>
   </bean>
+
+  <bean id="delegateInterceptor" class="org.flowable.engine.impl.delegate.invocation.DefaultDelegateInterceptor"/>
 
 </beans>

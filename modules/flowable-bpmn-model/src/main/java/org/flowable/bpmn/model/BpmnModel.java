@@ -28,23 +28,24 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  */
 public class BpmnModel {
 
-    protected Map<String, List<ExtensionAttribute>> definitionsAttributes = new LinkedHashMap<String, List<ExtensionAttribute>>();
-    protected List<Process> processes = new ArrayList<Process>();
-    protected Map<String, GraphicInfo> locationMap = new LinkedHashMap<String, GraphicInfo>();
-    protected Map<String, GraphicInfo> labelLocationMap = new LinkedHashMap<String, GraphicInfo>();
-    protected Map<String, List<GraphicInfo>> flowLocationMap = new LinkedHashMap<String, List<GraphicInfo>>();
-    protected List<Signal> signals = new ArrayList<Signal>();
-    protected Map<String, MessageFlow> messageFlowMap = new LinkedHashMap<String, MessageFlow>();
-    protected Map<String, Message> messageMap = new LinkedHashMap<String, Message>();
-    protected Map<String, String> errorMap = new LinkedHashMap<String, String>();
-    protected Map<String, ItemDefinition> itemDefinitionMap = new LinkedHashMap<String, ItemDefinition>();
-    protected Map<String, DataStore> dataStoreMap = new LinkedHashMap<String, DataStore>();
-    protected List<Pool> pools = new ArrayList<Pool>();
-    protected List<Import> imports = new ArrayList<Import>();
-    protected List<Interface> interfaces = new ArrayList<Interface>();
-    protected List<Artifact> globalArtifacts = new ArrayList<Artifact>();
-    protected List<Resource> resources = new ArrayList<Resource>();
-    protected Map<String, String> namespaceMap = new LinkedHashMap<String, String>();
+    protected Map<String, List<ExtensionAttribute>> definitionsAttributes = new LinkedHashMap<>();
+    protected List<Process> processes = new ArrayList<>();
+    protected Map<String, GraphicInfo> locationMap = new LinkedHashMap<>();
+    protected Map<String, GraphicInfo> labelLocationMap = new LinkedHashMap<>();
+    protected Map<String, List<GraphicInfo>> flowLocationMap = new LinkedHashMap<>();
+    protected List<Signal> signals = new ArrayList<>();
+    protected Map<String, MessageFlow> messageFlowMap = new LinkedHashMap<>();
+    protected Map<String, Message> messageMap = new LinkedHashMap<>();
+    protected Map<String, String> errorMap = new LinkedHashMap<>();
+    protected Map<String, Escalation> escalationMap = new LinkedHashMap<>();
+    protected Map<String, ItemDefinition> itemDefinitionMap = new LinkedHashMap<>();
+    protected Map<String, DataStore> dataStoreMap = new LinkedHashMap<>();
+    protected List<Pool> pools = new ArrayList<>();
+    protected List<Import> imports = new ArrayList<>();
+    protected List<Interface> interfaces = new ArrayList<>();
+    protected List<Artifact> globalArtifacts = new ArrayList<>();
+    protected List<Resource> resources = new ArrayList<>();
+    protected Map<String, String> namespaceMap = new LinkedHashMap<>();
     protected String targetNamespace;
     protected String sourceSystemId;
     protected List<String> userTaskFormTypes;
@@ -71,7 +72,7 @@ public class BpmnModel {
         if (attribute != null && StringUtils.isNotEmpty(attribute.getName())) {
             List<ExtensionAttribute> attributeList = null;
             if (!this.definitionsAttributes.containsKey(attribute.getName())) {
-                attributeList = new ArrayList<ExtensionAttribute>();
+                attributeList = new ArrayList<>();
                 this.definitionsAttributes.put(attribute.getName(), attributeList);
             }
             this.definitionsAttributes.get(attribute.getName()).add(attribute);
@@ -346,12 +347,16 @@ public class BpmnModel {
     }
 
     public Signal getSignal(String id) {
-        for (Signal signal : signals) {
-            if (id.equals(signal.getId())) {
-                return signal;
+        Signal foundSignal = null;
+        if (StringUtils.isNotEmpty(id)) {
+            for (Signal signal : signals) {
+                if (id.equals(signal.getId())) {
+                    foundSignal = signal;
+                    break;
+                }
             }
         }
-        return null;
+        return foundSignal;
     }
 
     public Map<String, MessageFlow> getMessageFlows() {
@@ -430,6 +435,34 @@ public class BpmnModel {
 
     public boolean containsErrorRef(String errorRef) {
         return errorMap.containsKey(errorRef);
+    }
+    
+    public Collection<Escalation> getEscalations() {
+        return escalationMap.values();
+    }
+
+    public void setEscalations(Map<String, Escalation> escalationMap) {
+        this.escalationMap = escalationMap;
+    }
+
+    public void addEscalation(String escalationRef, String escalationCode, String name) {
+        if (StringUtils.isNotEmpty(escalationRef)) {
+            escalationMap.put(escalationRef, new Escalation(escalationRef, name, escalationCode));
+        }
+    }
+    
+    public void addEscalation(Escalation escalation) {
+        if (StringUtils.isNotEmpty(escalation.getEscalationCode())) {
+            escalationMap.put(escalation.getEscalationCode(), escalation);
+        }
+    }
+
+    public boolean containsEscalationRef(String escalationRef) {
+        return escalationMap.containsKey(escalationRef);
+    }
+    
+    public Escalation getEscalation(String escalationRef) {
+        return escalationMap.get(escalationRef);
     }
 
     public Map<String, ItemDefinition> getItemDefinitions() {

@@ -13,8 +13,8 @@
 package org.flowable.bpmn.converter.child;
 
 import org.apache.commons.lang3.StringUtils;
-import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.BaseElement;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.HasExecutionListeners;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.slf4j.Logger;
@@ -25,12 +25,14 @@ import org.slf4j.LoggerFactory;
  */
 public class ExecutionListenerParser extends FlowableListenerParser {
 
-    private static Logger logger = LoggerFactory.getLogger(ExecutionListenerParser.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExecutionListenerParser.class);
 
+    @Override
     public String getElementName() {
         return ELEMENT_EXECUTION_LISTENER;
     }
 
+    @Override
     public void addListenerToParent(FlowableListener listener, BaseElement parentElement) {
         if (parentElement instanceof HasExecutionListeners) {
             if (StringUtils.isEmpty(listener.getEvent()) && parentElement instanceof SequenceFlow) {

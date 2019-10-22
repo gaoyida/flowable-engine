@@ -22,14 +22,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.UserTask;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.form.api.FormDefinition;
 import org.flowable.form.api.FormDefinitionQuery;
+import org.flowable.form.api.FormDeployment;
 import org.flowable.form.api.FormRepositoryService;
 
 /**
@@ -45,6 +48,7 @@ public class GetFormDefinitionsForProcessDefinitionCmd implements Command<List<F
         this.processDefinitionId = processDefinitionId;
     }
 
+    @Override
     public List<FormDefinition> execute(CommandContext commandContext) {
         ProcessDefinition processDefinition = ProcessDefinitionUtil.getProcessDefinition(processDefinitionId);
 
@@ -58,15 +62,11 @@ public class GetFormDefinitionsForProcessDefinitionCmd implements Command<List<F
             throw new FlowableObjectNotFoundException("Cannot find bpmn model for process definition id: " + processDefinitionId, BpmnModel.class);
         }
 
-        if (!(commandContext.getProcessEngineConfiguration().isFormEngineInitialized())) {
-            throw new FlowableException("Form Engine is not initialized");
-        } else {
-            if (commandContext.getProcessEngineConfiguration().getFormEngineRepositoryService() == null) {
-                throw new FlowableException("Form repository service is not available");
-            }
+        if (CommandContextUtil.getFormRepositoryService() == null) {
+            throw new FlowableException("Form repository service is not available");
         }
 
-        formRepositoryService = commandContext.getProcessEngineConfiguration().getFormEngineRepositoryService();
+        formRepositoryService = CommandContextUtil.getFormRepositoryService();
         List<FormDefinition> formDefinitions = getFormDefinitionsFromModel(bpmnModel, processDefinition);
 
         return formDefinitions;
@@ -102,9 +102,23 @@ public class GetFormDefinitionsForProcessDefinitionCmd implements Command<List<F
     }
 
     protected void addFormDefinitionToCollection(List<FormDefinition> formDefinitions, String formKey, ProcessDefinition processDefinition) {
-        FormDefinitionQuery formDefinitionQuery = formRepositoryService.createFormDefinitionQuery();
-        FormDefinition formDefinition = formDefinitionQuery.formDefinitionKey(formKey).parentDeploymentId(processDefinition.getDeploymentId()).singleResult();
-
+        FormDefinitionQuery formDefinitionQuery = formRepositoryService.createFormDefinitionQuery().formDefinitionKey(formKey);
+        Deployment deployment = CommandContextUtil.getDeploymentEntityManager().findById(processDefinition.getDeploymentId());
+        if (deployment.getParentDeploymentId() != null) {
+            List<FormDeployment> formDeployments = formRepositoryService.createDeploymentQuery().parentDeploymentId(deployment.getParentDeploymentId()).list();
+            
+            if (formDeployments != null && formDeployments.size() > 0) {
+                formDefinitionQuery.deploymentId(formDeployments.get(0).getId());
+            } else {
+                formDefinitionQuery.latestVersion();
+            }
+            
+        } else {
+            formDefinitionQuery.latestVersion();
+        }
+        
+        FormDefinition formDefinition = formDefinitionQuery.singleResult();
+        
         if (formDefinition != null) {
             formDefinitions.add(formDefinition);
         }

@@ -15,19 +15,18 @@ package org.flowable.idm.engine.impl.persistence.entity.data.impl;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
 import org.flowable.idm.api.User;
 import org.flowable.idm.engine.IdmEngineConfiguration;
 import org.flowable.idm.engine.impl.UserQueryImpl;
 import org.flowable.idm.engine.impl.persistence.entity.UserEntity;
 import org.flowable.idm.engine.impl.persistence.entity.UserEntityImpl;
-import org.flowable.idm.engine.impl.persistence.entity.data.AbstractDataManager;
+import org.flowable.idm.engine.impl.persistence.entity.data.AbstractIdmDataManager;
 import org.flowable.idm.engine.impl.persistence.entity.data.UserDataManager;
 
 /**
  * @author Joram Barrez
  */
-public class MybatisUserDataManager extends AbstractDataManager<UserEntity> implements UserDataManager {
+public class MybatisUserDataManager extends AbstractIdmDataManager<UserEntity> implements UserDataManager {
 
     public MybatisUserDataManager(IdmEngineConfiguration idmEngineConfiguration) {
         super(idmEngineConfiguration);
@@ -44,10 +43,12 @@ public class MybatisUserDataManager extends AbstractDataManager<UserEntity> impl
     }
 
     @SuppressWarnings("unchecked")
-    public List<User> findUserByQueryCriteria(UserQueryImpl query, Page page) {
-        return getDbSqlSession().selectList("selectUserByQueryCriteria", query, page);
+    @Override
+    public List<User> findUserByQueryCriteria(UserQueryImpl query) {
+        return getDbSqlSession().selectList("selectUserByQueryCriteria", query, getManagedEntityClass());
     }
 
+    @Override
     public long findUserCountByQueryCriteria(UserQueryImpl query) {
         return (Long) getDbSqlSession().selectOne("selectUserCountByQueryCriteria", query);
     }
@@ -59,10 +60,12 @@ public class MybatisUserDataManager extends AbstractDataManager<UserEntity> impl
     }
 
     @SuppressWarnings("unchecked")
-    public List<User> findUsersByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return getDbSqlSession().selectListWithRawParameter("selectUserByNativeQuery", parameterMap, firstResult, maxResults);
+    @Override
+    public List<User> findUsersByNativeQuery(Map<String, Object> parameterMap) {
+        return getDbSqlSession().selectListWithRawParameter("selectUserByNativeQuery", parameterMap);
     }
 
+    @Override
     public long findUserCountByNativeQuery(Map<String, Object> parameterMap) {
         return (Long) getDbSqlSession().selectOne("selectUserCountByNativeQuery", parameterMap);
     }

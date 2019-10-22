@@ -16,7 +16,9 @@ import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.CancelEventDefinition;
 import org.flowable.bpmn.model.CompensateEventDefinition;
+import org.flowable.bpmn.model.ConditionalEventDefinition;
 import org.flowable.bpmn.model.ErrorEventDefinition;
+import org.flowable.bpmn.model.EscalationEventDefinition;
 import org.flowable.bpmn.model.EventDefinition;
 import org.flowable.bpmn.model.MessageEventDefinition;
 import org.flowable.bpmn.model.SignalEventDefinition;
@@ -31,16 +33,18 @@ import org.slf4j.LoggerFactory;
  */
 public class BoundaryEventParseHandler extends AbstractFlowNodeBpmnParseHandler<BoundaryEvent> {
 
-    private static final Logger logger = LoggerFactory.getLogger(BoundaryEventParseHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BoundaryEventParseHandler.class);
 
+    @Override
     public Class<? extends BaseElement> getHandledType() {
         return BoundaryEvent.class;
     }
 
+    @Override
     protected void executeParse(BpmnParse bpmnParse, BoundaryEvent boundaryEvent) {
 
         if (boundaryEvent.getAttachedToRef() == null) {
-            logger.warn("Invalid reference in boundary event. Make sure that the referenced activity is defined in the same scope as the boundary event {}", boundaryEvent.getId());
+            LOGGER.warn("Invalid reference in boundary event. Make sure that the referenced activity is defined in the same scope as the boundary event {}", boundaryEvent.getId());
             return;
         }
 
@@ -50,13 +54,14 @@ public class BoundaryEventParseHandler extends AbstractFlowNodeBpmnParseHandler<
         }
 
         if (eventDefinition instanceof TimerEventDefinition || eventDefinition instanceof ErrorEventDefinition || eventDefinition instanceof SignalEventDefinition
-                || eventDefinition instanceof CancelEventDefinition || eventDefinition instanceof MessageEventDefinition || eventDefinition instanceof CompensateEventDefinition) {
+                || eventDefinition instanceof CancelEventDefinition || eventDefinition instanceof ConditionalEventDefinition || eventDefinition instanceof MessageEventDefinition 
+                || eventDefinition instanceof EscalationEventDefinition || eventDefinition instanceof CompensateEventDefinition) {
 
             bpmnParse.getBpmnParserHandlers().parseElement(bpmnParse, eventDefinition);
 
         } else {
             // Should already be picked up by process validator on deploy, so this is just to be sure
-            logger.warn("Unsupported boundary event type for boundary event {}", boundaryEvent.getId());
+            LOGGER.warn("Unsupported boundary event type for boundary event {}", boundaryEvent.getId());
         }
 
     }

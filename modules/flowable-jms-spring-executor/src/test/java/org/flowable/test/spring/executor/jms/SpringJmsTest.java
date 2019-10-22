@@ -12,16 +12,14 @@
  */
 package org.flowable.test.spring.executor.jms;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
-import javax.jms.ConnectionFactory;
-
+import org.awaitility.Awaitility;
 import org.flowable.engine.ProcessEngine;
-import org.flowable.engine.impl.asyncexecutor.DefaultAsyncJobExecutor;
+import org.flowable.job.service.impl.asyncexecutor.DefaultAsyncJobExecutor;
 import org.flowable.spring.impl.test.CleanTestExecutionListener;
 import org.flowable.test.spring.executor.jms.config.SpringJmsConfig;
 import org.junit.Assert;
@@ -33,8 +31,6 @@ import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import com.jayway.awaitility.Awaitility;
-
 @TestExecutionListeners(value = CleanTestExecutionListener.class, mergeMode = MergeMode.MERGE_WITH_DEFAULTS)
 @ContextConfiguration(classes = SpringJmsConfig.class)
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -43,31 +39,22 @@ public class SpringJmsTest {
     @Autowired
     private ProcessEngine processEngine;
 
-    @Autowired
-    private ConnectionFactory connectionFactory;
-
     @Test
     public void testMessageQueueAsyncExecutor() {
         processEngine.getRepositoryService().createDeployment()
                 .addClasspathResource("org/flowable/test/spring/executor/jms/SpringJmsTest.testMessageQueueAsyncExecutor.bpmn20.xml")
                 .deploy();
 
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("input1", 123);
         vars.put("input2", 456);
         processEngine.getRuntimeService().startProcessInstanceByKey("AsyncProcess", vars);
 
         // Wait until the process is completely finished
-        Awaitility.waitAtMost(1, TimeUnit.MINUTES).pollInterval(500, TimeUnit.MILLISECONDS).until(new Callable<Boolean>() {
-            public Boolean call() throws Exception {
-                return processEngine.getRuntimeService().createProcessInstanceQuery().count() == 0;
-            }
-        });
-
-        Assert.assertEquals(0L, processEngine.getRuntimeService().createProcessInstanceQuery().count());
+        Awaitility.await().atMost(Duration.ofMinutes(1)).pollInterval(Duration.ofMillis(500)).untilAsserted(
+            () -> Assert.assertEquals(0L, processEngine.getRuntimeService().createProcessInstanceQuery().count()));
 
         for (String activityName : Arrays.asList("A", "B", "C", "D", "E", "F", "After boundary", "The user task", "G", "G1", "G2", "G3", "H", "I", "J", "K", "L")) {
-            System.out.println(activityName + " flerp");
             Assert.assertNotNull(processEngine.getHistoryService().createHistoricActivityInstanceQuery().activityName(activityName).singleResult());
         }
 

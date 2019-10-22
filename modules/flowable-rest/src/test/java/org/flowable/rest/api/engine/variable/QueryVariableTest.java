@@ -15,14 +15,17 @@ package org.flowable.rest.api.engine.variable;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.engine.variable.QueryVariable;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class QueryVariableTest extends BaseSpringRestTestCase {
 
     protected ObjectMapper objectMapper = new ObjectMapper();
 
+    @Test
     public void testSerializeQueryVariable() throws Exception {
         // Create a QueryVariable
         QueryVariable origQueryVariable = new QueryVariable();

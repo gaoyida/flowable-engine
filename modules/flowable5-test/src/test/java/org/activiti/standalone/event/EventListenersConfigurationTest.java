@@ -15,8 +15,8 @@ package org.activiti.standalone.event;
 import org.activiti.engine.delegate.event.impl.ActivitiEventImpl;
 import org.activiti.engine.impl.test.ResourceFlowableTestCase;
 import org.activiti.engine.test.api.event.TestFlowableEventListener;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 
 /**
  * Test to verify event-listeners, which are configured in the cfg.xml, are notified.
@@ -37,7 +37,7 @@ public class EventListenersConfigurationTest extends ResourceFlowableTestCase {
         // Clear any events received (eg. engine initialisation)
         listener.clearEventsReceived();
 
-        // Dispath a custom event
+        // Dispatch custom event
         FlowableEvent event = new ActivitiEventImpl(FlowableEngineEventType.CUSTOM);
         processEngineConfiguration.getEventDispatcher().dispatchEvent(event);
 

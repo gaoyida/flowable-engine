@@ -15,19 +15,18 @@ package org.flowable.idm.engine.impl.persistence.entity.data.impl;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
 import org.flowable.idm.api.Token;
 import org.flowable.idm.engine.IdmEngineConfiguration;
 import org.flowable.idm.engine.impl.TokenQueryImpl;
 import org.flowable.idm.engine.impl.persistence.entity.TokenEntity;
 import org.flowable.idm.engine.impl.persistence.entity.TokenEntityImpl;
-import org.flowable.idm.engine.impl.persistence.entity.data.AbstractDataManager;
+import org.flowable.idm.engine.impl.persistence.entity.data.AbstractIdmDataManager;
 import org.flowable.idm.engine.impl.persistence.entity.data.TokenDataManager;
 
 /**
  * @author Tijs Rademakers
  */
-public class MybatisTokenDataManager extends AbstractDataManager<TokenEntity> implements TokenDataManager {
+public class MybatisTokenDataManager extends AbstractIdmDataManager<TokenEntity> implements TokenDataManager {
 
     public MybatisTokenDataManager(IdmEngineConfiguration idmEngineConfiguration) {
         super(idmEngineConfiguration);
@@ -44,19 +43,23 @@ public class MybatisTokenDataManager extends AbstractDataManager<TokenEntity> im
     }
 
     @SuppressWarnings("unchecked")
-    public List<Token> findTokenByQueryCriteria(TokenQueryImpl query, Page page) {
-        return getDbSqlSession().selectList("selectTokenByQueryCriteria", query, page);
+    @Override
+    public List<Token> findTokenByQueryCriteria(TokenQueryImpl query) {
+        return getDbSqlSession().selectList("selectTokenByQueryCriteria", query, getManagedEntityClass());
     }
 
+    @Override
     public long findTokenCountByQueryCriteria(TokenQueryImpl query) {
         return (Long) getDbSqlSession().selectOne("selectTokenCountByQueryCriteria", query);
     }
 
     @SuppressWarnings("unchecked")
-    public List<Token> findTokensByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return getDbSqlSession().selectListWithRawParameter("selectTokenByNativeQuery", parameterMap, firstResult, maxResults);
+    @Override
+    public List<Token> findTokensByNativeQuery(Map<String, Object> parameterMap) {
+        return getDbSqlSession().selectListWithRawParameter("selectTokenByNativeQuery", parameterMap);
     }
 
+    @Override
     public long findTokenCountByNativeQuery(Map<String, Object> parameterMap) {
         return (Long) getDbSqlSession().selectOne("selectTokenCountByNativeQuery", parameterMap);
     }

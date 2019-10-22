@@ -21,6 +21,7 @@ import javax.enterprise.inject.spi.BeanManager;
 import org.flowable.cdi.BusinessProcess;
 import org.flowable.cdi.impl.util.ProgrammaticBeanLookup;
 import org.flowable.cdi.test.util.ProcessEngineLookupForTestsuite;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.engine.FormService;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.IdentityService;
@@ -29,11 +30,10 @@ import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
-import org.flowable.engine.common.api.FlowableException;
 import org.flowable.engine.impl.ProcessEngineImpl;
-import org.flowable.engine.impl.asyncexecutor.AsyncExecutor;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.test.FlowableRule;
+import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(Arquillian.class)
 public abstract class CdiFlowableTestCase {
 
-    protected Logger logger = LoggerFactory.getLogger(getClass().getName());
+    protected static final Logger LOGGER = LoggerFactory.getLogger(CdiFlowableTestCase.class);
 
     @Deployment
     public static JavaArchive createDeployment() {
@@ -111,7 +111,7 @@ public abstract class CdiFlowableTestCase {
 
         try {
             Timer timer = new Timer();
-            InteruptTask task = new InteruptTask(Thread.currentThread());
+            InterruptTask task = new InterruptTask(Thread.currentThread());
             timer.schedule(task, maxMillisToWait);
             boolean areJobsAvailable = true;
             try {
@@ -138,7 +138,7 @@ public abstract class CdiFlowableTestCase {
 
         try {
             Timer timer = new Timer();
-            InteruptTask task = new InteruptTask(Thread.currentThread());
+            InterruptTask task = new InterruptTask(Thread.currentThread());
             timer.schedule(task, maxMillisToWait);
             boolean conditionIsViolated = true;
             try {
@@ -165,11 +165,11 @@ public abstract class CdiFlowableTestCase {
         return !managementService.createJobQuery().list().isEmpty();
     }
 
-    private static class InteruptTask extends TimerTask {
+    private static class InterruptTask extends TimerTask {
         protected boolean timeLimitExceeded;
         protected Thread thread;
 
-        public InteruptTask(Thread thread) {
+        public InterruptTask(Thread thread) {
             this.thread = thread;
         }
 
@@ -177,6 +177,7 @@ public abstract class CdiFlowableTestCase {
             return timeLimitExceeded;
         }
 
+        @Override
         public void run() {
             timeLimitExceeded = true;
             thread.interrupt();

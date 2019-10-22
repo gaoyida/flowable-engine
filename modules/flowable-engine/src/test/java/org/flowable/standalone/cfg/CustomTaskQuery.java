@@ -14,11 +14,11 @@ package org.flowable.standalone.cfg;
 
 import java.util.List;
 
-import org.flowable.engine.ManagementService;
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.impl.AbstractQuery;
-import org.flowable.engine.impl.TaskQueryProperty;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.query.AbstractQuery;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.task.service.impl.TaskQueryProperty;
 
 /**
  * @author Bassam Al-Sarori
@@ -32,8 +32,8 @@ public class CustomTaskQuery extends AbstractQuery<CustomTaskQuery, CustomTask> 
     protected String taskId;
     protected String owner;
 
-    public CustomTaskQuery(ManagementService managementService) {
-        super(managementService);
+    public CustomTaskQuery(CommandExecutor commandExecutor) {
+        super(commandExecutor);
     }
 
     public CustomTaskQuery taskId(String taskId) {
@@ -60,11 +60,13 @@ public class CustomTaskQuery extends AbstractQuery<CustomTaskQuery, CustomTask> 
     }
 
     @SuppressWarnings("unchecked")
-    public List<CustomTask> executeList(CommandContext commandContext, Page page) {
-        return commandContext.getDbSqlSession().selectList("selectCustomTaskByQueryCriteria", this);
+    @Override
+    public List<CustomTask> executeList(CommandContext commandContext) {
+        return CommandContextUtil.getDbSqlSession(commandContext).selectList("selectCustomTaskByQueryCriteria", this);
     }
 
+    @Override
     public long executeCount(CommandContext commandContext) {
-        return (Long) commandContext.getDbSqlSession().selectOne("selectCustomTaskCountByQueryCriteria", this);
+        return (Long) CommandContextUtil.getDbSqlSession(commandContext).selectOne("selectCustomTaskCountByQueryCriteria", this);
     }
 }

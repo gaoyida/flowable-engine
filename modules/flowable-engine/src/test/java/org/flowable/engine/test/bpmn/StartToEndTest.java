@@ -22,12 +22,14 @@ import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
  */
 public class StartToEndTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testStartToEnd() {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("startToEnd");
@@ -35,9 +37,10 @@ public class StartToEndTest extends PluggableFlowableTestCase {
         assertTrue(processInstance.isEnded());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/StartToEndTest.testStartToEnd.bpmn20.xml" })
     public void testStartProcessInstanceWithVariables() {
-        Map<String, Object> varMap = new HashMap<String, Object>();
+        Map<String, Object> varMap = new HashMap<>();
         varMap.put("test", "hello");
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("startToEnd", varMap);
         assertProcessEnded(processInstance.getId());
@@ -45,9 +48,10 @@ public class StartToEndTest extends PluggableFlowableTestCase {
         assertEquals("hello", returnVarMap.get("test"));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/StartToEndTest.testStartWithServiceTask.bpmn20.xml" })
     public void testStartProcessInstanceWithServiceTask() {
-        Map<String, Object> varMap = new HashMap<String, Object>();
+        Map<String, Object> varMap = new HashMap<>();
         varMap.put("test", "hello");
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("startToEnd", varMap);
         assertProcessEnded(processInstance.getId());
@@ -59,9 +63,10 @@ public class StartToEndTest extends PluggableFlowableTestCase {
         assertEquals(10L, returnVarMap.get("long"));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/bpmn/StartToEndTest.testStartWithSerializableVariables.bpmn20.xml" })
-    public void testStartProcessInstanceWithSerializbleVariables() {
-        Map<String, Object> varMap = new HashMap<String, Object>();
+    public void testStartProcessInstanceWithSerializableVariables() {
+        Map<String, Object> varMap = new HashMap<>();
         varMap.put("test", "hello");
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("startToEnd", varMap);
         assertProcessEnded(processInstance.getId());

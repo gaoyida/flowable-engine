@@ -16,22 +16,24 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.flowable.job.api.Job;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Vasile Dirla
  */
 public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testRepeatWithEnd() throws Throwable {
 
@@ -66,21 +68,21 @@ public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTe
         runtimeService.setVariable(processInstance.getId(), "EndDateForCatch1", dateStr1);
         runtimeService.setVariable(processInstance.getId(), "EndDateForCatch2", dateStr2);
 
-        List<Task> tasks = taskService.createTaskQuery().list();
+        List<org.flowable.task.api.Task> tasks = taskService.createTaskQuery().list();
         assertEquals(1, tasks.size());
 
         tasks = taskService.createTaskQuery().list();
         assertEquals(1, tasks.size());
-        Task task = tasks.get(0);
+        org.flowable.task.api.Task task = tasks.get(0);
         assertEquals("Task A", task.getName());
 
-        // Test Timer Catch Intermediate Events after completing Task A (endDate not reached but it will be executed according to the expression)
+        // Test Timer Catch Intermediate Events after completing org.flowable.task.service.Task A (endDate not reached but it will be executed according to the expression)
         taskService.complete(task.getId());
 
         Job timerJob = managementService.createTimerJobQuery().processInstanceId(processInstance.getId()).singleResult();
         assertNotNull(timerJob);
 
-        waitForJobExecutorToProcessAllJobs(2000, 500);
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(5000, 200);
 
         // Expected that job isn't executed because the timer is in t0");
         Job timerJobAfter = managementService.createTimerJobQuery().processInstanceId(processInstance.getId()).singleResult();
@@ -90,7 +92,7 @@ public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTe
         nextTimeCal.add(Calendar.MINUTE, 5);
         processEngineConfiguration.getClock().setCurrentTime(nextTimeCal.getTime());
 
-        waitForJobExecutorToProcessAllJobs(2000, 200);
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(5000, 200);
         // expect to execute because the time is reached.
 
         List<Job> jobs = managementService.createTimerJobQuery().list();
@@ -101,16 +103,16 @@ public class IntermediateTimerEventRepeatWithEndTest extends PluggableFlowableTe
         task = tasks.get(0);
         assertEquals("Task C", task.getName());
 
-        // Test Timer Catch Intermediate Events after completing Task C
+        // Test Timer Catch Intermediate Events after completing org.flowable.task.service.Task C
         taskService.complete(task.getId());
         nextTimeCal.add(Calendar.HOUR, 1); // after 1 hour and 5 minutes the timer event should be executed.
         nextTimeCal.add(Calendar.MINUTE, 5);
         processEngineConfiguration.getClock().setCurrentTime(nextTimeCal.getTime());
 
-        waitForJobExecutorToProcessAllJobs(2000, 500);
+        waitForJobExecutorToProcessAllJobsAndExecutableTimerJobs(5000, 200);
         // expect to execute because the end time is reached.
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             HistoricProcessInstance historicInstance = historyService.createHistoricProcessInstanceQuery()
                     .processInstanceId(processInstance.getId())
                     .singleResult();

@@ -12,10 +12,11 @@
  */
 package org.flowable.dmn.api;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
-
+import java.util.List;
 import java.util.Map;
+
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 
 /**
  * Service for executing DMN decisions (decision tables)
@@ -26,70 +27,218 @@ import java.util.Map;
 public interface DmnRuleService {
 
     /**
+     * Create a builder to execute a decision.
+     *
+     * @return the {@link ExecuteDecisionBuilder} build
+     */
+    ExecuteDecisionBuilder createExecuteDecisionBuilder();
+
+    /**
      * Execute a decision identified by it's key.
      *
      * @param decisionKey
      *            the decision key, cannot be null
      * @param inputVariables
      *            map with input variables
-     * @return the {@link RuleEngineExecutionResult} for this execution
+     * @return List with Maps containing rule outputs for this execution
      * @throws FlowableObjectNotFoundException
      *             when the decision with given key does not exist.
      * @throws FlowableException
      *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
      */
-    RuleEngineExecutionResult executeDecisionByKey(String decisionKey, Map<String, Object> inputVariables);
+    @Deprecated
+    List<Map<String, Object>> executeDecisionByKey(String decisionKey, Map<String, Object> inputVariables);
+
+    /**
+     * Execute a decision identified by it's key. Expecting a single result.
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return Map containing rule output(s) for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when execution has multiple rule results or when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    Map<String, Object> executeDecisionByKeySingleResult(String decisionKey, Map<String, Object> inputVariables);
+
+    /**
+     * Execute a decision identified by it's key.
+     * Result contains audit trail.
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return the {@link DecisionExecutionAuditContainer} for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    DecisionExecutionAuditContainer executeDecisionByKeyWithAuditTrail(String decisionKey, Map<String, Object> inputVariables);
+
+    /**
+     * Execute a decision identified by it's key and tenant id
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return List with Maps containing rule outputs for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    List<Map<String, Object>> executeDecisionByKeyAndTenantId(String decisionKey, Map<String, Object> inputVariables, String tenantId);
+
+    /**
+     * Execute a decision identified by it's key and tenant id. Expecting a single result.
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return Map containing rule output(s) for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when execution has multiple rule results or when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    Map<String, Object> executeDecisionByKeyAndTenantIdSingleResult(String decisionKey, Map<String, Object> inputVariables, String tenantId);
 
     /**
      * Execute a decision identified by it's key and tenant id.
+     * Result contains audit trail.
      *
      * @param decisionKey
      *            the decision key, cannot be null
      * @param inputVariables
      *            map with input variables
-     * @param tenantId
-     *            the tenant id
-     * @return the {@link RuleEngineExecutionResult} for this execution
+     * @return the {@link DecisionExecutionAuditContainer} for this execution
      * @throws FlowableObjectNotFoundException
-     *             when the decision with given key and tenant id does not exist.
+     *             when the decision with given key does not exist.
      * @throws FlowableException
      *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
      */
-    RuleEngineExecutionResult executeDecisionByKeyAndTenantId(String decisionKey, Map<String, Object> inputVariables, String tenantId);
+    @Deprecated
+    DecisionExecutionAuditContainer executeDecisionByKeyAndTenantIdWithAuditTrail(String decisionKey, Map<String, Object> inputVariables, String tenantId);
 
     /**
      * Execute a decision identified by it's key and parent deployment id.
      *
      * @param decisionKey
      *            the decision key, cannot be null
-     * @param parentDeploymentId
-     *            the parent deployment id
      * @param inputVariables
      *            map with input variables
-     * @return the {@link RuleEngineExecutionResult} for this execution
+     * @return List with Maps containing rule outputs for this execution
      * @throws FlowableObjectNotFoundException
-     *             when the decision with given key and parent deployment id does not exist.
+     *             when the decision with given key does not exist.
      * @throws FlowableException
      *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
      */
-    RuleEngineExecutionResult executeDecisionByKeyAndParentDeploymentId(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables);
+    @Deprecated
+    List<Map<String, Object>> executeDecisionByKeyAndParentDeploymentId(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables);
 
     /**
-     * Execute a decision identified by it's key and parent deployment id.
+     * Execute a decision identified by it's key and parent deployment id. Expecting a single result.
      *
      * @param decisionKey
      *            the decision key, cannot be null
-     * @param parentDeploymentId
-     *            the parent deployment id
      * @param inputVariables
      *            map with input variables
-     * @param tenantId
-     *            the tenant id
-     * @return the {@link RuleEngineExecutionResult} for this execution
+     * @return Map containing rule output(s) for this execution
      * @throws FlowableObjectNotFoundException
-     *             when the decision with given key and parent deployment id and tenant id does not exist.
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when execution has multiple rule results or when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    Map<String, Object> executeDecisionByKeyAndParentDeploymentIdSingleResult(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables);
+
+    /**
+     * Execute a decision identified by it's key and parent deployment id.
+     * Result contains audit trail.
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return the {@link DecisionExecutionAuditContainer} for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
      * @throws FlowableException
      *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
      */
-    RuleEngineExecutionResult executeDecisionByKeyParentDeploymentIdAndTenantId(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId);
+    @Deprecated
+    DecisionExecutionAuditContainer executeDecisionByKeyAndParentDeploymentIdWithAuditTrail(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId);
+
+    /**
+     * Execute a decision identified by it's key, parent deployment id and tenant id.
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return List with Maps containing rule outputs for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    List<Map<String, Object>> executeDecisionByKeyParentDeploymentIdAndTenantId(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId);
+
+    /**
+     * Execute a decision identified by it's key, parent deployment id and tenant id. Expecting a single result.
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return Map containing rule output(s) for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when execution has multiple rule results or when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    Map<String, Object> executeDecisionByKeyParentDeploymentIdAndTenantIdSingleResult(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId);
+
+    /**
+     * Execute a decision identified by it's key, parent deployment id and tenant id.
+     * Result contains audit trail.
+     *
+     * @param decisionKey
+     *            the decision key, cannot be null
+     * @param inputVariables
+     *            map with input variables
+     * @return the {@link DecisionExecutionAuditContainer} for this execution
+     * @throws FlowableObjectNotFoundException
+     *             when the decision with given key does not exist.
+     * @throws FlowableException
+     *             when an error occurs while executing the decision.
+     * @deprecated Use the createExecuteDecisionBuilder method instead
+     */
+    @Deprecated
+    DecisionExecutionAuditContainer executeDecisionByKeyParentDeploymentIdAndTenantIdWithAuditTrail(String decisionKey, String parentDeploymentId, Map<String, Object> inputVariables, String tenantId);
+
 }

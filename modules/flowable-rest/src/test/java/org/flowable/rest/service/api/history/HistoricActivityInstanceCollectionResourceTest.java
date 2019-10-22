@@ -25,11 +25,12 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.flowable.engine.impl.cmd.ChangeDeploymentTenantIdCmd;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.flowable.task.api.Task;
 import org.junit.Assert;
+import org.junit.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -44,6 +45,7 @@ public class HistoricActivityInstanceCollectionResourceTest extends BaseSpringRe
     /**
      * Test querying historic activity instance. GET history/historic-activity-instances
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/twoTaskProcess.bpmn20.xml" })
     public void testQueryActivityInstances() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -79,11 +81,12 @@ public class HistoricActivityInstanceCollectionResourceTest extends BaseSpringRe
 
         assertResultsPresentInDataResponse(url + "?activityType=receiveTask", 0);
 
-        assertResultsPresentInDataResponse(url + "?processInstanceId=" + processInstance.getId(), 3, "theStart", "processTask", "processTask2");
+        assertResultsPresentInDataResponse(url + "?processInstanceId=" + processInstance.getId(), 5, "theStart", "flow1", "processTask", "flow2", "processTask2");
 
-        assertResultsPresentInDataResponse(url + "?processInstanceId=" + processInstance2.getId(), 2, "theStart", "processTask");
+        assertResultsPresentInDataResponse(url + "?processInstanceId=" + processInstance2.getId(), 3, "theStart", "flow1", "processTask");
 
-        assertResultsPresentInDataResponse(url + "?processDefinitionId=" + processInstance.getProcessDefinitionId(), 5, "theStart", "processTask", "processTask2");
+        assertResultsPresentInDataResponse(url + "?processDefinitionId=" + processInstance.getProcessDefinitionId(), 8,
+            "theStart", "flow1",  "processTask", "flow2", "processTask2");
 
         assertResultsPresentInDataResponse(url + "?taskAssignee=kermit", 2, "processTask");
 
@@ -92,14 +95,14 @@ public class HistoricActivityInstanceCollectionResourceTest extends BaseSpringRe
         assertResultsPresentInDataResponse(url + "?taskAssignee=fozzie2", 0);
 
         // Without tenant ID, only activities for processinstance1
-        assertResultsPresentInDataResponse(url + "?withoutTenantId=true", 3);
+        assertResultsPresentInDataResponse(url + "?withoutTenantId=true", 5);
 
         // Tenant id
-        assertResultsPresentInDataResponse(url + "?tenantId=myTenant", 2, "theStart", "processTask");
+        assertResultsPresentInDataResponse(url + "?tenantId=myTenant", 3, "theStart", "flow1", "processTask");
         assertResultsPresentInDataResponse(url + "?tenantId=anotherTenant");
 
         // Tenant id like
-        assertResultsPresentInDataResponse(url + "?tenantIdLike=" + encode("%enant"), 2, "theStart", "processTask");
+        assertResultsPresentInDataResponse(url + "?tenantIdLike=" + encode("%enant"), 3, "theStart", "flow1", "processTask");
         assertResultsPresentInDataResponse(url + "?tenantIdLike=anotherTenant");
     }
 
@@ -112,7 +115,7 @@ public class HistoricActivityInstanceCollectionResourceTest extends BaseSpringRe
 
         // Check presence of ID's
         if (expectedActivityIds != null) {
-            List<String> toBeFound = new ArrayList<String>(Arrays.asList(expectedActivityIds));
+            List<String> toBeFound = new ArrayList<>(Arrays.asList(expectedActivityIds));
             Iterator<JsonNode> it = dataNode.iterator();
             while (it.hasNext()) {
                 String activityId = it.next().get("activityId").textValue();

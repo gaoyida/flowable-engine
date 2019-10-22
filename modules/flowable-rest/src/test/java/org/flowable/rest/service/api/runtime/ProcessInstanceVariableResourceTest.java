@@ -13,6 +13,11 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -32,6 +37,7 @@ import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.HttpMultipartHelper;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -46,6 +52,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
     /**
      * Test getting a process instance variable. GET runtime/process-instances/{processInstanceId}/variables/{variableName}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceVariableResourceTest.testProcess.bpmn20.xml" })
     public void testGetProcessInstanceVariable() throws Exception {
 
@@ -77,6 +84,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
     /**
      * Test getting a process instance variable data. GET runtime/process-instances/{processInstanceId}/variables/{variableName}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceVariableResourceTest.testProcess.bpmn20.xml" })
     public void testGetProcessInstanceVariableData() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -94,6 +102,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
     /**
      * Test getting a process instance variable data. GET runtime/process-instances/{processInstanceId}/variables/{variableName}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceVariableResourceTest.testProcess.bpmn20.xml" })
     public void testGetProcessInstanceVariableDataSerializable() throws Exception {
 
@@ -119,6 +128,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
     /**
      * Test getting a process instance variable, for illegal vars. GET runtime/process-instances/{processInstanceId}/variables/{variableName}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceVariableResourceTest.testProcess.bpmn20.xml" })
     public void testGetProcessInstanceVariableDataForIllegalVariables() throws Exception {
 
@@ -139,6 +149,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
      * 
      * DELETE runtime/process-instances/{processInstanceId}/variables/{variableName}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceVariableResourceTest.testProcess.bpmn20.xml" })
     public void testDeleteProcessVariable() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess", Collections.singletonMap("myVariable", (Object) "processValue"));
@@ -160,6 +171,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
      * 
      * PUT runtime/process-instances/{processInstanceId}/variables/{variableName}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceVariableResourceTest.testProcess.bpmn20.xml" })
     public void testUpdateProcessVariable() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess", Collections.singletonMap("overlappingVariable", (Object) "processValue"));
@@ -195,6 +207,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
     /**
      * Test updating a single process variable using a binary stream. PUT runtime/process-instances/{processInstanceId}/variables/{variableName}
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/ProcessInstanceVariableResourceTest.testProcess.bpmn20.xml" })
     public void testUpdateBinaryProcessVariable() throws Exception {
 
@@ -204,7 +217,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
         InputStream binaryContent = new ByteArrayInputStream("This is binary content".getBytes());
 
         // Add name and type
-        Map<String, String> additionalFields = new HashMap<String, String>();
+        Map<String, String> additionalFields = new HashMap<>();
         additionalFields.put("name", "binaryVariable");
         additionalFields.put("type", "binary");
 
@@ -217,7 +230,7 @@ public class ProcessInstanceVariableResourceTest extends BaseSpringRestTestCase 
         assertEquals("binaryVariable", responseNode.get("name").asText());
         assertTrue(responseNode.get("value").isNull());
         assertEquals("binary", responseNode.get("type").asText());
-        assertNotNull(responseNode.get("valueUrl").isNull());
+        assertNotNull(responseNode.get("valueUrl"));
         assertTrue(responseNode.get("valueUrl").asText().endsWith(RestUrls.createRelativeResourceUrl(RestUrls.URL_PROCESS_INSTANCE_VARIABLE_DATA, processInstance.getId(), "binaryVariable")));
 
         // Check actual value of variable in engine

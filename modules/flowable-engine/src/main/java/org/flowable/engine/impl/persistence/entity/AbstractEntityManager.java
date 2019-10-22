@@ -12,16 +12,14 @@
  */
 package org.flowable.engine.impl.persistence.entity;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEventDispatcher;
-import org.flowable.engine.common.impl.persistence.entity.Entity;
-import org.flowable.engine.common.impl.persistence.entity.EntityManager;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.impl.persistence.entity.Entity;
+import org.flowable.common.engine.impl.persistence.entity.EntityManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.AbstractManager;
-import org.flowable.engine.impl.persistence.CountingExecutionEntity;
-import org.flowable.engine.impl.persistence.CountingTaskEntity;
 
 /**
  * @author Joram Barrez
@@ -54,9 +52,14 @@ public abstract class AbstractEntityManager<EntityImpl extends Entity> extends A
     @Override
     public void insert(EntityImpl entity, boolean fireCreateEvent) {
         getDataManager().insert(entity);
+        if (fireCreateEvent) {
+            fireEntityInsertedEvent(entity);
+        }
+    }
 
+    protected void fireEntityInsertedEvent(Entity entity) {
         FlowableEventDispatcher eventDispatcher = getEventDispatcher();
-        if (fireCreateEvent && eventDispatcher.isEnabled()) {
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
             eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_CREATED, entity));
             eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_INITIALIZED, entity));
         }
@@ -70,12 +73,17 @@ public abstract class AbstractEntityManager<EntityImpl extends Entity> extends A
     @Override
     public EntityImpl update(EntityImpl entity, boolean fireUpdateEvent) {
         EntityImpl updatedEntity = getDataManager().update(entity);
+        if (fireUpdateEvent) {
+            fireEntityUpdatedEvent(entity);
+        }
+        return updatedEntity;
+    }
 
-        if (fireUpdateEvent && getEventDispatcher().isEnabled()) {
+    protected void fireEntityUpdatedEvent(Entity entity) {
+        FlowableEventDispatcher eventDispatcher = getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
             getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_UPDATED, entity));
         }
-
-        return updatedEntity;
     }
 
     @Override
@@ -93,59 +101,18 @@ public abstract class AbstractEntityManager<EntityImpl extends Entity> extends A
     public void delete(EntityImpl entity, boolean fireDeleteEvent) {
         getDataManager().delete(entity);
 
-        if (fireDeleteEvent && getEventDispatcher().isEnabled()) {
-            getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_DELETED, entity));
+        FlowableEventDispatcher eventDispatcher = getEventDispatcher();
+        if (fireDeleteEvent && eventDispatcher != null && eventDispatcher.isEnabled()) {
+            fireEntityDeletedEvent(entity);
+        }
+    }
+
+    protected void fireEntityDeletedEvent(Entity entity) {
+        FlowableEventDispatcher eventDispatcher = getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            eventDispatcher.dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_DELETED, entity));
         }
     }
 
     protected abstract DataManager<EntityImpl> getDataManager();
-
-    /* Execution related entity count methods */
-
-    protected boolean isExecutionRelatedEntityCountEnabledGlobally() {
-        return processEngineConfiguration.getPerformanceSettings().isEnableExecutionRelationshipCounts();
-    }
-
-    /**
-     * Check if the Task Relationship Count performance improvement is enabled.
-     */
-    protected boolean isTaskRelatedEntityCountEnabledGlobally() {
-        return processEngineConfiguration.getPerformanceSettings().isEnableTaskRelationshipCounts();
-    }
-
-    protected boolean isExecutionRelatedEntityCountEnabled(ExecutionEntity executionEntity) {
-        if (executionEntity instanceof CountingExecutionEntity) {
-            return isExecutionRelatedEntityCountEnabled((CountingExecutionEntity) executionEntity);
-        }
-        return false;
-    }
-
-    protected boolean isTaskRelatedEntityCountEnabled(TaskEntity taskEntity) {
-        if (taskEntity instanceof CountingTaskEntity) {
-            return isTaskRelatedEntityCountEnabled((CountingTaskEntity) taskEntity);
-        }
-        return false;
-    }
-
-    /**
-     * There are two flags here: a global flag and a flag on the execution entity. The global flag can be switched on and off between different reboots, however the flag on the executionEntity refers
-     * to the state at that particular moment.
-     * 
-     * Global flag / ExecutionEntity flag : result
-     * 
-     * T / T : T (all true, regular mode with flags enabled) T / F : F (global is true, but execution was of a time when it was disabled, thus treating it as disabled) F / T : F (execution was of time
-     * when counting was done. But this is overruled by the global flag and thus the queries will be done) F / F : F (all disabled)
-     * 
-     * From this table it is clear that only when both are true, the result should be true, which is the regular AND rule for booleans.
-     */
-    protected boolean isExecutionRelatedEntityCountEnabled(CountingExecutionEntity executionEntity) {
-        return isExecutionRelatedEntityCountEnabledGlobally() && executionEntity.isCountEnabled();
-    }
-
-    /**
-     * Similar functionality with <b>ExecutionRelatedEntityCount</b>, but on the TaskEntity level.
-     */
-    protected boolean isTaskRelatedEntityCountEnabled(CountingTaskEntity taskEntity) {
-        return isTaskRelatedEntityCountEnabledGlobally() && taskEntity.isCountEnabled();
-    }
 }

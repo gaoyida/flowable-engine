@@ -16,8 +16,7 @@ package org.flowable.engine.impl.persistence.entity;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.engine.impl.ModelQueryImpl;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.data.ModelDataManager;
@@ -113,8 +112,8 @@ public class ModelEntityManagerImpl extends AbstractEntityManager<ModelEntity> i
     }
 
     @Override
-    public List<Model> findModelsByQueryCriteria(ModelQueryImpl query, Page page) {
-        return modelDataManager.findModelsByQueryCriteria(query, page);
+    public List<Model> findModelsByQueryCriteria(ModelQueryImpl query) {
+        return modelDataManager.findModelsByQueryCriteria(query);
     }
 
     @Override
@@ -145,8 +144,8 @@ public class ModelEntityManagerImpl extends AbstractEntityManager<ModelEntity> i
     }
 
     @Override
-    public List<Model> findModelsByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return modelDataManager.findModelsByNativeQuery(parameterMap, firstResult, maxResults);
+    public List<Model> findModelsByNativeQuery(Map<String, Object> parameterMap) {
+        return modelDataManager.findModelsByNativeQuery(parameterMap);
     }
 
     @Override

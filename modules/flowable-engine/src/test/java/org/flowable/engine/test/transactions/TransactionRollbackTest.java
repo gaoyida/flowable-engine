@@ -13,14 +13,22 @@
 
 package org.flowable.engine.test.transactions;
 
-import org.flowable.engine.common.api.FlowableException;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.engine.ManagementService;
 import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.JavaDelegate;
 import org.flowable.engine.impl.delegate.ActivityBehavior;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.task.api.Task;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tom Baeyens
+ * @Author Joram Barrez
  */
 public class TransactionRollbackTest extends PluggableFlowableTestCase {
 
@@ -28,11 +36,29 @@ public class TransactionRollbackTest extends PluggableFlowableTestCase {
 
         private static final long serialVersionUID = 1L;
 
+        @Override
         public void execute(DelegateExecution execution) {
             throw new FlowableException("Buzzz");
         }
     }
 
+    public static class NestedCommandDelegate implements JavaDelegate {
+
+        @Override
+        public void execute(DelegateExecution execution) {
+            try {
+                ManagementService managementService = CommandContextUtil.getProcessEngineConfiguration().getManagementService();
+                managementService.executeCommand((Command<Void>) commandContext -> { throw new RuntimeException("exception from service task"); });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            execution.setVariable("theVariable", "test");
+        }
+
+    }
+
+    @Test
     @Deployment
     public void testRollback() {
         try {
@@ -47,6 +73,7 @@ public class TransactionRollbackTest extends PluggableFlowableTestCase {
         assertEquals(0, runtimeService.createExecutionQuery().count());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/engine/test/transactions/trivial.bpmn20.xml", "org/flowable/engine/test/transactions/rollbackAfterSubProcess.bpmn20.xml" })
     public void testRollbackAfterSubProcess() {
         try {
@@ -59,6 +86,19 @@ public class TransactionRollbackTest extends PluggableFlowableTestCase {
         }
 
         assertEquals(0, runtimeService.createExecutionQuery().count());
-
     }
+
+    @Test
+    @Deployment
+    public void testNoRollbackInNestedCommand() {
+        ProcessInstance processInstance = runtimeService.createProcessInstanceBuilder().processDefinitionKey("testProcess").start();
+
+        // The task should be created, as the service task with an exception is try-catched in the delegate.
+        Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        assertNotNull(task);
+
+        String variable = (String) runtimeService.getVariable(processInstance.getId(), "theVariable");
+        assertEquals("test", variable);
+    }
+
 }

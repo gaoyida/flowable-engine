@@ -17,20 +17,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.dmn.api.DmnHistoryService;
 import org.flowable.dmn.api.DmnManagementService;
 import org.flowable.dmn.api.DmnRepositoryService;
 import org.flowable.dmn.api.DmnRuleService;
 import org.flowable.dmn.engine.DmnEngine;
 import org.flowable.dmn.engine.DmnEngineConfiguration;
-import org.flowable.dmn.engine.impl.db.DbSqlSession;
-import org.flowable.dmn.engine.impl.interceptor.Command;
-import org.flowable.dmn.engine.impl.interceptor.CommandContext;
-import org.flowable.dmn.engine.impl.interceptor.CommandExecutor;
 import org.flowable.dmn.engine.test.DmnTestHelper;
-import org.flowable.engine.common.impl.interceptor.CommandConfig;
 import org.junit.Assert;
-
-import junit.framework.AssertionFailedError;
 
 /**
  * @author Tom Baeyens
@@ -38,7 +32,7 @@ import junit.framework.AssertionFailedError;
  */
 public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
 
-    private static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = new ArrayList<String>();
+    private static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = new ArrayList<>();
 
     static {
         TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.add("ACT_DMN_DATABASECHANGELOG");
@@ -48,13 +42,14 @@ public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
     protected DmnEngine dmnEngine;
 
     protected String deploymentIdFromDeploymentAnnotation;
-    protected List<String> deploymentIdsForAutoCleanup = new ArrayList<String>();
+    protected List<String> deploymentIdsForAutoCleanup = new ArrayList<>();
     protected Throwable exception;
 
     protected DmnEngineConfiguration dmnEngineConfiguration;
     protected DmnManagementService managementService;
     protected DmnRepositoryService repositoryService;
     protected DmnRuleService ruleService;
+    protected DmnHistoryService historyService;
 
     protected abstract void initializeDmnEngine();
 
@@ -67,6 +62,7 @@ public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
         managementService = null;
         repositoryService = null;
         ruleService = null;
+        historyService = null;
     }
 
     @Override
@@ -82,15 +78,15 @@ public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
 
             super.runBare();
 
-        } catch (AssertionFailedError e) {
-            log.error(EMPTY_LINE);
-            log.error("ASSERTION FAILED: {}", e, e);
+        } catch (AssertionError e) {
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error("ASSERTION FAILED: {}", e, e);
             exception = e;
             throw e;
 
         } catch (Throwable e) {
-            log.error(EMPTY_LINE);
-            log.error("EXCEPTION: {}", e, e);
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error("EXCEPTION: {}", e, e);
             exception = e;
             throw e;
 
@@ -119,7 +115,7 @@ public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
      * the DB is not clean. If the DB is not clean, it is cleaned by performing a create a drop.
      */
     protected void assertAndEnsureCleanDb() throws Throwable {
-        log.debug("verifying that db is clean after test");
+        LOGGER.debug("verifying that db is clean after test");
         Map<String, Long> tableCounts = managementService.getTableCount();
         StringBuilder outputMessage = new StringBuilder();
         for (String tableName : tableCounts.keySet()) {
@@ -134,21 +130,10 @@ public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
 
         if (outputMessage.length() > 0) {
             outputMessage.insert(0, "DB NOT CLEAN: \n");
-            log.error(EMPTY_LINE);
-            log.error(outputMessage.toString());
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error(outputMessage.toString());
 
-            log.info("dropping and recreating db");
-
-            CommandExecutor commandExecutor = dmnEngine.getDmnEngineConfiguration().getCommandExecutor();
-            CommandConfig config = new CommandConfig().transactionNotSupported();
-            commandExecutor.execute(config, new Command<Object>() {
-                public Object execute(CommandContext commandContext) {
-                    DbSqlSession session = commandContext.getDbSqlSession();
-                    session.dbSchemaDrop();
-                    session.dbSchemaCreate();
-                    return null;
-                }
-            });
+            LOGGER.info("dropping and recreating db");
 
             if (exception != null) {
                 throw exception;
@@ -156,7 +141,7 @@ public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
                 Assert.fail(outputMessage.toString());
             }
         } else {
-            log.info("database was clean");
+            LOGGER.info("database was clean");
         }
     }
 
@@ -165,6 +150,7 @@ public abstract class AbstractFlowableDmnTestCase extends AbstractDmnTestCase {
         managementService = dmnEngine.getDmnManagementService();
         repositoryService = dmnEngine.getDmnRepositoryService();
         ruleService = dmnEngine.getDmnRuleService();
+        historyService = dmnEngine.getDmnHistoryService();
     }
 
 }

@@ -20,18 +20,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.AssertionFailedError;
-
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.db.SchemaManager;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.util.ReflectUtil;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
 import org.flowable.engine.impl.ProcessEngineImpl;
 import org.flowable.engine.impl.bpmn.deployer.ResourceNameUtil;
 import org.flowable.engine.impl.bpmn.parser.factory.ActivityBehaviorFactory;
-import org.flowable.engine.impl.db.DbSqlSession;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.util.ReflectUtil;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.DeploymentBuilder;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
@@ -49,13 +48,13 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class TestHelper {
 
-    private static Logger log = LoggerFactory.getLogger(TestHelper.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static final String EMPTY_LINE = "\n";
 
     public static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = Collections.singletonList("ACT_GE_PROPERTY");
 
-    static Map<String, ProcessEngine> processEngines = new HashMap<String, ProcessEngine>();
+    static Map<String, ProcessEngine> processEngines = new HashMap<>();
 
     // Assertion methods ///////////////////////////////////////////////////
 
@@ -63,24 +62,33 @@ public abstract class TestHelper {
         ProcessInstance processInstance = processEngine.getRuntimeService().createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
 
         if (processInstance != null) {
-            throw new AssertionFailedError("expected finished process instance '" + processInstanceId + "' but it was still in the db");
+            throw new AssertionError("expected finished process instance '" + processInstanceId + "' but it was still in the db");
         }
     }
 
     // Test annotation support /////////////////////////////////////////////
 
     public static String annotationDeploymentSetUp(ProcessEngine processEngine, Class<?> testClass, String methodName) {
-        String deploymentId = null;
         Method method = null;
         try {
             method = testClass.getMethod(methodName, (Class<?>[]) null);
         } catch (Exception e) {
-            log.warn("Could not get method by reflection. This could happen if you are using @Parameters in combination with annotations.", e);
+            LOGGER.warn("Could not get method by reflection. This could happen if you are using @Parameters in combination with annotations.", e);
             return null;
         }
+        return annotationDeploymentSetUp(processEngine, testClass, method);
+    }
+
+    public static String annotationDeploymentSetUp(ProcessEngine processEngine, Class<?> testClass, Method method) {
         Deployment deploymentAnnotation = method.getAnnotation(Deployment.class);
+        return annotationDeploymentSetUp(processEngine, testClass, method, deploymentAnnotation);
+    }
+
+    public static String annotationDeploymentSetUp(ProcessEngine processEngine, Class<?> testClass, Method method, Deployment deploymentAnnotation) {
+        String deploymentId = null;
+        String methodName = method.getName();
         if (deploymentAnnotation != null) {
-            log.debug("annotation @Deployment creates deployment for {}.{}", testClass.getSimpleName(), methodName);
+            LOGGER.debug("annotation @Deployment creates deployment for {}.{}", testClass.getSimpleName(), methodName);
             String[] resources = deploymentAnnotation.resources();
             if (resources.length == 0) {
                 String name = method.getName();
@@ -106,10 +114,11 @@ public abstract class TestHelper {
     }
 
     public static void annotationDeploymentTearDown(ProcessEngine processEngine, String deploymentId, Class<?> testClass, String methodName) {
-        log.debug("annotation @Deployment deletes deployment for {}.{}", testClass.getSimpleName(), methodName);
+        LOGGER.debug("annotation @Deployment deletes deployment for {}.{}", testClass.getSimpleName(), methodName);
         if (deploymentId != null) {
             try {
                 processEngine.getRepositoryService().deleteDeployment(deploymentId, true);
+            
             } catch (FlowableObjectNotFoundException e) {
                 // Deployment was already deleted by the test case. Ignore.
             }
@@ -123,7 +132,7 @@ public abstract class TestHelper {
         try {
             method = testClass.getMethod(methodName, (Class<?>[]) null);
         } catch (Exception e) {
-            log.warn("Could not get method by reflection. This could happen if you are using @Parameters in combination with annotations.", e);
+            LOGGER.warn("Could not get method by reflection. This could happen if you are using @Parameters in combination with annotations.", e);
             return;
         }
 
@@ -139,8 +148,21 @@ public abstract class TestHelper {
         }
     }
 
-    protected static void handleMockServiceTaskAnnotation(FlowableMockSupport mockSupport, MockServiceTask mockedServiceTask) {
-        mockSupport.mockServiceTaskWithClassDelegate(mockedServiceTask.originalClassName(), mockedServiceTask.mockedClassName());
+    public static void handleMockServiceTaskAnnotation(FlowableMockSupport mockSupport, MockServiceTask mockedServiceTask) {
+        String originalClassName = mockedServiceTask.originalClassName();
+        mockSupport.mockServiceTaskWithClassDelegate(originalClassName, mockedServiceTask.mockedClassName());
+        Class<?> mockedClass = mockedServiceTask.mockedClass();
+        if (!Void.class.equals(mockedClass)) {
+            mockSupport.mockServiceTaskWithClassDelegate(originalClassName, mockedClass);
+        }
+
+        String id = mockedServiceTask.id();
+        if (!id.isEmpty()) {
+            mockSupport.mockServiceTaskByIdWithClassDelegate(id, mockedServiceTask.mockedClassName());
+            if (!Void.class.equals(mockedClass)) {
+                mockSupport.mockServiceTaskByIdWithClassDelegate(id, mockedClass);
+            }
+        }
     }
 
     protected static void handleMockServiceTasksAnnotation(FlowableMockSupport mockSupport, Method method) {
@@ -155,7 +177,12 @@ public abstract class TestHelper {
     protected static void handleNoOpServiceTasksAnnotation(FlowableMockSupport mockSupport, Method method) {
         NoOpServiceTasks noOpServiceTasks = method.getAnnotation(NoOpServiceTasks.class);
         if (noOpServiceTasks != null) {
+            handleNoOpServiceTasksAnnotation(mockSupport, noOpServiceTasks);
+        }
+    }
 
+    public static void handleNoOpServiceTasksAnnotation(FlowableMockSupport mockSupport, NoOpServiceTasks noOpServiceTasks) {
+        if (noOpServiceTasks != null) {
             String[] ids = noOpServiceTasks.ids();
             Class<?>[] classes = noOpServiceTasks.classes();
             String[] classNames = noOpServiceTasks.classNames();
@@ -183,7 +210,6 @@ public abstract class TestHelper {
                 }
 
             }
-
         }
     }
 
@@ -214,9 +240,9 @@ public abstract class TestHelper {
     public static ProcessEngine getProcessEngine(String configurationResource) {
         ProcessEngine processEngine = processEngines.get(configurationResource);
         if (processEngine == null) {
-            log.debug("==== BUILDING PROCESS ENGINE ========================================================================");
+            LOGGER.debug("==== BUILDING PROCESS ENGINE ========================================================================");
             processEngine = ProcessEngineConfiguration.createProcessEngineConfigurationFromResource(configurationResource).buildProcessEngine();
-            log.debug("==== PROCESS ENGINE CREATED =========================================================================");
+            LOGGER.debug("==== PROCESS ENGINE CREATED =========================================================================");
             processEngines.put(configurationResource, processEngine);
         }
         return processEngine;
@@ -234,7 +260,7 @@ public abstract class TestHelper {
      * the DB is not clean. If the DB is not clean, it is cleaned by performing a create a drop.
      */
     public static void assertAndEnsureCleanDb(ProcessEngine processEngine) {
-        log.debug("verifying that db is clean after test");
+        LOGGER.debug("verifying that db is clean after test");
         Map<String, Long> tableCounts = processEngine.getManagementService().getTableCount();
         StringBuilder outputMessage = new StringBuilder();
         for (String tableName : tableCounts.keySet()) {
@@ -247,14 +273,15 @@ public abstract class TestHelper {
         }
         if (outputMessage.length() > 0) {
             outputMessage.insert(0, "DB NOT CLEAN: \n");
-            log.error(EMPTY_LINE);
-            log.error(outputMessage.toString());
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error(outputMessage.toString());
 
             ((ProcessEngineImpl) processEngine).getProcessEngineConfiguration().getCommandExecutor().execute(new Command<Object>() {
+                @Override
                 public Object execute(CommandContext commandContext) {
-                    DbSqlSession dbSqlSession = commandContext.getDbSqlSession();
-                    dbSqlSession.dbSchemaDrop();
-                    dbSqlSession.dbSchemaCreate();
+                    SchemaManager schemaManager = CommandContextUtil.getProcessEngineConfiguration(commandContext).getSchemaManager();
+                    schemaManager.schemaDrop();
+                    schemaManager.schemaCreate();
                     return null;
                 }
             });

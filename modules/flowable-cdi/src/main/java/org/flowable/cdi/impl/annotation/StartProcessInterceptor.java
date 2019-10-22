@@ -26,11 +26,11 @@ import javax.interceptor.InvocationContext;
 import org.flowable.cdi.BusinessProcess;
 import org.flowable.cdi.annotation.ProcessVariable;
 import org.flowable.cdi.annotation.StartProcess;
-import org.flowable.engine.common.api.FlowableException;
+import org.flowable.common.engine.api.FlowableException;
 
 /**
  * implementation of the {@link StartProcess} annotation
- * 
+ *
  * @author Daniel Meyer
  */
 @Interceptor
@@ -74,7 +74,7 @@ public class StartProcessInterceptor implements Serializable {
     }
 
     private Map<String, Object> extractVariables(StartProcess startProcessAnnotation, InvocationContext ctx) throws Exception {
-        Map<String, Object> variables = new HashMap<String, Object>();
+        Map<String, Object> variables = new HashMap<>();
         for (Field field : ctx.getMethod().getDeclaringClass().getDeclaredFields()) {
             if (!field.isAnnotationPresent(ProcessVariable.class)) {
                 continue;

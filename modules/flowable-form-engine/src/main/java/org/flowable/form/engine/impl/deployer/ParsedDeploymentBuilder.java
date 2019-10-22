@@ -18,18 +18,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.form.engine.impl.context.Context;
 import org.flowable.form.engine.impl.parser.FormDefinitionParse;
 import org.flowable.form.engine.impl.parser.FormDefinitionParseFactory;
 import org.flowable.form.engine.impl.persistence.entity.FormDefinitionEntity;
 import org.flowable.form.engine.impl.persistence.entity.FormDeploymentEntity;
-import org.flowable.form.engine.impl.persistence.entity.ResourceEntity;
+import org.flowable.form.engine.impl.persistence.entity.FormResourceEntity;
+import org.flowable.form.engine.impl.util.CommandContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ParsedDeploymentBuilder {
 
-    private static final Logger log = LoggerFactory.getLogger(ParsedDeploymentBuilder.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParsedDeploymentBuilder.class);
 
     public static final String[] FORM_RESOURCE_SUFFIXES = new String[] { "form" };
 
@@ -42,26 +42,26 @@ public class ParsedDeploymentBuilder {
     }
 
     public ParsedDeployment build() {
-        List<FormDefinitionEntity> formDefinitions = new ArrayList<FormDefinitionEntity>();
-        Map<FormDefinitionEntity, FormDefinitionParse> formDefinitionToParseMap = new LinkedHashMap<FormDefinitionEntity, FormDefinitionParse>();
-        Map<FormDefinitionEntity, ResourceEntity> formDefintionToResourceMap = new LinkedHashMap<FormDefinitionEntity, ResourceEntity>();
+        List<FormDefinitionEntity> formDefinitions = new ArrayList<>();
+        Map<FormDefinitionEntity, FormDefinitionParse> formDefinitionToParseMap = new LinkedHashMap<>();
+        Map<FormDefinitionEntity, FormResourceEntity> formDefinitionToResourceMap = new LinkedHashMap<>();
 
-        for (ResourceEntity resource : deployment.getResources().values()) {
+        for (FormResourceEntity resource : deployment.getResources().values()) {
             if (isFormResource(resource.getName())) {
-                log.debug("Processing Form definition resource {}", resource.getName());
+                LOGGER.debug("Processing Form definition resource {}", resource.getName());
                 FormDefinitionParse parse = createFormParseFromResource(resource);
                 for (FormDefinitionEntity formDefinition : parse.getFormDefinitions()) {
                     formDefinitions.add(formDefinition);
                     formDefinitionToParseMap.put(formDefinition, parse);
-                    formDefintionToResourceMap.put(formDefinition, resource);
+                    formDefinitionToResourceMap.put(formDefinition, resource);
                 }
             }
         }
 
-        return new ParsedDeployment(deployment, formDefinitions, formDefinitionToParseMap, formDefintionToResourceMap);
+        return new ParsedDeployment(deployment, formDefinitions, formDefinitionToParseMap, formDefinitionToResourceMap);
     }
 
-    protected FormDefinitionParse createFormParseFromResource(ResourceEntity resource) {
+    protected FormDefinitionParse createFormParseFromResource(FormResourceEntity resource) {
         String resourceName = resource.getName();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(resource.getBytes());
 
@@ -71,7 +71,7 @@ public class ParsedDeploymentBuilder {
                 .deployment(deployment)
                 .name(resourceName);
 
-        formParse.execute(Context.getFormEngineConfiguration());
+        formParse.execute(CommandContextUtil.getFormEngineConfiguration());
         return formParse;
     }
 

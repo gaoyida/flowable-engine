@@ -15,6 +15,7 @@ package org.activiti.engine.impl.repository;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -51,6 +52,7 @@ public class DeploymentBuilderImpl implements DeploymentBuilder, Serializable {
         this.repositoryService = repositoryService;
     }
 
+    @Override
     public DeploymentBuilder addInputStream(String resourceName, InputStream inputStream) {
         if (inputStream == null) {
             throw new ActivitiIllegalArgumentException("inputStream for resource '" + resourceName + "' is null");
@@ -63,6 +65,7 @@ public class DeploymentBuilderImpl implements DeploymentBuilder, Serializable {
         return this;
     }
 
+    @Override
     public DeploymentBuilder addClasspathResource(String resource) {
         InputStream inputStream = ReflectUtil.getResourceAsStream(resource);
         if (inputStream == null) {
@@ -71,6 +74,7 @@ public class DeploymentBuilderImpl implements DeploymentBuilder, Serializable {
         return addInputStream(resource, inputStream);
     }
 
+    @Override
     public DeploymentBuilder addString(String resourceName, String text) {
         if (text == null) {
             throw new ActivitiIllegalArgumentException("text is null");
@@ -86,6 +90,7 @@ public class DeploymentBuilderImpl implements DeploymentBuilder, Serializable {
         return this;
     }
 
+    @Override
     public DeploymentBuilder addZipInputStream(ZipInputStream zipInputStream) {
         try {
             ZipEntry entry = zipInputStream.getNextEntry();
@@ -106,52 +111,57 @@ public class DeploymentBuilderImpl implements DeploymentBuilder, Serializable {
         return this;
     }
 
+    @Override
     public DeploymentBuilder addBpmnModel(String resourceName, BpmnModel bpmnModel) {
         BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
-        try {
-            String bpmn20Xml = new String(bpmnXMLConverter.convertToXML(bpmnModel), "UTF-8");
-            addString(resourceName, bpmn20Xml);
-        } catch (UnsupportedEncodingException e) {
-            throw new ActivitiException("Error while transforming BPMN model to xml: not UTF-8 encoded", e);
-        }
+        String bpmn20Xml = new String(bpmnXMLConverter.convertToXML(bpmnModel), StandardCharsets.UTF_8);
+        addString(resourceName, bpmn20Xml);
         return this;
     }
 
+    @Override
     public DeploymentBuilder name(String name) {
         deployment.setName(name);
         return this;
     }
 
+    @Override
     public DeploymentBuilder category(String category) {
         deployment.setCategory(category);
         return this;
     }
 
+    @Override
     public DeploymentBuilder disableBpmnValidation() {
         this.isProcessValidationEnabled = false;
         return this;
     }
 
+    @Override
     public DeploymentBuilder disableSchemaValidation() {
         this.isBpmn20XsdValidationEnabled = false;
         return this;
     }
 
+    @Override
     public DeploymentBuilder tenantId(String tenantId) {
         deployment.setTenantId(tenantId);
         return this;
     }
 
+    @Override
     public DeploymentBuilder enableDuplicateFiltering() {
         this.isDuplicateFilterEnabled = true;
         return this;
     }
 
+    @Override
     public DeploymentBuilder activateProcessDefinitionsOn(Date date) {
         this.processDefinitionsActivationDate = date;
         return this;
     }
 
+    @Override
     public Deployment deploy() {
         return repositoryService.deploy(this);
     }

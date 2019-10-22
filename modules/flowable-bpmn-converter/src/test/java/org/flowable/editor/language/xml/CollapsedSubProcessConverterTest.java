@@ -1,17 +1,36 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.editor.language.xml;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.GraphicInfo;
+import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.StartEvent;
+import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.UserTask;
 import org.junit.Test;
 
@@ -32,6 +51,7 @@ public class CollapsedSubProcessConverterTest extends AbstractConverterTest {
     public void convertFromXmlToJava() throws Exception{
         BpmnModel bpmnModel = readXMLFile();
         validateModel(bpmnModel);
+        validateGraphicInfo(bpmnModel);
     }
 
     @Test
@@ -40,6 +60,7 @@ public class CollapsedSubProcessConverterTest extends AbstractConverterTest {
         validateModel(bpmnModel);
         bpmnModel = exportAndReadXMLFile(bpmnModel);
         validateModel(bpmnModel);
+        validateGraphicInfo(bpmnModel);
     }
 
     private void validateModel(BpmnModel bpmnModel){
@@ -127,5 +148,70 @@ public class CollapsedSubProcessConverterTest extends AbstractConverterTest {
     @Override
     protected String getResource() {
         return "collapsed-subprocess.bpmn20.xml";
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+	private void validateGraphicInfo(BpmnModel model) throws Exception {
+    	Process process = model.getMainProcess();
+    	List<SubProcess> subList = process.findFlowElementsOfType(SubProcess.class);
+    	Map<String, List<GraphicInfo>> flowLocationMap = model.getFlowLocationMap();
+    	Map<String, GraphicInfo> locationMap = model.getLocationMap();
+
+    	// BPMNDI data
+    	Map<String, Map> baseBpmnDI = parseBPMNDI(new BpmnXMLConverter().convertToXML(model));
+    	
+        // verify sequence flows/edges
+        assertEquals(6, flowLocationMap.size());
+
+    	// verify other elements/shapes
+        assertEquals(8, locationMap.size());
+
+        // verify BPMNDI data
+    	// should have 2 diagrams
+    	assertEquals(2, baseBpmnDI.size());
+
+		// subprocess diagram
+        assertEquals(1, subList.size());
+    	Map<String, List<GraphicInfo>> multiMainEdgeMap = (Map<String, List<GraphicInfo>>) baseBpmnDI.get(process.getId()).get(ELEMENT_DI_EDGE);
+    	Map<String, GraphicInfo> multiMainShapeMap = (Map<String, GraphicInfo>) baseBpmnDI.get(process.getId()).get(ELEMENT_DI_SHAPE);
+    	Map<String, List<GraphicInfo>> multiSubEdgeMap = (Map<String, List<GraphicInfo>>) baseBpmnDI.get(subList.get(0).getId()).get(ELEMENT_DI_EDGE);
+        Map<String, GraphicInfo> multiSubShapeMap = (Map<String, GraphicInfo>) baseBpmnDI.get(subList.get(0).getId()).get(ELEMENT_DI_SHAPE);
+
+    	assertEquals(3, multiMainEdgeMap.size());
+    	assertEquals(4, multiMainShapeMap.size());
+    	assertEquals(3, multiSubEdgeMap.size());
+    	assertEquals(4, multiSubShapeMap.size());
+
+    	// verify annotations are in correct diagram
+    	assertTrue(multiMainShapeMap.containsKey("textannotation1"));
+    	assertTrue(multiSubShapeMap.containsKey("textannotation2"));
+    	assertTrue(multiMainEdgeMap.containsKey("association1"));
+    	assertTrue(multiSubEdgeMap.containsKey("association2"));
+
+    	// verify sequence flows/edges
+        List<GraphicInfo> info;
+        List<GraphicInfo> diInfo;
+        for (String id : flowLocationMap.keySet()) {
+    		info = new ArrayList<>(flowLocationMap.get(id));
+    		diInfo = multiMainEdgeMap.get(id);
+    		// if not found in main process, must be in subprocess
+    		if (diInfo == null) {
+        		diInfo = multiSubEdgeMap.get(id);
+    		}
+    		assertEquals(info.size(), diInfo.size());
+    		compareCollections(info, diInfo);
+    	}
+
+    	// verify other elements/shapes
+        GraphicInfo shapeInfo;
+		for (String id : locationMap.keySet()) {
+			// compare graphic info for each element
+			shapeInfo = multiMainShapeMap.get(id);
+    		// if not found in main process, must be in subprocess
+			if (shapeInfo == null) {
+				shapeInfo = multiSubShapeMap.get(id);
+			}
+        	assertTrue(locationMap.get(id).equals(shapeInfo));
+        }
     }
 }

@@ -13,8 +13,8 @@
 
 package org.flowable.engine.impl.event;
 
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.persistence.entity.EventSubscriptionEntity;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.eventsubscription.service.impl.persistence.entity.EventSubscriptionEntity;
 
 /**
  * @author Daniel Meyer

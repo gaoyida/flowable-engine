@@ -16,12 +16,10 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.persistence.entity.AbstractEntity;
-
 /**
  * @author Tom Baeyens
  */
-public class GroupEntityImpl extends AbstractEntity implements GroupEntity, Serializable {
+public class GroupEntityImpl extends AbstractIdmEngineEntity implements GroupEntity, Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -31,25 +29,30 @@ public class GroupEntityImpl extends AbstractEntity implements GroupEntity, Seri
     public GroupEntityImpl() {
     }
 
+    @Override
     public Object getPersistentState() {
-        Map<String, Object> persistentState = new HashMap<String, Object>();
+        Map<String, Object> persistentState = new HashMap<>();
         persistentState.put("name", name);
         persistentState.put("type", type);
         return persistentState;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public void setName(String name) {
         this.name = name;
     }
 
+    @Override
     public String getType() {
         return type;
     }
 
+    @Override
     public void setType(String type) {
         this.type = type;
     }

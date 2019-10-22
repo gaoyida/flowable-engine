@@ -1,8 +1,16 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.bpmn;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 import com.mxgraph.layout.mxGraphLayout;
 import com.mxgraph.model.mxCell;
@@ -10,6 +18,10 @@ import com.mxgraph.model.mxGeometry;
 import com.mxgraph.model.mxIGraphModel;
 import com.mxgraph.util.mxRectangle;
 import com.mxgraph.view.mxGraph;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * BPMNLayout
@@ -93,6 +105,7 @@ public class BPMNLayout extends mxGraphLayout {
         this.invert = invert;
     }
 
+    @Override
     public mxGraph getGraph() {
         return graph;
     }
@@ -104,6 +117,7 @@ public class BPMNLayout extends mxGraphLayout {
      *            Object that represents the vertex to be tested.
      * @return Returns true if the vertex should be ignored.
      */
+    @Override
     public boolean isVertexIgnored(Object vertex) {
         return super.isVertexIgnored(vertex) || graph.isSwimlane(vertex) || graph.getModel().getGeometry(vertex).isRelative() || graph.getConnections(vertex).length == 0;
     }
@@ -213,6 +227,7 @@ public class BPMNLayout extends mxGraphLayout {
         this.nodeDistance = nodeDistance;
     }
 
+    @Override
     public void execute(Object parent) {
         mxIGraphModel model = graph.getModel();
         List<Object> roots = graph.findTreeRoots(parent, true, invert);
@@ -340,7 +355,7 @@ public class BPMNLayout extends mxGraphLayout {
      */
     protected TreeNode dfs(Object cell, Object parent, Set<Object> visited) {
         if (visited == null) {
-            visited = new HashSet<Object>();
+            visited = new HashSet<>();
         }
 
         TreeNode node = null;

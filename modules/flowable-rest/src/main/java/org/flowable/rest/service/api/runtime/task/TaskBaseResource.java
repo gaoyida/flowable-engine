@@ -13,24 +13,27 @@
 
 package org.flowable.rest.service.api.runtime.task;
 
+import static org.flowable.common.rest.api.PaginateListUtil.paginateList;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.query.QueryProperty;
+import org.flowable.common.rest.api.DataResponse;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.TaskService;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
-import org.flowable.engine.common.api.query.QueryProperty;
-import org.flowable.engine.history.HistoricTaskInstance;
-import org.flowable.engine.impl.TaskQueryProperty;
-import org.flowable.engine.task.DelegationState;
-import org.flowable.engine.task.Task;
-import org.flowable.engine.task.TaskQuery;
-import org.flowable.rest.api.DataResponse;
+import org.flowable.rest.service.api.BpmnRestApiInterceptor;
 import org.flowable.rest.service.api.RestResponseFactory;
 import org.flowable.rest.service.api.engine.variable.QueryVariable;
 import org.flowable.rest.service.api.engine.variable.QueryVariable.QueryVariableOperation;
+import org.flowable.task.api.DelegationState;
+import org.flowable.task.api.Task;
+import org.flowable.task.api.TaskQuery;
+import org.flowable.task.api.history.HistoricTaskInstance;
+import org.flowable.task.service.impl.TaskQueryProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -40,7 +43,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 public class TaskBaseResource {
 
-    private static HashMap<String, QueryProperty> properties = new HashMap<String, QueryProperty>();
+    private static HashMap<String, QueryProperty> properties = new HashMap<>();
 
     static {
         properties.put("id", TaskQueryProperty.TASK_ID);
@@ -62,6 +65,9 @@ public class TaskBaseResource {
 
     @Autowired
     protected HistoryService historyService;
+    
+    @Autowired(required=false)
+    protected BpmnRestApiInterceptor restApiInterceptor;
 
     protected DelegationState getDelegationState(String delegationState) {
         DelegationState state = null;
@@ -118,7 +124,7 @@ public class TaskBaseResource {
         }
     }
 
-    protected DataResponse getTasksFromQueryRequest(TaskQueryRequest request, Map<String, String> requestParams) {
+    protected DataResponse<TaskResponse> getTasksFromQueryRequest(TaskQueryRequest request, Map<String, String> requestParams) {
 
         TaskQuery taskQuery = taskService.createTaskQuery();
 
@@ -180,6 +186,9 @@ public class TaskBaseResource {
         if (request.getProcessInstanceId() != null) {
             taskQuery.processInstanceId(request.getProcessInstanceId());
         }
+        if (request.getProcessInstanceIdWithChildren() != null) {
+            taskQuery.processInstanceIdWithChildren(request.getProcessInstanceIdWithChildren());
+        }
         if (request.getProcessInstanceBusinessKey() != null) {
             taskQuery.processInstanceBusinessKey(request.getProcessInstanceBusinessKey());
         }
@@ -208,6 +217,11 @@ public class TaskBaseResource {
         if (request.getTaskDefinitionKeyLike() != null) {
             taskQuery.taskDefinitionKeyLike(request.getTaskDefinitionKeyLike());
         }
+
+        if (request.getTaskDefinitionKeys() != null) {
+            taskQuery.taskDefinitionKeys(request.getTaskDefinitionKeys());
+        }
+
         if (request.getDueDate() != null) {
             taskQuery.taskDueDate(request.getDueDate());
         }
@@ -271,6 +285,18 @@ public class TaskBaseResource {
         if (request.getProcessInstanceVariables() != null) {
             addProcessvariables(taskQuery, request.getProcessInstanceVariables());
         }
+        
+        if (request.getScopeDefinitionId() != null) {
+            taskQuery.scopeDefinitionId(request.getScopeDefinitionId());
+        }
+        
+        if (request.getScopeId() != null) {
+            taskQuery.scopeId(request.getScopeId());
+        }
+        
+        if (request.getScopeType() != null) {
+            taskQuery.scopeType(request.getScopeType());
+        }
 
         if (request.getTenantId() != null) {
             taskQuery.taskTenantId(request.getTenantId());
@@ -291,8 +317,12 @@ public class TaskBaseResource {
         if (request.getCategory() != null) {
             taskQuery.taskCategory(request.getCategory());
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessTaskInfoWithQuery(taskQuery, request);
+        }
 
-        return new TaskPaginateList(restResponseFactory).paginateList(requestParams, request, taskQuery, "id", properties);
+        return paginateList(requestParams, request, taskQuery, "id", properties, restResponseFactory::createTaskResponseList);
     }
 
     protected void addTaskvariables(TaskQuery taskQuery, List<QueryVariable> variables) {
@@ -363,6 +393,14 @@ public class TaskBaseResource {
             case LIKE:
                 if (actualValue instanceof String) {
                     taskQuery.taskVariableValueLike(variable.getName(), (String) actualValue);
+                } else {
+                    throw new FlowableIllegalArgumentException("Only string variable values are supported using like, but was: " + actualValue.getClass().getName());
+                }
+                break;
+
+            case LIKE_IGNORE_CASE:
+                if (actualValue instanceof String) {
+                    taskQuery.taskVariableValueLikeIgnoreCase(variable.getName(), (String) actualValue);
                 } else {
                     throw new FlowableIllegalArgumentException("Only string variable values are supported using like, but was: " + actualValue.getClass().getName());
                 }
@@ -445,6 +483,14 @@ public class TaskBaseResource {
                 }
                 break;
 
+            case LIKE_IGNORE_CASE:
+                if (actualValue instanceof String) {
+                    taskQuery.processVariableValueLikeIgnoreCase(variable.getName(), (String) actualValue);
+                } else {
+                    throw new FlowableIllegalArgumentException("Only string variable values are supported using like, but was: " + actualValue.getClass().getName());
+                }
+                break;
+
             default:
                 throw new FlowableIllegalArgumentException("Unsupported variable query operation: " + variable.getVariableOperation());
             }
@@ -452,24 +498,34 @@ public class TaskBaseResource {
     }
 
     /**
-     * Get valid task from request. Throws exception if task doesn't exist or if task id is not provided.
+     * Get valid task from request. Throws exception if task does not exist or if task id is not provided.
      */
     protected Task getTaskFromRequest(String taskId) {
         Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
         if (task == null) {
             throw new FlowableObjectNotFoundException("Could not find a task with id '" + taskId + "'.", Task.class);
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessTaskInfoById(task);
+        }
+        
         return task;
     }
 
     /**
-     * Get valid history task from request. Throws exception if task doesn't exist or if task id is not provided.
+     * Get valid history task from request. Throws exception if task does not exist or if task id is not provided.
      */
     protected HistoricTaskInstance getHistoricTaskFromRequest(String taskId) {
         HistoricTaskInstance task = historyService.createHistoricTaskInstanceQuery().taskId(taskId).singleResult();
         if (task == null) {
             throw new FlowableObjectNotFoundException("Could not find a task with id '" + taskId + "'.", Task.class);
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessHistoryTaskInfoById(task);
+        }
+        
         return task;
     }
 }

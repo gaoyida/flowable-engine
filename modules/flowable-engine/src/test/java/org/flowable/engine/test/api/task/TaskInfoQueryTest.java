@@ -15,23 +15,27 @@ package org.flowable.engine.test.api.task;
 import java.util.Date;
 import java.util.List;
 
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.task.Task;
-import org.flowable.engine.task.TaskInfo;
-import org.flowable.engine.task.TaskInfoQueryWrapper;
+import org.flowable.task.api.TaskInfo;
+import org.flowable.task.api.TaskInfoQueryWrapper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
  */
 public class TaskInfoQueryTest extends PluggableFlowableTestCase {
 
+    @AfterEach
     protected void tearDown() throws Exception {
-        for (Task task : taskService.createTaskQuery().list()) {
+        for (org.flowable.task.api.Task task : taskService.createTaskQuery().list()) {
             taskService.deleteTask(task.getId(), true);
         }
     }
 
+    @Test
     public void testTaskInfoQuery() {
         Date now = processEngineConfiguration.getClock().getCurrentTime();
 
@@ -63,7 +67,7 @@ public class TaskInfoQueryTest extends PluggableFlowableTestCase {
 
         assertEquals(3, taskInfos.size());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             // History
             taskInfoQueryWrapper = new TaskInfoQueryWrapper(historyService.createHistoricTaskInstanceQuery());
             taskInfos = taskInfoQueryWrapper.getTaskInfoQuery().or().taskNameLike("%k1%").taskDueAfter(new Date(now.getTime() + (3 * 24L * 60L * 60L * 1000L))).endOr().list();
@@ -72,8 +76,8 @@ public class TaskInfoQueryTest extends PluggableFlowableTestCase {
         }
     }
 
-    private Task createTask(String name, Date dueDate) {
-        Task task = taskService.newTask();
+    private org.flowable.task.api.Task createTask(String name, Date dueDate) {
+        org.flowable.task.api.Task task = taskService.newTask();
         task.setName(name);
         task.setDueDate(dueDate);
         taskService.saveTask(task);

@@ -16,9 +16,6 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.session.HashSessionIdManager;
-import org.eclipse.jetty.server.session.HashSessionManager;
-import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.flowable.rest.WebConfigurer;
 import org.slf4j.Logger;
@@ -31,27 +28,27 @@ import org.springframework.web.context.support.AnnotationConfigWebApplicationCon
  */
 public class TestServerUtil {
 
-    private static final Logger log = LoggerFactory.getLogger(TestServerUtil.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestServerUtil.class);
 
     protected static final int START_PORT = 9797;
     private static AtomicInteger NEXT_PORT = new AtomicInteger(9797);
 
     public static TestServer createAndStartServer(Class<?>... configClasses) {
-        int port = NEXT_PORT.incrementAndGet();
-        Server server = new Server(port);
-
-        HashSessionIdManager idmanager = new HashSessionIdManager();
-        server.setSessionIdManager(idmanager);
-
         AnnotationConfigWebApplicationContext applicationContext = new AnnotationConfigWebApplicationContext();
         applicationContext.register(configClasses);
         applicationContext.refresh();
+        return createAndStartServer(applicationContext);
+    }
+    
+    public static TestServer createAndStartServer(AnnotationConfigWebApplicationContext applicationContext) {
+        int port = NEXT_PORT.incrementAndGet();
+        Server server = new Server(port);
 
         try {
             server.setHandler(getServletContextHandler(applicationContext));
             server.start();
         } catch (Exception e) {
-            log.error("Error starting server", e);
+            LOGGER.error("Error starting server", e);
         }
 
         return new TestServer(server, applicationContext, port);
@@ -62,12 +59,6 @@ public class TestServerUtil {
         WebConfigurer configurer = new WebConfigurer();
         configurer.setContext(context);
         contextHandler.addEventListener(configurer);
-
-        // Create the SessionHandler (wrapper) to handle the sessions
-        HashSessionManager manager = new HashSessionManager();
-        SessionHandler sessions = new SessionHandler(manager);
-        contextHandler.setHandler(sessions);
-
         return contextHandler;
     }
 

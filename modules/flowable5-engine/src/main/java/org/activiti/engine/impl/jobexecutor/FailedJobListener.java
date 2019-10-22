@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * @author Saeid Mirzaei
  */
 public class FailedJobListener implements TransactionListener {
-    private static final Logger log = LoggerFactory.getLogger(FailedJobListener.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FailedJobListener.class);
 
     protected CommandExecutor commandExecutor;
     protected String jobId;
@@ -37,12 +37,13 @@ public class FailedJobListener implements TransactionListener {
         this.jobId = jobId;
     }
 
+    @Override
     public void execute(CommandContext commandContext) {
         CommandConfig commandConfig = commandExecutor.getDefaultConfig().transactionRequiresNew();
         FailedJobCommandFactory failedJobCommandFactory = commandContext.getFailedJobCommandFactory();
         Command<Object> cmd = failedJobCommandFactory.getCommand(jobId, exception);
 
-        log.trace("Using FailedJobCommandFactory '{}' and command of type '{}'", failedJobCommandFactory.getClass(), cmd.getClass());
+        LOGGER.trace("Using FailedJobCommandFactory '{}' and command of type '{}'", failedJobCommandFactory.getClass(), cmd.getClass());
         commandExecutor.execute(commandConfig, cmd);
     }
 

@@ -1,3 +1,15 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.editor.language.xml;
 
 import static org.junit.Assert.assertEquals;
@@ -110,9 +122,9 @@ public class SubProcessWithExtensionsConverterTest extends AbstractConverterTest
         BpmnModel bpmnModel = readXMLFile();
         BpmnModel parsedModel = exportAndReadXMLFile(bpmnModel);
         validateModel(parsedModel);
-        deployProcess(parsedModel);
     }
 
+    @Override
     protected String getResource() {
         return "subprocessmodel_with_extensions.bpmn";
     }
@@ -183,7 +195,7 @@ public class SubProcessWithExtensionsConverterTest extends AbstractConverterTest
             List<ExtensionElement> attributesExtension = bObj.getExtensionElements().get(ELEMENT_ATTRIBUTES);
 
             if (null != attributesExtension && !attributesExtension.isEmpty()) {
-                attributes = new HashMap<String, String>();
+                attributes = new HashMap<>();
                 List<ExtensionElement> attributeExtensions = attributesExtension.get(0).getChildElements().get(ELEMENT_ATTRIBUTE);
 
                 for (ExtensionElement attributeExtension : attributeExtensions) {

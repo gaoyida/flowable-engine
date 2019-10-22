@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,26 +17,29 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.MapExceptionEntry;
+import org.flowable.bpmn.model.ServiceTask;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.DynamicBpmnConstants;
-import org.flowable.engine.common.api.FlowableException;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
-import org.flowable.engine.delegate.Expression;
 import org.flowable.engine.impl.bpmn.helper.ErrorPropagation;
 import org.flowable.engine.impl.bpmn.helper.SkipExpressionUtil;
-import org.flowable.engine.impl.context.Context;
+import org.flowable.engine.impl.context.BpmnOverrideContext;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * ActivityBehavior that evaluates an expression when executed. Optionally, it sets the result of the expression as a variable on the execution.
- * 
+ *
  * @author Tom Baeyens
  * @author Christian Stettler
  * @author Frederik Heremans
  * @author Slawomir Wojtasiak (Patch for ACT-1159)
  * @author Falko Menge
+ * @author Filip Hrisafov
  */
 public class ServiceTaskExpressionActivityBehavior extends TaskActivityBehavior {
 
@@ -47,40 +50,52 @@ public class ServiceTaskExpressionActivityBehavior extends TaskActivityBehavior 
     protected Expression skipExpression;
     protected String resultVariable;
     protected List<MapExceptionEntry> mapExceptions;
+    protected boolean useLocalScopeForResultVariable;
 
-    public ServiceTaskExpressionActivityBehavior(String serviceTaskId, Expression expression,
-            Expression skipExpression, String resultVariable, List<MapExceptionEntry> mapExceptions) {
+    public ServiceTaskExpressionActivityBehavior(ServiceTask serviceTask, Expression expression, Expression skipExpression) {
 
-        this.serviceTaskId = serviceTaskId;
+        this.serviceTaskId = serviceTask.getId();
         this.expression = expression;
         this.skipExpression = skipExpression;
-        this.resultVariable = resultVariable;
-        this.mapExceptions = mapExceptions;
+        this.resultVariable = serviceTask.getResultVariableName();
+        this.mapExceptions = serviceTask.getMapExceptions();
+        this.useLocalScopeForResultVariable = serviceTask.isUseLocalScopeForResultVariable();
     }
 
+    @Override
     public void execute(DelegateExecution execution) {
         Object value = null;
         try {
-            boolean isSkipExpressionEnabled = SkipExpressionUtil.isSkipExpressionEnabled(execution, skipExpression);
-            if (!isSkipExpressionEnabled || (isSkipExpressionEnabled && !SkipExpressionUtil.shouldSkipFlowElement(execution, skipExpression))) {
+            CommandContext commandContext = CommandContextUtil.getCommandContext();
+            String skipExpressionText = null;
+            if (skipExpression != null) {
+                skipExpressionText = skipExpression.getExpressionText();
+            }
+            boolean isSkipExpressionEnabled = SkipExpressionUtil.isSkipExpressionEnabled(skipExpressionText, serviceTaskId, execution, commandContext);
+            if (!isSkipExpressionEnabled || !SkipExpressionUtil.shouldSkipFlowElement(skipExpressionText, serviceTaskId, execution, commandContext)) {
 
-                if (Context.getProcessEngineConfiguration().isEnableProcessDefinitionInfoCache()) {
-                    ObjectNode taskElementProperties = Context.getBpmnOverrideElementProperties(serviceTaskId, execution.getProcessDefinitionId());
+                if (CommandContextUtil.getProcessEngineConfiguration(commandContext).isEnableProcessDefinitionInfoCache()) {
+                    ObjectNode taskElementProperties = BpmnOverrideContext.getBpmnOverrideElementProperties(serviceTaskId, execution.getProcessDefinitionId());
                     if (taskElementProperties != null && taskElementProperties.has(DynamicBpmnConstants.SERVICE_TASK_EXPRESSION)) {
                         String overrideExpression = taskElementProperties.get(DynamicBpmnConstants.SERVICE_TASK_EXPRESSION).asText();
                         if (StringUtils.isNotEmpty(overrideExpression) && !overrideExpression.equals(expression.getExpressionText())) {
-                            expression = Context.getProcessEngineConfiguration().getExpressionManager().createExpression(overrideExpression);
+                            expression = CommandContextUtil.getProcessEngineConfiguration(commandContext).getExpressionManager().createExpression(overrideExpression);
                         }
                     }
                 }
 
                 value = expression.getValue(execution);
                 if (resultVariable != null) {
-                    execution.setVariable(resultVariable, value);
+                    if (useLocalScopeForResultVariable) {
+                        execution.setVariableLocal(resultVariable, value);
+                    } else {
+                        execution.setVariable(resultVariable, value);
+                    }
                 }
             }
 
             leave(execution);
+            
         } catch (Exception exc) {
 
             Throwable cause = exc;
@@ -100,7 +115,7 @@ public class ServiceTaskExpressionActivityBehavior extends TaskActivityBehavior 
             if (error != null) {
                 ErrorPropagation.propagateError(error, execution);
             } else {
-                throw new FlowableException("Could not execute service task expression", exc);
+                throw exc;
             }
         }
     }

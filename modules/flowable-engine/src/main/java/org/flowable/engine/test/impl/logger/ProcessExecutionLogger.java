@@ -27,14 +27,14 @@ import org.slf4j.LoggerFactory;
  */
 public class ProcessExecutionLogger {
 
-    private static final Logger logger = LoggerFactory.getLogger(ProcessExecutionLogger.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessExecutionLogger.class);
 
-    protected Map<String, List<DebugInfo>> debugInfoMap = new HashMap<String, List<DebugInfo>>();
+    protected Map<String, List<DebugInfo>> debugInfoMap = new HashMap<>();
 
     // To avoid going to the db (and thus influencing process execution/tests), we store all encountered executions here,
     // to build up a tree representation with that information afterwards.
-    protected Map<String, ExecutionEntity> createdExecutions = new HashMap<String, ExecutionEntity>();
-    protected Map<String, ExecutionEntity> deletedExecutions = new HashMap<String, ExecutionEntity>();
+    protected Map<String, ExecutionEntity> createdExecutions = new HashMap<>();
+    protected Map<String, ExecutionEntity> deletedExecutions = new HashMap<>();
 
     public ProcessExecutionLogger() {
 
@@ -49,7 +49,7 @@ public class ProcessExecutionLogger {
         // Store debug info
         String threadName = Thread.currentThread().getName();
         if (!debugInfoMap.containsKey(threadName)) {
-            debugInfoMap.put(threadName, new ArrayList<DebugInfo>());
+            debugInfoMap.put(threadName, new ArrayList<>());
         }
         debugInfoMap.get(threadName).add(debugInfo);
 
@@ -62,8 +62,8 @@ public class ProcessExecutionLogger {
     protected List<DebugInfoExecutionTree> generateExecutionTrees() {
 
         // Gather information
-        List<ExecutionEntity> processInstances = new ArrayList<ExecutionEntity>();
-        Map<String, List<ExecutionEntity>> parentMapping = new HashMap<String, List<ExecutionEntity>>();
+        List<ExecutionEntity> processInstances = new ArrayList<>();
+        Map<String, List<ExecutionEntity>> parentMapping = new HashMap<>();
 
         for (ExecutionEntity executionEntity : createdExecutions.values()) {
             if (!deletedExecutions.containsKey(executionEntity.getId())) {
@@ -71,7 +71,7 @@ public class ProcessExecutionLogger {
                     processInstances.add(executionEntity);
                 } else {
                     if (!parentMapping.containsKey(executionEntity.getParentId())) {
-                        parentMapping.put(executionEntity.getParentId(), new ArrayList<ExecutionEntity>());
+                        parentMapping.put(executionEntity.getParentId(), new ArrayList<>());
                     }
                     parentMapping.get(executionEntity.getParentId()).add(executionEntity);
                 }
@@ -79,7 +79,7 @@ public class ProcessExecutionLogger {
         }
 
         // Build tree representation
-        List<DebugInfoExecutionTree> executionTrees = new ArrayList<DebugInfoExecutionTree>();
+        List<DebugInfoExecutionTree> executionTrees = new ArrayList<>();
         for (ExecutionEntity processInstance : processInstances) {
 
             DebugInfoExecutionTree executionTree = new DebugInfoExecutionTree();
@@ -118,22 +118,22 @@ public class ProcessExecutionLogger {
 
     public void logDebugInfo(boolean clearAfterLogging) {
 
-        logger.info("--------------------------------");
-        logger.info("CommandInvoker debug information");
-        logger.info("--------------------------------");
+        LOGGER.info("--------------------------------");
+        LOGGER.info("CommandInvoker debug information");
+        LOGGER.info("--------------------------------");
         for (String threadName : debugInfoMap.keySet()) {
 
-            logger.info("");
-            logger.info("Thread '{}':", threadName);
-            logger.info("");
+            LOGGER.info("");
+            LOGGER.info("Thread '{}':", threadName);
+            LOGGER.info("");
 
             for (DebugInfo debugInfo : debugInfoMap.get(threadName)) {
-                debugInfo.printOut(logger);
+                debugInfo.printOut(LOGGER);
             }
 
         }
 
-        logger.info("");
+        LOGGER.info("");
 
         if (clearAfterLogging) {
             clear();

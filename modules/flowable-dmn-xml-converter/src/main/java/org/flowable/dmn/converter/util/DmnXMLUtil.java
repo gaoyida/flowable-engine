@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.stream.Location;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
 
@@ -27,6 +26,7 @@ import org.flowable.dmn.converter.child.InputEntryParser;
 import org.flowable.dmn.converter.child.InputExpressionParser;
 import org.flowable.dmn.converter.child.OutputClauseParser;
 import org.flowable.dmn.converter.child.OutputEntryParser;
+import org.flowable.dmn.converter.child.OutputValuesParser;
 import org.flowable.dmn.model.DecisionTable;
 import org.flowable.dmn.model.DmnElement;
 import org.flowable.dmn.model.DmnExtensionAttribute;
@@ -40,7 +40,7 @@ import org.flowable.dmn.xml.constants.DmnXMLConstants;
  */
 public class DmnXMLUtil implements DmnXMLConstants {
 
-    private static Map<String, BaseChildElementParser> genericChildParserMap = new HashMap<String, BaseChildElementParser>();
+    private static Map<String, BaseChildElementParser> genericChildParserMap = new HashMap<>();
 
     static {
         addGenericParser(new InputClauseParser());
@@ -48,27 +48,17 @@ public class DmnXMLUtil implements DmnXMLConstants {
         addGenericParser(new InputEntryParser());
         addGenericParser(new OutputEntryParser());
         addGenericParser(new InputExpressionParser());
+        addGenericParser(new OutputValuesParser());
     }
 
     private static void addGenericParser(BaseChildElementParser parser) {
         genericChildParserMap.put(parser.getElementName(), parser);
     }
 
-    public static void addXMLLocation(DmnElement element, XMLStreamReader xtr) {
-        Location location = xtr.getLocation();
-        // element.setXmlRowNumber(location.getLineNumber());
-        // element.setXmlColumnNumber(location.getColumnNumber());
-    }
-
-    // public static void parseChildElements(String elementName, DmnElement parentElement, XMLStreamReader xtr, DmnDefinition model) throws Exception {
-    // String test = ""
-    // parseChildElements(elementName, parentElement, xtr, null, model);
-    // }
-
     public static void parseChildElements(String elementName, DmnElement parentElement, XMLStreamReader xtr,
             Map<String, BaseChildElementParser> childParsers, DecisionTable decisionTable) throws Exception {
 
-        Map<String, BaseChildElementParser> localParserMap = new HashMap<String, BaseChildElementParser>(genericChildParserMap);
+        Map<String, BaseChildElementParser> localParserMap = new HashMap<>(genericChildParserMap);
         if (childParsers != null) {
             localParserMap.putAll(childParsers);
         }
@@ -184,7 +174,7 @@ public class DmnXMLUtil implements DmnXMLConstants {
             }
 
             if (namespaceMap == null) {
-                namespaceMap = new HashMap<String, String>();
+                namespaceMap = new HashMap<>();
             }
 
             for (List<DmnExtensionElement> extensionElements : dmnElement.getExtensionElements().values()) {
@@ -198,7 +188,7 @@ public class DmnXMLUtil implements DmnXMLConstants {
 
     protected static void writeExtensionElement(DmnExtensionElement extensionElement, Map<String, String> namespaceMap, XMLStreamWriter xtw) throws Exception {
         if (StringUtils.isNotEmpty(extensionElement.getName())) {
-            Map<String, String> localNamespaceMap = new HashMap<String, String>();
+            Map<String, String> localNamespaceMap = new HashMap<>();
             if (StringUtils.isNotEmpty(extensionElement.getNamespace())) {
                 if (StringUtils.isNotEmpty(extensionElement.getNamespacePrefix())) {
                     xtw.writeStartElement(extensionElement.getNamespacePrefix(), extensionElement.getName(), extensionElement.getNamespace());

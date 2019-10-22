@@ -1,4 +1,20 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.rest.service.api.management;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.util.Calendar;
 
@@ -9,11 +25,12 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.flowable.engine.impl.cmd.ChangeDeploymentTenantIdCmd;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.job.api.Job;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -28,6 +45,7 @@ public class JobResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting a single job.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/management/JobResourceTest.testTimerProcess.bpmn20.xml" })
     public void testGetJob() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("timerProcess");
@@ -47,6 +65,8 @@ public class JobResourceTest extends BaseSpringRestTestCase {
         assertEquals(timerJob.getExecutionId(), responseNode.get("executionId").textValue());
         assertEquals(timerJob.getProcessDefinitionId(), responseNode.get("processDefinitionId").textValue());
         assertEquals(timerJob.getProcessInstanceId(), responseNode.get("processInstanceId").textValue());
+        assertEquals("escalationTimer", responseNode.get("elementId").textValue());
+        assertEquals("Escalation", responseNode.get("elementName").textValue());
         assertEquals(timerJob.getRetries(), responseNode.get("retries").intValue());
         assertEquals(timerJob.getDuedate(), getDateFromISOString(responseNode.get("dueDate").textValue()));
         assertEquals("", responseNode.get("tenantId").textValue());
@@ -64,6 +84,7 @@ public class JobResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting an unexisting job.
      */
+    @Test
     public void testGetUnexistingJob() throws Exception {
         CloseableHttpResponse response = executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_JOB, "unexistingjob")), HttpStatus.SC_NOT_FOUND);
         closeResponse(response);
@@ -72,6 +93,7 @@ public class JobResourceTest extends BaseSpringRestTestCase {
     /**
      * Test executing a single job.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/management/JobResourceTest.testTimerProcess.bpmn20.xml" })
     public void testExecuteJob() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("timerProcess");
@@ -95,6 +117,7 @@ public class JobResourceTest extends BaseSpringRestTestCase {
     /**
      * Test executing an unexisting job.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/management/JobResourceTest.testTimerProcess.bpmn20.xml" })
     public void testExecuteUnexistingJob() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("timerProcess");
@@ -113,6 +136,7 @@ public class JobResourceTest extends BaseSpringRestTestCase {
     /**
      * Test executing an unexisting job.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/management/JobResourceTest.testTimerProcess.bpmn20.xml" })
     public void testIllegalActionOnJob() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("timerProcess");
@@ -131,6 +155,7 @@ public class JobResourceTest extends BaseSpringRestTestCase {
     /**
      * Test deleting a single job.
      */
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/management/JobResourceTest.testTimerProcess.bpmn20.xml" })
     public void testDeleteJob() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("timerProcess");
@@ -148,6 +173,7 @@ public class JobResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting an unexisting job.
      */
+    @Test
     public void testDeleteUnexistingJob() throws Exception {
         HttpDelete httpDelete = new HttpDelete(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_JOB, "unexistingjob"));
         CloseableHttpResponse response = executeRequest(httpDelete, HttpStatus.SC_NOT_FOUND);

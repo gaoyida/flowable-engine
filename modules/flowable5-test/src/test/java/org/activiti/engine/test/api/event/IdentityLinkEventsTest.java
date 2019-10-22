@@ -14,14 +14,13 @@ package org.activiti.engine.test.api.event;
 
 import org.activiti.engine.impl.identity.Authentication;
 import org.activiti.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
-import org.flowable.engine.impl.delegate.event.FlowableEngineEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.IdentityLink;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.flowable.identitylink.api.IdentityLink;
 
 /**
  * Test case for all {@link FlowableEvent}s related to process definitions.
@@ -133,14 +132,14 @@ public class IdentityLinkEventsTest extends PluggableFlowableTestCase {
         Authentication.setAuthenticatedUserId(null);
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
 
-        Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
         assertNotNull(task);
 
         // Add identity link
         taskService.addCandidateUser(task.getId(), "kermit");
         taskService.addCandidateGroup(task.getId(), "sales");
 
-        // Three events are received, since the user link on the task also creates an involvment in the process
+        // Three events are received, since the user link on the task also creates an involvement in the process
         assertEquals(6, listener.getEventsReceived().size());
 
         FlowableEngineEntityEvent event = (FlowableEngineEntityEvent) listener.getEventsReceived().get(0);
@@ -196,7 +195,7 @@ public class IdentityLinkEventsTest extends PluggableFlowableTestCase {
         Authentication.setAuthenticatedUserId(null);
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
 
-        Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
         assertNotNull(task);
 
         // Add identity link

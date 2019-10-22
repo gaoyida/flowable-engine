@@ -15,22 +15,16 @@ package org.flowable.management.jmx;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 
-import javax.management.AttributeNotFoundException;
-import javax.management.InstanceNotFoundException;
-import javax.management.IntrospectionException;
-import javax.management.MBeanException;
 import javax.management.MBeanServerConnection;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import javax.management.ReflectionException;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -48,8 +42,7 @@ public class DeploymentsJMXClientTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testDeploymentsJmxClient() throws IOException, InterruptedException, MalformedObjectNameException, AttributeNotFoundException, MBeanException, ReflectionException,
-            InstanceNotFoundException, IntrospectionException {
+    public void testDeploymentsJmxClient() throws Exception {
         String hostName = Utils.getHostName();
         JMXServiceURL url = new JMXServiceURL("service:jmx:rmi://" + hostName + ":10111/jndi/rmi://" + hostName + ":1099/jmxrmi/flowable");
 
@@ -179,7 +172,7 @@ public class DeploymentsJMXClientTest {
         // definition with version 2, first check it with API
         assertEquals(1, repositoryService.createDeploymentQuery().count());
 
-        assertTrue(!repositoryService.createDeploymentQuery().singleResult().getId().equals(firstDeploymentId));
+        assertNotEquals(repositoryService.createDeploymentQuery().singleResult().getId(), firstDeploymentId);
 
         // check if it is also affected in returned results.
 
@@ -187,7 +180,7 @@ public class DeploymentsJMXClientTest {
         assertNotNull(deployments);
         assertEquals(1, deployments.size());
         assertEquals(3, deployments.get(0).size());
-        assertTrue(!deployments.get(0).get(0).equals(firstDeploymentId));
+        assertNotEquals(deployments.get(0).get(0), firstDeploymentId);
 
     }
 

@@ -29,25 +29,25 @@ import javax.enterprise.inject.spi.Extension;
 
 import org.flowable.cdi.annotation.BusinessProcessScoped;
 import org.flowable.cdi.impl.context.BusinessProcessContext;
-import org.flowable.cdi.impl.util.FlowableServices;
 import org.flowable.cdi.impl.util.BeanManagerLookup;
+import org.flowable.cdi.impl.util.FlowableServices;
 import org.flowable.cdi.impl.util.ProgrammaticBeanLookup;
 import org.flowable.cdi.spi.ProcessEngineLookup;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.engine.ProcessEngine;
-import org.flowable.engine.common.api.FlowableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * CDI-Extension registering a custom context for {@link BusinessProcessScoped} beans.
- * 
+ * <p>
  * Also starts / stops the {@link ProcessEngine} and deploys all processes listed in the 'processes.xml'-file.
- * 
+ *
  * @author Daniel Meyer
  */
 public class FlowableExtension implements Extension {
 
-    private static Logger logger = LoggerFactory.getLogger(FlowableExtension.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FlowableExtension.class);
     private ProcessEngineLookup processEngineLookup;
 
     public void beforeBeanDiscovery(@Observes final BeforeBeanDiscovery event) {
@@ -61,7 +61,7 @@ public class FlowableExtension implements Extension {
 
     public void afterDeploymentValidation(@Observes AfterDeploymentValidation event, BeanManager beanManager) {
         try {
-            logger.info("Initializing flowable-cdi.");
+            LOGGER.info("Initializing flowable-cdi.");
             // initialize the process engine
             ProcessEngine processEngine = lookupProcessEngine(beanManager);
             // deploy the processes if engine was set up correctly
@@ -75,13 +75,14 @@ public class FlowableExtension implements Extension {
     protected ProcessEngine lookupProcessEngine(BeanManager beanManager) {
         ServiceLoader<ProcessEngineLookup> processEngineServiceLoader = ServiceLoader.load(ProcessEngineLookup.class);
         Iterator<ProcessEngineLookup> serviceIterator = processEngineServiceLoader.iterator();
-        List<ProcessEngineLookup> discoveredLookups = new ArrayList<ProcessEngineLookup>();
+        List<ProcessEngineLookup> discoveredLookups = new ArrayList<>();
         while (serviceIterator.hasNext()) {
             ProcessEngineLookup serviceInstance = serviceIterator.next();
             discoveredLookups.add(serviceInstance);
         }
 
         Collections.sort(discoveredLookups, new Comparator<ProcessEngineLookup>() {
+            @Override
             public int compare(ProcessEngineLookup o1, ProcessEngineLookup o2) {
                 return (-1) * ((Integer) o1.getPrecedence()).compareTo(o2.getPrecedence());
             }
@@ -93,10 +94,10 @@ public class FlowableExtension implements Extension {
             processEngine = processEngineLookup.getProcessEngine();
             if (processEngine != null) {
                 this.processEngineLookup = processEngineLookup;
-                logger.debug("ProcessEngineLookup service {} returned process engine.", processEngineLookup.getClass());
+                LOGGER.debug("ProcessEngineLookup service {} returned process engine.", processEngineLookup.getClass());
                 break;
             } else {
-                logger.debug("ProcessEngineLookup service {} returned 'null' value.", processEngineLookup.getClass());
+                LOGGER.debug("ProcessEngineLookup service {} returned 'null' value.", processEngineLookup.getClass());
             }
         }
 
@@ -119,7 +120,7 @@ public class FlowableExtension implements Extension {
             processEngineLookup.ungetProcessEngine();
             processEngineLookup = null;
         }
-        logger.info("Shutting down flowable-cdi");
+        LOGGER.info("Shutting down flowable-cdi");
     }
 
 }

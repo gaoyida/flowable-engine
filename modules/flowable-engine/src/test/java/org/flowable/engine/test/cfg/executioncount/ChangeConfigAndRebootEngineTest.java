@@ -14,27 +14,30 @@ package org.flowable.engine.test.cfg.executioncount;
 
 import java.util.List;
 
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.cmd.ValidateExecutionRelatedEntityCountCfgCmd;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.persistence.CountingExecutionEntity;
 import org.flowable.engine.impl.persistence.entity.PropertyEntity;
 import org.flowable.engine.impl.test.ResourceFlowableTestCase;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * @author Joram Barrez
  */
+@DisabledIfSystemProperty(named = "database", matches = "cockroachdb")
 public class ChangeConfigAndRebootEngineTest extends ResourceFlowableTestCase {
 
-    private static final Logger logger = LoggerFactory.getLogger(ChangeConfigAndRebootEngineTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ChangeConfigAndRebootEngineTest.class);
 
     protected boolean newExecutionRelationshipCountValue;
 
@@ -48,19 +51,18 @@ public class ChangeConfigAndRebootEngineTest extends ResourceFlowableTestCase {
 
     @Override
     protected void additionalConfiguration(ProcessEngineConfiguration processEngineConfiguration) {
-        logger.info("Applying additional config: setting schema update to true and enabling execution relationship count");
+        LOGGER.info("Applying additional config: setting schema update to true and enabling execution relationship count");
         processEngineConfiguration.setDatabaseSchemaUpdate("true");
         ((ProcessEngineConfigurationImpl) processEngineConfiguration).setEnableExecutionRelationshipCounts(newExecutionRelationshipCountValue);
     }
 
     protected void rebootEngine(boolean newExecutionRelationshipCountValue) {
-        logger.info("Rebooting engine");
+        LOGGER.info("Rebooting engine");
         this.newExecutionRelationshipCountValue = newExecutionRelationshipCountValue;
-        closeDownProcessEngine();
-        initializeProcessEngine();
-        initializeServices();
+        rebootEngine();
     }
 
+    @Test
     @Deployment
     public void testChangeExecutionCountSettingAndRebootengine() {
 
@@ -110,7 +112,7 @@ public class ChangeConfigAndRebootEngineTest extends ResourceFlowableTestCase {
         PropertyEntity propertyEntity = managementService.executeCommand(new Command<PropertyEntity>() {
             @Override
             public PropertyEntity execute(CommandContext commandContext) {
-                return commandContext.getPropertyEntityManager().findById(
+                return CommandContextUtil.getPropertyEntityManager(commandContext).findById(
                         ValidateExecutionRelatedEntityCountCfgCmd.PROPERTY_EXECUTION_RELATED_ENTITY_COUNT);
             }
         });
@@ -131,7 +133,7 @@ public class ChangeConfigAndRebootEngineTest extends ResourceFlowableTestCase {
     }
 
     protected void finishProcessInstance(ProcessInstance processInstance) {
-        Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
         taskService.complete(task.getId());
         task = taskService.createTaskQuery().processInstanceId(processInstance.getId()).singleResult();
         taskService.complete(task.getId());

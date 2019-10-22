@@ -16,20 +16,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.Page;
+import org.flowable.common.engine.api.FlowableException;
 import org.flowable.form.api.FormDefinition;
 import org.flowable.form.engine.FormEngineConfiguration;
 import org.flowable.form.engine.impl.FormDefinitionQueryImpl;
 import org.flowable.form.engine.impl.persistence.entity.FormDefinitionEntity;
 import org.flowable.form.engine.impl.persistence.entity.FormDefinitionEntityImpl;
-import org.flowable.form.engine.impl.persistence.entity.data.AbstractDataManager;
+import org.flowable.form.engine.impl.persistence.entity.data.AbstractFormDataManager;
 import org.flowable.form.engine.impl.persistence.entity.data.FormDefinitionDataManager;
 
 /**
  * @author Joram Barrez
  */
-public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDefinitionEntity> implements FormDefinitionDataManager {
+public class MybatisFormDefinitionDataManager extends AbstractFormDataManager<FormDefinitionEntity> implements FormDefinitionDataManager {
 
     public MybatisFormDefinitionDataManager(FormEngineConfiguration formEngineConfiguration) {
         super(formEngineConfiguration);
@@ -52,7 +51,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public FormDefinitionEntity findLatestFormDefinitionByKeyAndTenantId(String formDefinitionKey, String tenantId) {
-        Map<String, Object> params = new HashMap<String, Object>(2);
+        Map<String, Object> params = new HashMap<>(2);
         params.put("formDefinitionKey", formDefinitionKey);
         params.put("tenantId", tenantId);
         return (FormDefinitionEntity) getDbSqlSession().selectOne("selectLatestFormDefinitionByKeyAndTenantId", params);
@@ -60,7 +59,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public FormDefinitionEntity findLatestFormDefinitionByKeyAndParentDeploymentId(String formDefinitionKey, String parentDeploymentId) {
-        Map<String, Object> params = new HashMap<String, Object>(2);
+        Map<String, Object> params = new HashMap<>(2);
         params.put("formDefinitionKey", formDefinitionKey);
         params.put("parentDeploymentId", parentDeploymentId);
         return (FormDefinitionEntity) getDbSqlSession().selectOne("selectLatestFormDefinitionByKeyAndParentDeploymentId", params);
@@ -68,7 +67,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public FormDefinitionEntity findLatestFormDefinitionByKeyParentDeploymentIdAndTenantId(String formDefinitionKey, String parentDeploymentId, String tenantId) {
-        Map<String, Object> params = new HashMap<String, Object>(2);
+        Map<String, Object> params = new HashMap<>(2);
         params.put("formDefinitionKey", formDefinitionKey);
         params.put("parentDeploymentId", parentDeploymentId);
         params.put("tenantId", tenantId);
@@ -77,13 +76,13 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public void deleteFormDefinitionsByDeploymentId(String deploymentId) {
-        getDbSqlSession().delete("deleteFormDefinitionsByDeploymentId", deploymentId);
+        getDbSqlSession().delete("deleteFormDefinitionsByDeploymentId", deploymentId, getManagedEntityClass());
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<FormDefinition> findFormDefinitionsByQueryCriteria(FormDefinitionQueryImpl formQuery, Page page) {
-        return getDbSqlSession().selectList("selectFormDefinitionsByQueryCriteria", formQuery, page);
+    public List<FormDefinition> findFormDefinitionsByQueryCriteria(FormDefinitionQueryImpl formQuery) {
+        return getDbSqlSession().selectList("selectFormDefinitionsByQueryCriteria", formQuery);
     }
 
     @Override
@@ -93,7 +92,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public FormDefinitionEntity findFormDefinitionByDeploymentAndKey(String deploymentId, String formDefinitionKey) {
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, Object> parameters = new HashMap<>();
         parameters.put("deploymentId", deploymentId);
         parameters.put("formDefinitionKey", formDefinitionKey);
         return (FormDefinitionEntity) getDbSqlSession().selectOne("selectFormDefinitionByDeploymentAndKey", parameters);
@@ -101,7 +100,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public FormDefinitionEntity findFormDefinitionByDeploymentAndKeyAndTenantId(String deploymentId, String formDefinitionKey, String tenantId) {
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, Object> parameters = new HashMap<>();
         parameters.put("deploymentId", deploymentId);
         parameters.put("formDefinitionKey", formDefinitionKey);
         parameters.put("tenantId", tenantId);
@@ -110,7 +109,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public FormDefinitionEntity findFormDefinitionByKeyAndVersion(String formDefinitionKey, Integer formVersion) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("formDefinitionKey", formDefinitionKey);
         params.put("formVersion", formVersion);
         List<FormDefinitionEntity> results = getDbSqlSession().selectList("selectFormDefinitionsByKeyAndVersion", params);
@@ -125,7 +124,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
     @Override
     @SuppressWarnings("unchecked")
     public FormDefinitionEntity findFormDefinitionByKeyAndVersionAndTenantId(String formDefinitionKey, Integer formVersion, String tenantId) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("formDefinitionKey", formDefinitionKey);
         params.put("formVersion", formVersion);
         params.put("tenantId", tenantId);
@@ -140,8 +139,8 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     @SuppressWarnings("unchecked")
-    public List<FormDefinition> findFormDefinitionsByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return getDbSqlSession().selectListWithRawParameter("selectFormDefinitionByNativeQuery", parameterMap, firstResult, maxResults);
+    public List<FormDefinition> findFormDefinitionsByNativeQuery(Map<String, Object> parameterMap) {
+        return getDbSqlSession().selectListWithRawParameter("selectFormDefinitionByNativeQuery", parameterMap);
     }
 
     @Override
@@ -151,7 +150,7 @@ public class MybatisFormDefinitionDataManager extends AbstractDataManager<FormDe
 
     @Override
     public void updateFormDefinitionTenantIdForDeployment(String deploymentId, String newTenantId) {
-        HashMap<String, Object> params = new HashMap<String, Object>();
+        HashMap<String, Object> params = new HashMap<>();
         params.put("deploymentId", deploymentId);
         params.put("tenantId", newTenantId);
         getDbSqlSession().update("updateFormDefinitionTenantIdForDeploymentId", params);

@@ -15,17 +15,17 @@ package org.flowable.rest.service.api.management;
 
 import java.util.Map;
 
+import org.flowable.engine.ManagementService;
+import org.flowable.rest.service.api.BpmnRestApiInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-
 import io.swagger.annotations.Authorization;
-import org.flowable.engine.ManagementService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * @author Frederik Heremans
@@ -36,13 +36,20 @@ public class PropertiesCollectionResource {
 
     @Autowired
     protected ManagementService managementService;
+    
+    @Autowired(required=false)
+    protected BpmnRestApiInterceptor restApiInterceptor;
 
-    @ApiOperation(value = "Get engine properties", tags = { "Engine" })
+    @ApiOperation(value = "List engine properties", tags = { "Engine" })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates the properties are returned."),
     })
-    @RequestMapping(value = "/management/properties", method = RequestMethod.GET, produces = "application/json")
+    @GetMapping(value = "/management/properties", produces = "application/json")
     public Map<String, String> getProperties() {
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessManagementInfo();
+        }
+        
         return managementService.getProperties();
     }
 }

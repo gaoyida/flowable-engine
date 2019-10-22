@@ -16,34 +16,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.api.FlowableOptimisticLockingException;
-import org.flowable.engine.history.HistoricVariableInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
-import org.flowable.engine.impl.persistence.entity.TaskEntity;
+import org.flowable.common.engine.api.FlowableOptimisticLockingException;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.task.Task;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.task.service.impl.persistence.entity.TaskEntity;
+import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Joram Barrez
  */
 public class StandaloneTaskTest extends PluggableFlowableTestCase {
 
+    @BeforeEach
     public void setUp() throws Exception {
-        super.setUp();
         identityService.saveUser(identityService.newUser("kermit"));
         identityService.saveUser(identityService.newUser("gonzo"));
     }
 
+    @AfterEach
     public void tearDown() throws Exception {
         identityService.deleteUser("kermit");
         identityService.deleteUser("gonzo");
-        super.tearDown();
     }
 
+    @Test
     public void testCreateToComplete() {
 
         // Create and save task
-        Task task = taskService.newTask();
+        org.flowable.task.api.Task task = taskService.newTask();
         task.setName("testTask");
         taskService.saveTask(task);
         String taskId = task.getId();
@@ -53,7 +58,7 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
         taskService.addCandidateUser(taskId, "gonzo");
 
         // Retrieve task list for kermit
-        List<Task> tasks = taskService.createTaskQuery().taskCandidateUser("kermit").list();
+        List<org.flowable.task.api.Task> tasks = taskService.createTaskQuery().taskCandidateUser("kermit").list();
         assertEquals(1, tasks.size());
         assertEquals("testTask", tasks.get(0).getName());
 
@@ -80,19 +85,20 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
         // Complete task
         taskService.deleteTask(taskId, true);
 
-        // Task should be removed from runtime data
+        // org.flowable.task.service.Task should be removed from runtime data
         // TODO: check for historic data when implemented!
         assertNull(taskService.createTaskQuery().taskId(taskId).singleResult());
     }
 
+    @Test
     public void testOptimisticLockingThrownOnMultipleUpdates() {
-        Task task = taskService.newTask();
+        org.flowable.task.api.Task task = taskService.newTask();
         taskService.saveTask(task);
         String taskId = task.getId();
 
         // first modification
-        Task task1 = taskService.createTaskQuery().taskId(taskId).singleResult();
-        Task task2 = taskService.createTaskQuery().taskId(taskId).singleResult();
+        org.flowable.task.api.Task task1 = taskService.createTaskQuery().taskId(taskId).singleResult();
+        org.flowable.task.api.Task task2 = taskService.createTaskQuery().taskId(taskId).singleResult();
 
         task1.setDescription("first modification");
         taskService.saveTask(task1);
@@ -110,8 +116,9 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
     }
 
     // See https://activiti.atlassian.net/browse/ACT-1290
+    @Test
     public void testRevisionUpdatedOnSave() {
-        Task task = taskService.newTask();
+        org.flowable.task.api.Task task = taskService.newTask();
         taskService.saveTask(task);
         assertEquals(1, ((TaskEntity) task).getRevision());
 
@@ -127,8 +134,9 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
     }
 
     // See https://activiti.atlassian.net/browse/ACT-1290
+    @Test
     public void testRevisionUpdatedOnSaveWhenFetchedUsingQuery() {
-        Task task = taskService.newTask();
+        org.flowable.task.api.Task task = taskService.newTask();
         taskService.saveTask(task);
         assertEquals(1, ((TaskEntity) task).getRevision());
 
@@ -147,24 +155,27 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
         taskService.deleteTask(task.getId(), true);
     }
 
+    @Test
     public void testHistoricVariableOkOnUpdate() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
             // 1. create a task
-            Task task = taskService.newTask();
+            org.flowable.task.api.Task task = taskService.newTask();
             task.setName("test execution");
             task.setOwner("josOwner");
             task.setAssignee("JosAssignee");
             taskService.saveTask(task);
 
             // 2. set task variables
-            Map<String, Object> taskVariables = new HashMap<String, Object>();
+            Map<String, Object> taskVariables = new HashMap<>();
             taskVariables.put("finishedAmount", 0);
             taskService.setVariables(task.getId(), taskVariables);
 
             // 3. complete this task with a new variable
-            Map<String, Object> finishVariables = new HashMap<String, Object>();
+            Map<String, Object> finishVariables = new HashMap<>();
             finishVariables.put("finishedAmount", 40);
             taskService.complete(task.getId(), finishVariables);
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             // 4. get completed variable
             List<HistoricVariableInstance> hisVarList = historyService.createHistoricVariableInstanceQuery().taskId(task.getId()).list();
@@ -173,6 +184,10 @@ public class StandaloneTaskTest extends PluggableFlowableTestCase {
 
             // Cleanup
             historyService.deleteHistoricTaskInstance(task.getId());
+            managementService.executeCommand(commandContext -> {
+                CommandContextUtil.getHistoricTaskService(commandContext).deleteHistoricTaskLogEntriesForTaskId(task.getId());
+                return null;
+            });
         }
     }
 

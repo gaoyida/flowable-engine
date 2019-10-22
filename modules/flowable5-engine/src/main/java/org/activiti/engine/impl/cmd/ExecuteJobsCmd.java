@@ -25,7 +25,7 @@ import org.activiti.engine.impl.interceptor.CommandContext;
 import org.activiti.engine.impl.jobexecutor.FailedJobListener;
 import org.activiti.engine.impl.jobexecutor.JobExecutorContext;
 import org.activiti.engine.impl.persistence.entity.JobEntity;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +37,7 @@ public class ExecuteJobsCmd implements Command<Object>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private static Logger log = LoggerFactory.getLogger(ExecuteJobsCmd.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExecuteJobsCmd.class);
 
     protected String jobId;
     protected JobEntity job;
@@ -50,6 +50,7 @@ public class ExecuteJobsCmd implements Command<Object>, Serializable {
         this.job = job;
     }
 
+    @Override
     public Object execute(CommandContext commandContext) {
 
         if (jobId == null && job == null) {
@@ -66,8 +67,8 @@ public class ExecuteJobsCmd implements Command<Object>, Serializable {
             throw new JobNotFoundException(jobId);
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("Executing job {}", job.getId());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Executing job {}", job.getId());
         }
 
         JobExecutorContext jobExecutorContext = Context.getJobExecutorContext();
@@ -100,7 +101,7 @@ public class ExecuteJobsCmd implements Command<Object>, Serializable {
                     commandContext.getEventDispatcher().dispatchEvent(ActivitiEventBuilder.createEntityExceptionEvent(
                             FlowableEngineEventType.JOB_EXECUTION_FAILURE, job, exception));
                 } catch (Throwable ignore) {
-                    log.warn("Exception occurred while dispatching job failure event, ignoring.", ignore);
+                    LOGGER.warn("Exception occurred while dispatching job failure event, ignoring.", ignore);
                 }
             }
 

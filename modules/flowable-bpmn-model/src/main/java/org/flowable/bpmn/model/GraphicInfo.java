@@ -25,6 +25,20 @@ public class GraphicInfo {
     protected Boolean expanded;
     protected int xmlRowNumber;
     protected int xmlColumnNumber;
+    
+    public GraphicInfo() {}
+
+    public GraphicInfo(double x, double y, double height, double width) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    public GraphicInfo(double x, double y) {
+        this.x = x;
+        this.y = y;
+    }
 
     public double getX() {
         return x;
@@ -88,5 +102,35 @@ public class GraphicInfo {
 
     public void setXmlColumnNumber(int xmlColumnNumber) {
         this.xmlColumnNumber = xmlColumnNumber;
+    }
+
+    public boolean equals(GraphicInfo ginfo) {
+    	if (this.getX() != ginfo.getX()) {
+    		return false;
+    	}
+    	if (this.getY() != ginfo.getY()) {
+    		return false;
+    	}
+    	if (this.getHeight() != ginfo.getHeight()) {
+    		return false;
+    	}
+    	if (this.getWidth() != ginfo.getWidth()) {
+    		return false;
+    	}
+
+    	// check for zero value in case we are comparing model value to BPMN DI value
+    	// model values do not have xml location information
+    	if (0 != this.getXmlColumnNumber() && 0 != ginfo.getXmlColumnNumber() && this.getXmlColumnNumber() != ginfo.getXmlColumnNumber()) {
+    		return false;
+    	}
+    	if (0 != this.getXmlRowNumber() && 0 != ginfo.getXmlRowNumber() && this.getXmlRowNumber() != ginfo.getXmlRowNumber()) {
+    		return false;
+    	}
+
+    	// only check for elements that support this value
+    	if (null != this.getExpanded() && null != ginfo.getExpanded() && this.getExpanded() != ginfo.getExpanded()) {
+    		return false;
+    	}
+    	return true;
     }
 }

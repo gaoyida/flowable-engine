@@ -16,7 +16,7 @@ import org.activiti.engine.impl.bpmn.parser.BpmnParse;
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.DataAssociation;
 import org.flowable.bpmn.model.FlowNode;
-import org.flowable.engine.delegate.Expression;
+import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.impl.bpmn.data.AbstractDataAssociation;
 import org.flowable.engine.impl.bpmn.data.Assignment;
 import org.flowable.engine.impl.bpmn.data.SimpleDataInputAssociation;
@@ -36,10 +36,10 @@ public abstract class AbstractExternalInvocationBpmnParseHandler<T extends FlowN
             SimpleDataInputAssociation dataAssociation = new SimpleDataInputAssociation(
                     dataAssociationElement.getSourceRef(), dataAssociationElement.getTargetRef());
 
-            for (org.flowable.bpmn.model.Assignment assigmentElement : dataAssociationElement.getAssignments()) {
-                if (StringUtils.isNotEmpty(assigmentElement.getFrom()) && StringUtils.isNotEmpty(assigmentElement.getTo())) {
-                    Expression from = bpmnParse.getExpressionManager().createExpression(assigmentElement.getFrom());
-                    Expression to = bpmnParse.getExpressionManager().createExpression(assigmentElement.getTo());
+            for (org.flowable.bpmn.model.Assignment assignmentElement : dataAssociationElement.getAssignments()) {
+                if (StringUtils.isNotEmpty(assignmentElement.getFrom()) && StringUtils.isNotEmpty(assignmentElement.getTo())) {
+                    Expression from = bpmnParse.getExpressionManager().createExpression(assignmentElement.getFrom());
+                    Expression to = bpmnParse.getExpressionManager().createExpression(assignmentElement.getTo());
                     Assignment assignment = new Assignment(from, to);
                     dataAssociation.addAssignment(assignment);
                 }

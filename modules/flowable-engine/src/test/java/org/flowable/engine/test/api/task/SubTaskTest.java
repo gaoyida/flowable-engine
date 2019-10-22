@@ -17,12 +17,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.flowable.engine.history.HistoricTaskInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
+import org.flowable.task.api.Task;
+import org.flowable.task.api.history.HistoricTaskInstance;
+import org.flowable.task.service.impl.persistence.CountingTaskEntity;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tom Baeyens
@@ -30,6 +34,7 @@ import org.flowable.engine.task.Task;
  */
 public class SubTaskTest extends PluggableFlowableTestCase {
 
+    @Test
     public void testSubTask() {
         Task gonzoTask = taskService.newTask();
         gonzoTask.setName("gonzoTask");
@@ -45,19 +50,19 @@ public class SubTaskTest extends PluggableFlowableTestCase {
         subTaskTwo.setName("subtask two");
         subTaskTwo.setParentTaskId(gonzoTaskId);
         taskService.saveTask(subTaskTwo);
-
+        
         String subTaskId = subTaskOne.getId();
         assertTrue(taskService.getSubTasks(subTaskId).isEmpty());
         assertTrue(historyService.createHistoricTaskInstanceQuery().taskParentTaskId(subTaskId).list().isEmpty());
 
         List<Task> subTasks = taskService.getSubTasks(gonzoTaskId);
-        Set<String> subTaskNames = new HashSet<String>();
+        Set<String> subTaskNames = new HashSet<>();
         for (Task subTask : subTasks) {
             subTaskNames.add(subTask.getName());
         }
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.AUDIT)) {
-            Set<String> expectedSubTaskNames = new HashSet<String>();
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.AUDIT, processEngineConfiguration)) {
+            Set<String> expectedSubTaskNames = new HashSet<>();
             expectedSubTaskNames.add("subtask one");
             expectedSubTaskNames.add("subtask two");
 
@@ -65,7 +70,7 @@ public class SubTaskTest extends PluggableFlowableTestCase {
 
             List<HistoricTaskInstance> historicSubTasks = historyService.createHistoricTaskInstanceQuery().taskParentTaskId(gonzoTaskId).list();
 
-            subTaskNames = new HashSet<String>();
+            subTaskNames = new HashSet<>();
             for (HistoricTaskInstance historicSubTask : historicSubTasks) {
                 subTaskNames.add(historicSubTask.getName());
             }
@@ -75,7 +80,45 @@ public class SubTaskTest extends PluggableFlowableTestCase {
 
         taskService.deleteTask(gonzoTaskId, true);
     }
+    
+    @Test
+    public void testMakeSubTaskStandaloneTask() {
+        Task parentTask = taskService.newTask();
+        parentTask.setName("parent");
+        taskService.saveTask(parentTask);
 
+        Task subTaskOne = taskService.newTask();
+        subTaskOne.setName("subtask one");
+        subTaskOne.setParentTaskId(parentTask.getId());
+        taskService.saveTask(subTaskOne);
+
+        Task subTaskTwo = taskService.newTask();
+        subTaskTwo.setName("subtask two");
+        subTaskTwo.setParentTaskId(parentTask.getId());
+        taskService.saveTask(subTaskTwo);
+
+        assertEquals(2, taskService.getSubTasks(parentTask.getId()).size());
+        
+        if (processEngineConfiguration.getPerformanceSettings().isEnableTaskRelationshipCounts()) {
+            CountingTaskEntity countingTaskEntity = (CountingTaskEntity) taskService.createTaskQuery().taskId(parentTask.getId()).singleResult();
+            assertEquals(2, countingTaskEntity.getSubTaskCount());
+        }
+        
+        subTaskTwo = taskService.createTaskQuery().taskId(subTaskTwo.getId()).singleResult();
+        subTaskTwo.setParentTaskId(null);
+        taskService.saveTask(subTaskTwo);
+        
+        if (processEngineConfiguration.getPerformanceSettings().isEnableTaskRelationshipCounts()) {
+            CountingTaskEntity countingTaskEntity = (CountingTaskEntity) taskService.createTaskQuery().taskId(parentTask.getId()).singleResult();
+            assertEquals(1, countingTaskEntity.getSubTaskCount());
+        }
+        
+        assertEquals(1, taskService.getSubTasks(parentTask.getId()).size());
+        taskService.deleteTask(parentTask.getId(), true);
+        taskService.deleteTask(subTaskTwo.getId(), true);
+    }
+
+    @Test
     public void testSubTaskDeleteOnProcessInstanceDelete() {
         Deployment deployment = repositoryService.createDeployment()
                 .addClasspathResource("org/flowable/engine/test/api/runtime/oneTaskProcess.bpmn20.xml")
@@ -105,17 +148,24 @@ public class SubTaskTest extends PluggableFlowableTestCase {
         tasks = taskService.createTaskQuery().taskAssignee("test").list();
         assertEquals(0, tasks.size());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             List<HistoricTaskInstance> historicTasks = historyService.createHistoricTaskInstanceQuery().taskAssignee("test").list();
             assertEquals(3, historicTasks.size());
 
             historyService.deleteHistoricProcessInstance(processInstance.getId());
+            
+            waitForHistoryJobExecutorToProcessAllJobs(7000, 100);
 
             historicTasks = historyService.createHistoricTaskInstanceQuery().taskAssignee("test").list();
             assertEquals(0, historicTasks.size());
         }
 
         repositoryService.deleteDeployment(deployment.getId(), true);
+        managementService.executeCommand(commandContext -> {
+            CommandContextUtil.getHistoricTaskService(commandContext).deleteHistoricTaskLogEntriesForTaskId(subTask1.getId());
+            CommandContextUtil.getHistoricTaskService(commandContext).deleteHistoricTaskLogEntriesForTaskId(subTask2.getId());
+            return null;
+        });
     }
 
 }

@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,14 +45,56 @@ public class CallActivityJsonConverter extends BaseBpmnJsonConverter {
         convertersToJsonMap.put(CallActivity.class, CallActivityJsonConverter.class);
     }
 
+    @Override
     protected String getStencilId(BaseElement baseElement) {
         return STENCIL_CALL_ACTIVITY;
     }
 
+    @Override
     protected void convertElementToJson(ObjectNode propertiesNode, BaseElement baseElement) {
         CallActivity callActivity = (CallActivity) baseElement;
         if (StringUtils.isNotEmpty(callActivity.getCalledElement())) {
             propertiesNode.put(PROPERTY_CALLACTIVITY_CALLEDELEMENT, callActivity.getCalledElement());
+        }
+
+        if (StringUtils.isNotEmpty(callActivity.getCalledElementType())) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_CALLEDELEMENTTYPE, callActivity.getCalledElementType());
+        }
+
+        if (callActivity.isInheritVariables()) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_INHERIT_VARIABLES, callActivity.isInheritVariables());
+        }
+
+        if (callActivity.isSameDeployment()) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_SAME_DEPLOYMENT, callActivity.isSameDeployment());
+        }
+        
+        if (StringUtils.isNotEmpty(callActivity.getProcessInstanceName())) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_PROCESS_INSTANCE_NAME, callActivity.getProcessInstanceName());
+        }
+        
+        if (StringUtils.isNotEmpty(callActivity.getBusinessKey())) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_BUSINESS_KEY, callActivity.getBusinessKey());
+        }
+
+        if (callActivity.isInheritBusinessKey()) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_INHERIT_BUSINESS_KEY, callActivity.isInheritBusinessKey());
+        }
+        
+        if (callActivity.isUseLocalScopeForOutParameters()) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_USE_LOCALSCOPE_FOR_OUTPARAMETERS, callActivity.isUseLocalScopeForOutParameters());
+        }
+        
+        if (callActivity.isCompleteAsync()) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_COMPLETE_ASYNC, callActivity.isCompleteAsync());
+        }
+
+        if (callActivity.getFallbackToDefaultTenant() != null) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_FALLBACK_TO_DEFAULT_TENANT, callActivity.getFallbackToDefaultTenant());
+        }
+
+        if (callActivity.getProcessInstanceIdVariableName() != null) {
+            propertiesNode.put(PROPERTY_CALLACTIVITY_ID_VARIABLE_NAME, callActivity.getProcessInstanceIdVariableName());
         }
 
         addJsonParameters(PROPERTY_CALLACTIVITY_IN, "inParameters", callActivity.getInParameters(), propertiesNode);
@@ -87,10 +129,54 @@ public class CallActivityJsonConverter extends BaseBpmnJsonConverter {
         propertiesNode.set(propertyName, parametersNode);
     }
 
+    @Override
     protected FlowElement convertJsonToElement(JsonNode elementNode, JsonNode modelNode, Map<String, JsonNode> shapeMap) {
         CallActivity callActivity = new CallActivity();
         if (StringUtils.isNotEmpty(getPropertyValueAsString(PROPERTY_CALLACTIVITY_CALLEDELEMENT, elementNode))) {
             callActivity.setCalledElement(getPropertyValueAsString(PROPERTY_CALLACTIVITY_CALLEDELEMENT, elementNode));
+        }
+
+        if (StringUtils.isNotEmpty(getPropertyValueAsString(PROPERTY_CALLACTIVITY_CALLEDELEMENTTYPE, elementNode))) {
+            callActivity.setCalledElementType(getPropertyValueAsString(PROPERTY_CALLACTIVITY_CALLEDELEMENTTYPE, elementNode));
+        }
+
+        if (getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_INHERIT_VARIABLES, elementNode)) {
+            callActivity.setInheritVariables(true);
+        }
+
+        if (getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_SAME_DEPLOYMENT, elementNode)) {
+            callActivity.setSameDeployment(true);
+        }
+        
+        String processInstanceName = getPropertyValueAsString(PROPERTY_CALLACTIVITY_PROCESS_INSTANCE_NAME, elementNode);
+        if (StringUtils.isNotEmpty(processInstanceName)) {
+            callActivity.setProcessInstanceName(processInstanceName);
+        }
+        
+        String businessKey = getPropertyValueAsString(PROPERTY_CALLACTIVITY_BUSINESS_KEY, elementNode);
+        if (StringUtils.isNotEmpty(businessKey)) {
+            callActivity.setBusinessKey(businessKey);
+        }
+        
+        if (getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_INHERIT_BUSINESS_KEY, elementNode)) {
+            callActivity.setInheritBusinessKey(true);
+        }
+        
+        if (getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_USE_LOCALSCOPE_FOR_OUTPARAMETERS, elementNode)) {
+            callActivity.setUseLocalScopeForOutParameters(true);
+        }
+        
+        if (getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_COMPLETE_ASYNC, elementNode)) {
+            callActivity.setCompleteAsync(true);
+        }
+
+        if (StringUtils.isNotEmpty(getPropertyValueAsString(PROPERTY_CALLACTIVITY_FALLBACK_TO_DEFAULT_TENANT, elementNode))) {
+            callActivity.setFallbackToDefaultTenant(getPropertyValueAsBoolean(PROPERTY_CALLACTIVITY_FALLBACK_TO_DEFAULT_TENANT, elementNode));
+        }
+
+        String idVariableName = getPropertyValueAsString(PROPERTY_CALLACTIVITY_ID_VARIABLE_NAME, elementNode);
+        if (StringUtils.isNotEmpty(idVariableName)) {
+            callActivity.setProcessInstanceIdVariableName(idVariableName);
         }
 
         callActivity.getInParameters().addAll(convertToIOParameters(PROPERTY_CALLACTIVITY_IN, "inParameters", elementNode));
@@ -100,7 +186,7 @@ public class CallActivityJsonConverter extends BaseBpmnJsonConverter {
     }
 
     private List<IOParameter> convertToIOParameters(String propertyName, String valueName, JsonNode elementNode) {
-        List<IOParameter> ioParameters = new ArrayList<IOParameter>();
+        List<IOParameter> ioParameters = new ArrayList<>();
         JsonNode parametersNode = getProperty(propertyName, elementNode);
         if (parametersNode != null) {
             parametersNode = BpmnJsonConverterUtil.validateIfNodeIsTextual(parametersNode);

@@ -18,10 +18,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.Flowable5Util;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.DeploymentBuilder;
@@ -34,11 +35,11 @@ import org.slf4j.LoggerFactory;
  */
 public class RedeployV5ProcessDefinitionsCmd implements Command<Void> {
 
-    private static final Logger logger = LoggerFactory.getLogger(RedeployV5ProcessDefinitionsCmd.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedeployV5ProcessDefinitionsCmd.class);
 
     @Override
     public Void execute(CommandContext commandContext) {
-        ProcessEngineConfigurationImpl processEngineConfiguration = commandContext.getProcessEngineConfiguration();
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
 
         RepositoryService repositoryService = processEngineConfiguration.getRepositoryService();
         List<ProcessDefinition> processDefinitions = repositoryService.createProcessDefinitionQuery()
@@ -91,7 +92,7 @@ public class RedeployV5ProcessDefinitionsCmd implements Command<Void> {
 
                 List<ProcessDefinition> groupedProcessDefinitions = deploymentMap.get(deployment.getId());
                 for (ProcessDefinition processDefinition : groupedProcessDefinitions) {
-                    logger.info("adding v5 process definition with id: {} and key: {} for redeployment",
+                    LOGGER.info("adding v5 process definition with id: {} and key: {} for redeployment",
                             processDefinition.getId(), processDefinition.getKey());
 
                     InputStream definitionStream = repositoryService.getResourceAsStream(deployment.getId(), processDefinition.getResourceName());

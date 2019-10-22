@@ -15,14 +15,16 @@ package org.flowable.engine.impl.persistence.entity;
 
 import java.util.List;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.data.AttachmentDataManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.task.Attachment;
-import org.flowable.engine.task.Task;
+import org.flowable.task.api.Task;
 
 /**
  * @author Tom Baeyens
@@ -58,7 +60,8 @@ public class AttachmentEntityManagerImpl extends AbstractEntityManager<Attachmen
     public void deleteAttachmentsByTaskId(String taskId) {
         checkHistoryEnabled();
         List<AttachmentEntity> attachments = findAttachmentsByTaskId(taskId);
-        boolean dispatchEvents = getEventDispatcher().isEnabled();
+        FlowableEventDispatcher eventDispatcher = getEventDispatcher();
+        boolean dispatchEvents = eventDispatcher != null && eventDispatcher.isEnabled();
 
         String processInstanceId = null;
         String processDefinitionId = null;
@@ -67,7 +70,7 @@ public class AttachmentEntityManagerImpl extends AbstractEntityManager<Attachmen
         if (dispatchEvents && attachments != null && !attachments.isEmpty()) {
             // Forced to fetch the task to get hold of the process definition
             // for event-dispatching, if available
-            Task task = getTaskEntityManager().findById(taskId);
+            Task task = CommandContextUtil.getTaskService().getTask(taskId);
             if (task != null) {
                 processDefinitionId = task.getProcessDefinitionId();
                 processInstanceId = task.getProcessInstanceId();
@@ -84,7 +87,7 @@ public class AttachmentEntityManagerImpl extends AbstractEntityManager<Attachmen
             attachmentDataManager.delete((AttachmentEntity) attachment);
 
             if (dispatchEvents) {
-                getEventDispatcher().dispatchEvent(
+                eventDispatcher.dispatchEvent(
                         FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_DELETED, attachment, executionId, processInstanceId, processDefinitionId));
             }
         }

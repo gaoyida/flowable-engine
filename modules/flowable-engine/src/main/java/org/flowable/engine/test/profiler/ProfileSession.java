@@ -28,8 +28,8 @@ public class ProfileSession {
     protected Date endTime;
     protected long totalTime;
 
-    protected ThreadLocal<CommandExecutionResult> currentCommandExecution = new ThreadLocal<CommandExecutionResult>();
-    protected Map<String, List<CommandExecutionResult>> commandExecutionResults = new HashMap<String, List<CommandExecutionResult>>();
+    protected ThreadLocal<CommandExecutionResult> currentCommandExecution = new ThreadLocal<>();
+    protected Map<String, List<CommandExecutionResult>> commandExecutionResults = new HashMap<>();
 
     public ProfileSession(String name) {
         this.name = name;
@@ -50,7 +50,7 @@ public class ProfileSession {
 
     public synchronized void addCommandExecution(String classFqn, CommandExecutionResult commandExecutionResult) {
         if (!commandExecutionResults.containsKey(classFqn)) {
-            commandExecutionResults.put(classFqn, new ArrayList<CommandExecutionResult>());
+            commandExecutionResults.put(classFqn, new ArrayList<>());
         }
         commandExecutionResults.get(classFqn).add(commandExecutionResult);
     }
@@ -100,8 +100,14 @@ public class ProfileSession {
     }
 
     public Map<String, CommandStats> calculateSummaryStatistics() {
-        Map<String, CommandStats> result = new HashMap<String, CommandStats>();
+        Map<String, CommandStats> result = new HashMap<>();
         for (String className : commandExecutionResults.keySet()) {
+            
+            // ignore GetNextIdBlockCmd
+            if (className.endsWith("GetNextIdBlockCmd")) {
+                continue;
+            }
+            
             List<CommandExecutionResult> executions = commandExecutionResults.get(className);
             CommandStats commandStats = new CommandStats(executions);
             result.put(className, commandStats);

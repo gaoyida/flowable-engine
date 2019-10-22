@@ -16,18 +16,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.history.HistoricProcessInstance;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Yvo Swillens
  */
 public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
 
+    @Test
     @Deployment
     public void testOnCompleteCommitted() {
         CurrentTaskTransactionDependentTaskListener.clear();
@@ -39,7 +41,7 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("taskListenersOnCompleteCommitted", variables);
 
         // task 1 has committed listener
-        Task task = taskService.createTaskQuery().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().singleResult();
         taskService.complete(task.getId());
 
         // task 2 has rolled-back listener
@@ -55,6 +57,7 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         assertNotNull(currentTasks.get(0).getProcessInstanceId());
     }
 
+    @Test
     @Deployment
     public void testOnCompleteRolledBack() {
         CurrentTaskTransactionDependentTaskListener.clear();
@@ -67,7 +70,7 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("taskListenersOnCompleteCommitted", variables);
 
         // task 1 has before-commit listener
-        Task task = taskService.createTaskQuery().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().singleResult();
         taskService.complete(task.getId());
 
         // task 2 has rolled-back listener
@@ -97,6 +100,7 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         assertNotNull(currentTasks.get(1).getProcessInstanceId());
     }
 
+    @Test
     @Deployment
     public void testOnCompleteExecutionVariables() {
 
@@ -105,7 +109,7 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         runtimeService.startProcessInstanceByKey("taskListenersOnCompleteExecutionVariables");
 
         // task 1 has committed listener
-        Task task = taskService.createTaskQuery().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().singleResult();
         taskService.complete(task.getId());
 
         // task 2 has committed listener
@@ -126,6 +130,7 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         assertEquals("test2", currentTasks.get(1).getExecutionVariables().get("injectedExecutionVariable"));
     }
 
+    @Test
     @Deployment
     public void testOnCompleteTransactionalOperation() {
         CurrentTaskTransactionDependentTaskListener.clear();
@@ -133,7 +138,7 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         ProcessInstance firstProcessInstance = runtimeService.startProcessInstanceByKey("transactionDependentTaskListenerProcess");
         assertProcessEnded(firstProcessInstance.getId());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             List<HistoricProcessInstance> historicProcessInstances = historyService.createHistoricProcessInstanceQuery().list();
             assertEquals(1, historicProcessInstances.size());
             assertEquals("transactionDependentTaskListenerProcess", historicProcessInstances.get(0).getProcessDefinitionKey());
@@ -141,12 +146,12 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
 
         ProcessInstance secondProcessInstance = runtimeService.startProcessInstanceByKey("secondTransactionDependentTaskListenerProcess");
 
-        Task task = taskService.createTaskQuery().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().singleResult();
         taskService.complete(task.getId());
 
         assertProcessEnded(secondProcessInstance.getId());
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             // first historic process instance was deleted by task listener
             List<HistoricProcessInstance> historicProcessInstances = historyService.createHistoricProcessInstanceQuery().list();
             assertEquals(1, historicProcessInstances.size());
@@ -160,13 +165,14 @@ public class TaskListenerOnTransactionTest extends PluggableFlowableTestCase {
         assertEquals("User Task 1", currentTasks.get(0).getTaskName());
     }
 
+    @Test
     @Deployment
     public void testOnCompleteCustomPropertiesResolver() {
         CurrentTaskTransactionDependentTaskListener.clear();
 
         runtimeService.startProcessInstanceByKey("transactionDependentTaskListenerProcess");
 
-        Task task = taskService.createTaskQuery().singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().singleResult();
         taskService.complete(task.getId());
 
         List<CurrentTaskTransactionDependentTaskListener.CurrentTask> currentTasks = CurrentTaskTransactionDependentTaskListener.getCurrentTasks();

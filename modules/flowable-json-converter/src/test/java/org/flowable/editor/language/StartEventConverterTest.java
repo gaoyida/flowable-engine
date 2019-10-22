@@ -28,7 +28,7 @@ import org.junit.Test;
 public class StartEventConverterTest extends AbstractConverterTest {
 
     @Test
-    public void connvertJsonToModel() throws Exception {
+    public void convertJsonToModel() throws Exception {
         BpmnModel bpmnModel = readJsonFile();
         validateModel(bpmnModel);
     }
@@ -54,6 +54,7 @@ public class StartEventConverterTest extends AbstractConverterTest {
         assertEquals("start", startEvent.getId());
         assertEquals("startName", startEvent.getName());
         assertEquals("startFormKey", startEvent.getFormKey());
+        assertEquals("formFieldValidationValue", startEvent.getValidateFormFields());
         assertEquals("startInitiator", startEvent.getInitiator());
         assertEquals("startDoc", startEvent.getDocumentation());
 

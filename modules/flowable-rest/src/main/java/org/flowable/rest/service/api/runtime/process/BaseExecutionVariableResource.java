@@ -23,17 +23,18 @@ import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.IOUtils;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.rest.exception.FlowableContentNotSupportedException;
 import org.flowable.engine.RuntimeService;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
-import org.flowable.engine.impl.persistence.entity.VariableInstanceEntity;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.rest.exception.FlowableContentNotSupportedException;
+import org.flowable.rest.service.api.BpmnRestApiInterceptor;
 import org.flowable.rest.service.api.RestResponseFactory;
 import org.flowable.rest.service.api.engine.variable.RestVariable;
 import org.flowable.rest.service.api.engine.variable.RestVariable.RestVariableScope;
+import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,6 +53,9 @@ public class BaseExecutionVariableResource {
 
     @Autowired
     protected RuntimeService runtimeService;
+    
+    @Autowired(required=false)
+    protected BpmnRestApiInterceptor restApiInterceptor;
 
     protected boolean isSerializableVariableAllowed;
 
@@ -168,7 +172,7 @@ public class BaseExecutionVariableResource {
         } catch (IOException ioe) {
             throw new FlowableIllegalArgumentException("Could not process multipart content", ioe);
         } catch (ClassNotFoundException ioe) {
-            throw new FlowableContentNotSupportedException("The provided body contains a serialized object for which the class is nog found: " + ioe.getMessage());
+            throw new FlowableContentNotSupportedException("The provided body contains a serialized object for which the class was not found: " + ioe.getMessage());
         }
 
     }
@@ -199,7 +203,7 @@ public class BaseExecutionVariableResource {
         }
 
         if (!isNew && !hasVariable) {
-            throw new FlowableObjectNotFoundException("Execution '" + execution.getId() + "' doesn't have a variable with name: '" + name + "'.", null);
+            throw new FlowableObjectNotFoundException("Execution '" + execution.getId() + "' does not have a variable with name: '" + name + "'.", null);
         }
 
         if (scope == RestVariableScope.LOCAL) {
@@ -268,7 +272,7 @@ public class BaseExecutionVariableResource {
         }
 
         if (!variableFound) {
-            throw new FlowableObjectNotFoundException("Execution '" + execution.getId() + "' doesn't have a variable with name: '" + variableName + "'.", VariableInstanceEntity.class);
+            throw new FlowableObjectNotFoundException("Execution '" + execution.getId() + "' does not have a variable with name: '" + variableName + "'.", VariableInstanceEntity.class);
         } else {
             return constructRestVariable(variableName, value, variableScope, execution.getId(), includeBinary);
         }
@@ -280,13 +284,18 @@ public class BaseExecutionVariableResource {
     }
 
     /**
-     * Get valid execution from request. Throws exception if execution doesn't exist or if execution id is not provided.
+     * Get valid execution from request. Throws exception if execution does not exist or if execution id is not provided.
      */
     protected Execution getExecutionFromRequest(String executionId) {
         Execution execution = runtimeService.createExecutionQuery().executionId(executionId).singleResult();
         if (execution == null) {
             throw new FlowableObjectNotFoundException("Could not find an execution with id '" + executionId + "'.", Execution.class);
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessExecutionInfoById(execution);
+        }
+        
         return execution;
     }
 
@@ -295,6 +304,11 @@ public class BaseExecutionVariableResource {
         if (execution == null) {
             throw new FlowableObjectNotFoundException("Could not find a process instance with id '" + processInstanceId + "'.", ProcessInstance.class);
         }
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.accessProcessInstanceInfoById((ProcessInstance) execution);
+        }
+        
         return execution;
     }
 

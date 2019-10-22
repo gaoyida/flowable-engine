@@ -40,12 +40,12 @@ import org.apache.cxf.service.model.ServiceInfo;
 import org.apache.cxf.wsdl.WSDLManager;
 import org.apache.cxf.wsdl11.WSDLServiceBuilder;
 import org.flowable.bpmn.model.Import;
-import org.flowable.engine.common.api.FlowableException;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.util.ReflectUtil;
 import org.flowable.engine.impl.bpmn.data.PrimitiveStructureDefinition;
 import org.flowable.engine.impl.bpmn.data.SimpleStructureDefinition;
 import org.flowable.engine.impl.bpmn.data.StructureDefinition;
 import org.flowable.engine.impl.bpmn.parser.XMLImporter;
-import org.flowable.engine.impl.util.ReflectUtil;
 
 import com.ibm.wsdl.extensions.schema.SchemaImpl;
 import com.sun.codemodel.JClass;
@@ -67,9 +67,9 @@ public class CxfWSDLImporter implements XMLImporter {
 
     protected static final String JAXB_BINDINGS_RESOURCE = "flowable-bindings.xjc";
 
-    protected Map<String, WSService> wsServices = new HashMap<String, WSService>();
-    protected Map<String, WSOperation> wsOperations = new HashMap<String, WSOperation>();
-    protected Map<String, StructureDefinition> structures = new HashMap<String, StructureDefinition>();
+    protected Map<String, WSService> wsServices = new HashMap<>();
+    protected Map<String, WSOperation> wsOperations = new HashMap<>();
+    protected Map<String, StructureDefinition> structures = new HashMap<>();
 
     protected String wsdlLocation;
     protected String namespace;
@@ -78,10 +78,11 @@ public class CxfWSDLImporter implements XMLImporter {
         this.namespace = "";
     }
 
+    @Override
     public void importFrom(Import theImport, String sourceSystemId) {
         this.namespace = theImport.getNamespace() == null ? "" : theImport.getNamespace() + ":";
         try {
-            final URIResolver uriResolver = new URIResolver(sourceSystemId, theImport.getLocation());
+            final URIResolver uriResolver = this.createUriResolver(sourceSystemId, theImport);
             if (uriResolver.isResolved()) {
                 if (uriResolver.getURI() != null) {
                     this.importFrom(uriResolver.getURI().toString());
@@ -97,6 +98,10 @@ public class CxfWSDLImporter implements XMLImporter {
         } catch (final IOException e) {
             throw new UncheckedException(e);
         }
+    }
+
+    protected URIResolver createUriResolver(String sourceSystemId, Import theImport) throws IOException {
+        return new URIResolver(sourceSystemId, theImport.getLocation());
     }
 
     public void importFrom(String url) {
@@ -230,14 +235,17 @@ public class CxfWSDLImporter implements XMLImporter {
         return intermediateModel;
     }
 
+    @Override
     public Map<String, StructureDefinition> getStructures() {
         return this.structures;
     }
 
+    @Override
     public Map<String, WSService> getServices() {
         return this.wsServices;
     }
 
+    @Override
     public Map<String, WSOperation> getOperations() {
         return this.wsOperations;
     }

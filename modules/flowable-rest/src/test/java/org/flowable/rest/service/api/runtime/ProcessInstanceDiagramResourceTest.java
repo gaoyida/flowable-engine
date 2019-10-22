@@ -13,6 +13,9 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -20,12 +23,14 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 /**
  * @author Frederik Heremans
  */
 public class ProcessInstanceDiagramResourceTest extends BaseSpringRestTestCase {
 
+    @Test
     @Deployment
     public void testGetProcessDiagram() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("simpleProcess");
@@ -37,6 +42,7 @@ public class ProcessInstanceDiagramResourceTest extends BaseSpringRestTestCase {
         closeResponse(response);
     }
 
+    @Test
     @Deployment
     public void testGetProcessDiagramWithoutDiagram() throws Exception {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("oneTaskProcess");
@@ -46,6 +52,7 @@ public class ProcessInstanceDiagramResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting an unexisting process instance.
      */
+    @Test
     public void testGetUnexistingProcessInstance() {
         closeResponse(executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_PROCESS_INSTANCE_DIAGRAM, "unexistingpi")), HttpStatus.SC_NOT_FOUND));
     }

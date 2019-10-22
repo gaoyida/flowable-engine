@@ -15,15 +15,18 @@ package org.flowable.engine.impl.webservice;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.flowable.common.engine.impl.util.ReflectUtil;
 import org.flowable.engine.impl.bpmn.data.SimpleStructureDefinition;
 import org.flowable.engine.impl.bpmn.data.StructureDefinition;
-import org.flowable.engine.impl.util.ReflectUtil;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,7 +47,7 @@ public class WSDLImporterTest {
         URL url = ReflectUtil.getResource("org/flowable/engine/impl/webservice/counter.wsdl");
         importer.importFrom(url.toString());
 
-        List<WSService> services = new ArrayList<WSService>(importer.getServices().values());
+        List<WSService> services = new ArrayList<>(importer.getServices().values());
         assertEquals(1, services.size());
         WSService service = services.get(0);
 
@@ -85,7 +88,7 @@ public class WSDLImporterTest {
         URL url = ReflectUtil.getResource("org/flowable/engine/impl/webservice/counterWithImport.wsdl");
         importer.importFrom(url.toString());
 
-        List<WSService> services = new ArrayList<WSService>(importer.getServices().values());
+        List<WSService> services = new ArrayList<>(importer.getServices().values());
         assertEquals(1, services.size());
         WSService service = services.get(0);
 
@@ -122,8 +125,9 @@ public class WSDLImporterTest {
     }
 
     private List<WSOperation> sortOperations() {
-        List<WSOperation> operations = new ArrayList<WSOperation>(importer.getOperations().values());
+        List<WSOperation> operations = new ArrayList<>(importer.getOperations().values());
         Collections.sort(operations, new Comparator<WSOperation>() {
+            @Override
             public int compare(WSOperation o1, WSOperation o2) {
                 return o1.getName().compareTo(o2.getName());
             }
@@ -132,8 +136,9 @@ public class WSDLImporterTest {
     }
 
     private List<StructureDefinition> sortStructures() {
-        List<StructureDefinition> structures = new ArrayList<StructureDefinition>(importer.getStructures().values());
+        List<StructureDefinition> structures = new ArrayList<>(importer.getStructures().values());
         Collections.sort(structures, new Comparator<StructureDefinition>() {
+            @Override
             public int compare(StructureDefinition o1, StructureDefinition o2) {
                 return o1.getId().compareTo(o2.getId());
             }
@@ -169,11 +174,18 @@ public class WSDLImporterTest {
         final Class<? extends Object> structureType = structureTypeInst.getClass();
         this.assertStructure(structures.get(0), "inheritedRequest", new String[] { "rootElt", "inheritedElt", "newSimpleElt",
                 "newStructuredElt" }, new Class<?>[] { Short.class, Integer.class, String.class, structureType });
-        assertEquals(2, structureType.getDeclaredFields().length);
+        List<Field> declaredFields = filterJacoco(structureType.getDeclaredFields());
+        assertEquals(2, declaredFields.size());
         assertNotNull(structureType.getDeclaredField("booleanElt"));
         assertNotNull(structureType.getDeclaredField("dateElt"));
-        assertEquals(1, structureType.getSuperclass().getDeclaredFields().length);
+        assertEquals(1, filterJacoco(structureType.getSuperclass().getDeclaredFields()).size());
         assertNotNull(structureType.getSuperclass().getDeclaredField("rootElt"));
+    }
+
+    protected List<Field> filterJacoco(Field[] declaredFields) {
+        return Arrays.stream(declaredFields).filter(
+            field -> !field.getName().contains("jacoco")
+        ).collect(Collectors.toList());
     }
 
     @Test

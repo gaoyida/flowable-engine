@@ -1,14 +1,31 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.rest.service.api.management;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.flowable.engine.impl.persistence.entity.VariableInstanceEntity;
-import org.flowable.engine.task.Task;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.flowable.task.api.Task;
+import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -23,6 +40,7 @@ public class TableDataResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting a single table's row data. GET management/tables/{tableName}/data
      */
+    @Test
     public void testGetTableColumns() throws Exception {
         try {
 
@@ -111,10 +129,12 @@ public class TableDataResourceTest extends BaseSpringRestTestCase {
         }
     }
 
+    @Test
     public void testGetDataForUnexistingTable() throws Exception {
         closeResponse(executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_TABLE_DATA, "unexisting")), HttpStatus.SC_NOT_FOUND));
     }
 
+    @Test
     public void testGetDataSortByIllegalColumn() throws Exception {
         // We use variable-table as a reference
         String tableName = managementService.getTableName(VariableInstanceEntity.class);

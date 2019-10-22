@@ -12,8 +12,8 @@
  */
 package org.flowable.engine.impl.delegate.invocation;
 
-import javax.el.ELContext;
-import javax.el.ValueExpression;
+import org.flowable.common.engine.impl.javax.el.ELContext;
+import org.flowable.common.engine.impl.javax.el.ValueExpression;
 
 /**
  * Class responsible for handling Expression.setValue() invocations.

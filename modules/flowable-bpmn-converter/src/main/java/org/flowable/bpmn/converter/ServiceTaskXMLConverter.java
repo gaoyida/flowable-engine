@@ -12,23 +12,28 @@
  */
 package org.flowable.bpmn.converter;
 
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.stream.XMLStreamWriter;
-
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.converter.export.FieldExtensionExport;
+import org.flowable.bpmn.converter.export.MapExceptionExport;
 import org.flowable.bpmn.converter.util.BpmnXMLUtil;
+import org.flowable.bpmn.model.AbstractFlowableHttpHandler;
 import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.CaseServiceTask;
 import org.flowable.bpmn.model.CustomProperty;
+import org.flowable.bpmn.model.HttpServiceTask;
 import org.flowable.bpmn.model.ImplementationType;
 import org.flowable.bpmn.model.ServiceTask;
+
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.XMLStreamWriter;
 
 /**
  * @author Tijs Rademakers
  */
 public class ServiceTaskXMLConverter extends BaseBpmnXMLConverter {
 
+    @Override
     public Class<? extends BaseElement> getBpmnElementType() {
         return ServiceTask.class;
     }
@@ -40,7 +45,19 @@ public class ServiceTaskXMLConverter extends BaseBpmnXMLConverter {
 
     @Override
     protected BaseElement convertXMLToElement(XMLStreamReader xtr, BpmnModel model) throws Exception {
-        ServiceTask serviceTask = new ServiceTask();
+        String serviceTaskType = BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TYPE, xtr);
+        
+        ServiceTask serviceTask = null;
+        if (ServiceTask.HTTP_TASK.equals(serviceTaskType)) {
+            serviceTask = new HttpServiceTask();
+            
+        } else if (ServiceTask.CASE_TASK.equals(serviceTaskType)) {
+            serviceTask = new CaseServiceTask();
+            
+        } else {
+            serviceTask = new ServiceTask();
+        }
+        
         BpmnXMLUtil.addXMLLocation(serviceTask, xtr);
         if (StringUtils.isNotEmpty(BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TASK_SERVICE_CLASS, xtr))) {
             serviceTask.setImplementationType(ImplementationType.IMPLEMENTATION_TYPE_CLASS);
@@ -64,13 +81,20 @@ public class ServiceTaskXMLConverter extends BaseBpmnXMLConverter {
             serviceTask.setResultVariableName(BpmnXMLUtil.getAttributeValue("resultVariable", xtr));
         }
 
-        serviceTask.setType(BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TYPE, xtr));
+        serviceTask.setUseLocalScopeForResultVariable(Boolean.valueOf(BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TASK_SERVICE_USE_LOCAL_SCOPE_FOR_RESULT_VARIABLE, xtr)));
+
+        serviceTask.setType(serviceTaskType);
         serviceTask.setExtensionId(BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TASK_SERVICE_EXTENSIONID, xtr));
 
         if (StringUtils.isNotEmpty(BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TASK_SERVICE_SKIP_EXPRESSION, xtr))) {
             serviceTask.setSkipExpression(BpmnXMLUtil.getAttributeValue(ATTRIBUTE_TASK_SERVICE_SKIP_EXPRESSION, xtr));
         }
-        parseChildElements(getXMLElementName(), serviceTask, model, xtr);
+        
+        if (serviceTask instanceof CaseServiceTask) {
+            convertCaseServiceTaskXMLProperties((CaseServiceTask) serviceTask, model, xtr);
+        } else {
+            parseChildElements(getXMLElementName(), serviceTask, model, xtr);
+        }
 
         return serviceTask;
     }
@@ -100,6 +124,13 @@ public class ServiceTaskXMLConverter extends BaseBpmnXMLConverter {
         if (StringUtils.isNotEmpty(serviceTask.getSkipExpression())) {
             writeQualifiedAttribute(ATTRIBUTE_TASK_SERVICE_SKIP_EXPRESSION, serviceTask.getSkipExpression(), xtw);
         }
+        if (serviceTask.isTriggerable()) {
+            writeQualifiedAttribute(ATTRIBUTE_ACTIVITY_TRIGGERABLE, "true", xtw);
+        }
+
+        if (serviceTask.isUseLocalScopeForResultVariable()) {
+            writeQualifiedAttribute(ATTRIBUTE_TASK_SERVICE_USE_LOCAL_SCOPE_FOR_RESULT_VARIABLE, "true", xtw);
+        }
     }
 
     @Override
@@ -107,30 +138,15 @@ public class ServiceTaskXMLConverter extends BaseBpmnXMLConverter {
         ServiceTask serviceTask = (ServiceTask) element;
 
         if (!serviceTask.getCustomProperties().isEmpty()) {
-            for (CustomProperty customProperty : serviceTask.getCustomProperties()) {
-
-                if (StringUtils.isEmpty(customProperty.getSimpleValue())) {
-                    continue;
-                }
-
-                if (!didWriteExtensionStartElement) {
-                    xtw.writeStartElement(ELEMENT_EXTENSIONS);
-                    didWriteExtensionStartElement = true;
-                }
-                xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ELEMENT_FIELD, FLOWABLE_EXTENSIONS_NAMESPACE);
-                xtw.writeAttribute(ATTRIBUTE_FIELD_NAME, customProperty.getName());
-                if ((customProperty.getSimpleValue().contains("${") || customProperty.getSimpleValue().contains("#{")) && customProperty.getSimpleValue().contains("}")) {
-
-                    xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ATTRIBUTE_FIELD_EXPRESSION, FLOWABLE_EXTENSIONS_NAMESPACE);
-                } else {
-                    xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ELEMENT_FIELD_STRING, FLOWABLE_EXTENSIONS_NAMESPACE);
-                }
-                xtw.writeCharacters(customProperty.getSimpleValue());
-                xtw.writeEndElement();
-                xtw.writeEndElement();
-            }
+            writeCustomProperties(serviceTask, didWriteExtensionStartElement, xtw);
+            
         } else {
+            if (serviceTask instanceof HttpServiceTask) {
+                didWriteExtensionStartElement = writeHttpTaskExtensionElements((HttpServiceTask) serviceTask, didWriteExtensionStartElement, xtw);
+            }
+            
             didWriteExtensionStartElement = FieldExtensionExport.writeFieldExtensions(serviceTask.getFieldExtensions(), didWriteExtensionStartElement, xtw);
+            didWriteExtensionStartElement = MapExceptionExport.writeMapExceptionExtensions(serviceTask.getMapExceptions(), didWriteExtensionStartElement, xtw);
         }
 
         return didWriteExtensionStartElement;
@@ -138,6 +154,63 @@ public class ServiceTaskXMLConverter extends BaseBpmnXMLConverter {
 
     @Override
     protected void writeAdditionalChildElements(BaseElement element, BpmnModel model, XMLStreamWriter xtw) throws Exception {
+    }
+    
+    protected void convertCaseServiceTaskXMLProperties(CaseServiceTask caseServiceTask, BpmnModel bpmnModel, XMLStreamReader xtr) throws Exception {
+        
+    }
+    
+    protected boolean writeCustomProperties(ServiceTask serviceTask, boolean didWriteExtensionStartElement, XMLStreamWriter xtw) throws Exception {
+        for (CustomProperty customProperty : serviceTask.getCustomProperties()) {
+
+            if (StringUtils.isEmpty(customProperty.getSimpleValue())) {
+                continue;
+            }
+
+            if (!didWriteExtensionStartElement) {
+                xtw.writeStartElement(ELEMENT_EXTENSIONS);
+                didWriteExtensionStartElement = true;
+            }
+            xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ELEMENT_FIELD, FLOWABLE_EXTENSIONS_NAMESPACE);
+            xtw.writeAttribute(ATTRIBUTE_FIELD_NAME, customProperty.getName());
+            if ((customProperty.getSimpleValue().contains("${") || customProperty.getSimpleValue().contains("#{")) && customProperty.getSimpleValue().contains("}")) {
+
+                xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ATTRIBUTE_FIELD_EXPRESSION, FLOWABLE_EXTENSIONS_NAMESPACE);
+            } else {
+                xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ELEMENT_FIELD_STRING, FLOWABLE_EXTENSIONS_NAMESPACE);
+            }
+            xtw.writeCharacters(customProperty.getSimpleValue());
+            xtw.writeEndElement();
+            xtw.writeEndElement();
+        }
+        
+        return didWriteExtensionStartElement;
+    }
+    
+    protected boolean writeHttpTaskExtensionElements(HttpServiceTask httpServiceTask, boolean didWriteExtensionStartElement, XMLStreamWriter xtw) throws Exception {
+        if (httpServiceTask.getHttpRequestHandler() != null) {
+            if (!didWriteExtensionStartElement) {
+                xtw.writeStartElement(ELEMENT_EXTENSIONS);
+                didWriteExtensionStartElement = true;
+            }
+            
+            xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ELEMENT_HTTP_REQUEST_HANDLER, FLOWABLE_EXTENSIONS_NAMESPACE);
+            writeHttpHandlerAttributes(httpServiceTask.getHttpRequestHandler(), xtw);
+            xtw.writeEndElement();
+        }
+        
+        if (httpServiceTask.getHttpResponseHandler() != null) {
+            if (!didWriteExtensionStartElement) {
+                xtw.writeStartElement(ELEMENT_EXTENSIONS);
+                didWriteExtensionStartElement = true;
+            }
+            
+            xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, ELEMENT_HTTP_RESPONSE_HANDLER, FLOWABLE_EXTENSIONS_NAMESPACE);
+            writeHttpHandlerAttributes(httpServiceTask.getHttpResponseHandler(), xtw);
+            xtw.writeEndElement();
+        }
+        
+        return didWriteExtensionStartElement;
     }
 
     protected String parseOperationRef(String operationRef, BpmnModel model) {
@@ -153,5 +226,13 @@ public class ServiceTaskXMLConverter extends BaseBpmnXMLConverter {
             }
         }
         return result;
+    }
+    
+    protected void writeHttpHandlerAttributes(AbstractFlowableHttpHandler httpHandler, XMLStreamWriter xtw) throws Exception {
+        if (ImplementationType.IMPLEMENTATION_TYPE_CLASS.equals(httpHandler.getImplementationType())) {
+            xtw.writeAttribute(ATTRIBUTE_TASK_SERVICE_CLASS, httpHandler.getImplementation());
+        } else if (ImplementationType.IMPLEMENTATION_TYPE_DELEGATEEXPRESSION.equals(httpHandler.getImplementationType())) {
+            xtw.writeAttribute(ATTRIBUTE_TASK_SERVICE_DELEGATEEXPRESSION, httpHandler.getImplementation());
+        }
     }
 }

@@ -16,12 +16,11 @@ package org.flowable.dmn.engine.impl.persistence.entity;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.dmn.api.DmnDecisionTable;
 import org.flowable.dmn.engine.DmnEngineConfiguration;
 import org.flowable.dmn.engine.impl.DecisionTableQueryImpl;
 import org.flowable.dmn.engine.impl.persistence.entity.data.DecisionTableDataManager;
-import org.flowable.engine.common.impl.Page;
-import org.flowable.engine.common.impl.persistence.entity.data.DataManager;
 
 /**
  * @author Tijs Rademakers
@@ -31,8 +30,8 @@ public class DecisionTableEntityManagerImpl extends AbstractEntityManager<Decisi
 
     protected DecisionTableDataManager decisionTableDataManager;
 
-    public DecisionTableEntityManagerImpl(DmnEngineConfiguration processEngineConfiguration, DecisionTableDataManager decisionTableDataManager) {
-        super(processEngineConfiguration);
+    public DecisionTableEntityManagerImpl(DmnEngineConfiguration dmnEngineConfiguration, DecisionTableDataManager decisionTableDataManager) {
+        super(dmnEngineConfiguration);
         this.decisionTableDataManager = decisionTableDataManager;
     }
 
@@ -57,20 +56,8 @@ public class DecisionTableEntityManagerImpl extends AbstractEntityManager<Decisi
     }
 
     @Override
-    public DecisionTableEntity findLatestDecisionTableByKeyAndParentDeploymentId(String decisionTableKey, String parentDeploymentId) {
-        return decisionTableDataManager.findLatestDecisionTableByKeyAndParentDeploymentId(decisionTableKey, parentDeploymentId);
-    }
-
-    @Override
-    public DecisionTableEntity findLatestDecisionTableByKeyParentDeploymentIdAndTenantId(String decisionTableKey,
-            String parentDeploymentId, String tenantId) {
-
-        return decisionTableDataManager.findLatestDecisionTableByKeyParentDeploymentIdAndTenantId(decisionTableKey, parentDeploymentId, tenantId);
-    }
-
-    @Override
-    public List<DmnDecisionTable> findDecisionTablesByQueryCriteria(DecisionTableQueryImpl decisionTableQuery, Page page) {
-        return decisionTableDataManager.findDecisionTablesByQueryCriteria(decisionTableQuery, page);
+    public List<DmnDecisionTable> findDecisionTablesByQueryCriteria(DecisionTableQueryImpl decisionTableQuery) {
+        return decisionTableDataManager.findDecisionTablesByQueryCriteria(decisionTableQuery);
     }
 
     @Override
@@ -98,8 +85,8 @@ public class DecisionTableEntityManagerImpl extends AbstractEntityManager<Decisi
     }
 
     @Override
-    public List<DmnDecisionTable> findDecisionTablesByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return decisionTableDataManager.findDecisionTablesByNativeQuery(parameterMap, firstResult, maxResults);
+    public List<DmnDecisionTable> findDecisionTablesByNativeQuery(Map<String, Object> parameterMap) {
+        return decisionTableDataManager.findDecisionTablesByNativeQuery(parameterMap);
     }
 
     @Override

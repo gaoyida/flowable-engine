@@ -21,12 +21,14 @@ import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.ValuedDataObject;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.util.CollectionUtil;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.context.Context;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.util.CollectionUtil;
 import org.flowable.engine.delegate.DelegateExecution;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.ProcessInstanceHelper;
 
 /**
@@ -37,24 +39,18 @@ import org.flowable.engine.impl.util.ProcessInstanceHelper;
 public class SubProcessActivityBehavior extends AbstractBpmnActivityBehavior {
 
     private static final long serialVersionUID = 1L;
+  
+    protected boolean isOnlyNoneStartEventAllowed;
+  
+    public SubProcessActivityBehavior() {
+        this.isOnlyNoneStartEventAllowed = true;
+    }
 
+    @Override
     public void execute(DelegateExecution execution) {
         SubProcess subProcess = getSubProcessFromExecution(execution);
 
-        FlowElement startElement = null;
-        if (CollectionUtil.isNotEmpty(subProcess.getFlowElements())) {
-            for (FlowElement subElement : subProcess.getFlowElements()) {
-                if (subElement instanceof StartEvent) {
-                    StartEvent startEvent = (StartEvent) subElement;
-
-                    // start none event
-                    if (CollectionUtil.isEmpty(startEvent.getEventDefinitions())) {
-                        startElement = startEvent;
-                        break;
-                    }
-                }
-            }
-        }
+        FlowElement startElement = getStartElement(subProcess);
 
         if (startElement == null) {
             throw new FlowableException("No initial activity found for subprocess " + subProcess.getId());
@@ -62,6 +58,8 @@ public class SubProcessActivityBehavior extends AbstractBpmnActivityBehavior {
 
         ExecutionEntity executionEntity = (ExecutionEntity) execution;
         executionEntity.setScope(true);
+        
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration();
 
         // initialize the template-defined data objects as variables
         Map<String, Object> dataObjectVars = processDataObjects(subProcess.getDataObjects());
@@ -70,13 +68,31 @@ public class SubProcessActivityBehavior extends AbstractBpmnActivityBehavior {
         }
         
         CommandContext commandContext = Context.getCommandContext();
-        ProcessInstanceHelper processInstanceHelper = commandContext.getProcessEngineConfiguration().getProcessInstanceHelper();
+        ProcessInstanceHelper processInstanceHelper = processEngineConfiguration.getProcessInstanceHelper();
         processInstanceHelper.processAvailableEventSubProcesses(executionEntity, subProcess, commandContext);
 
-        ExecutionEntity startSubProcessExecution = commandContext.getExecutionEntityManager()
-                .createChildExecution(executionEntity);
+        ExecutionEntity startSubProcessExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(executionEntity);
         startSubProcessExecution.setCurrentFlowElement(startElement);
-        Context.getAgenda().planContinueProcessOperation(startSubProcessExecution);
+        CommandContextUtil.getAgenda().planContinueProcessOperation(startSubProcessExecution);
+    }
+  
+    protected FlowElement getStartElement(SubProcess subProcess) {
+        if (CollectionUtil.isNotEmpty(subProcess.getFlowElements())) {
+            for (FlowElement subElement : subProcess.getFlowElements()) {
+                if (subElement instanceof StartEvent) {
+                    StartEvent startEvent = (StartEvent) subElement;
+                    if (isOnlyNoneStartEventAllowed) {
+                        if (CollectionUtil.isEmpty(startEvent.getEventDefinitions())) {
+                            return startEvent;
+                        }
+                        
+                    } else {
+                        return startEvent;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     protected SubProcess getSubProcessFromExecution(DelegateExecution execution) {
@@ -91,7 +107,7 @@ public class SubProcessActivityBehavior extends AbstractBpmnActivityBehavior {
     }
 
     protected Map<String, Object> processDataObjects(Collection<ValuedDataObject> dataObjects) {
-        Map<String, Object> variablesMap = new HashMap<String, Object>();
+        Map<String, Object> variablesMap = new HashMap<>();
         // convert data objects to process variables
         if (dataObjects != null) {
             for (ValuedDataObject dataObject : dataObjects) {

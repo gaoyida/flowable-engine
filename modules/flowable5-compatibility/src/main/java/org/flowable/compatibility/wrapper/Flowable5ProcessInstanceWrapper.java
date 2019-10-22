@@ -16,7 +16,6 @@ package org.flowable.compatibility.wrapper;
 import java.util.Date;
 import java.util.Map;
 
-import org.flowable.bpmn.model.FlowElement;
 import org.flowable.engine.runtime.ProcessInstance;
 
 /**
@@ -54,11 +53,6 @@ public class Flowable5ProcessInstanceWrapper implements ProcessInstance {
 
     @Override
     public String getRootProcessInstanceId() {
-        return null;
-    }
-
-    @Override
-    public FlowElement getCurrentFlowElement() {
         return null;
     }
 
@@ -131,7 +125,7 @@ public class Flowable5ProcessInstanceWrapper implements ProcessInstance {
     public String getLocalizedName() {
         return activiti5ProcessInstance.getLocalizedName();
     }
-
+    
     @Override
     public String getLocalizedDescription() {
         return activiti5ProcessInstance.getLocalizedDescription();
@@ -148,6 +142,16 @@ public class Flowable5ProcessInstanceWrapper implements ProcessInstance {
 
     @Override
     public String getStartUserId() {
+        return null;
+    }
+    
+    @Override
+    public String getCallbackId() {
+        return null;
+    }
+    
+    @Override
+    public String getCallbackType() {
         return null;
     }
 

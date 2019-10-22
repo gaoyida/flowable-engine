@@ -15,10 +15,12 @@ package org.flowable.form.engine.impl;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.query.AbstractNativeQuery;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.form.api.FormDefinition;
 import org.flowable.form.api.NativeFormDefinitionQuery;
-import org.flowable.form.engine.impl.interceptor.CommandContext;
-import org.flowable.form.engine.impl.interceptor.CommandExecutor;
+import org.flowable.form.engine.impl.util.CommandContextUtil;
 
 public class NativeFormDefinitionQueryImpl extends AbstractNativeQuery<NativeFormDefinitionQuery, FormDefinition> implements NativeFormDefinitionQuery {
 
@@ -34,12 +36,14 @@ public class NativeFormDefinitionQueryImpl extends AbstractNativeQuery<NativeFor
 
     // results ////////////////////////////////////////////////////////////////
 
-    public List<FormDefinition> executeList(CommandContext commandContext, Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return commandContext.getFormDefinitionEntityManager().findFormDefinitionsByNativeQuery(parameterMap, firstResult, maxResults);
+    @Override
+    public List<FormDefinition> executeList(CommandContext commandContext, Map<String, Object> parameterMap) {
+        return CommandContextUtil.getFormDefinitionEntityManager(commandContext).findFormDefinitionsByNativeQuery(parameterMap);
     }
 
+    @Override
     public long executeCount(CommandContext commandContext, Map<String, Object> parameterMap) {
-        return commandContext.getFormDefinitionEntityManager().findFormDefinitionCountByNativeQuery(parameterMap);
+        return CommandContextUtil.getFormDefinitionEntityManager(commandContext).findFormDefinitionCountByNativeQuery(parameterMap);
     }
 
 }

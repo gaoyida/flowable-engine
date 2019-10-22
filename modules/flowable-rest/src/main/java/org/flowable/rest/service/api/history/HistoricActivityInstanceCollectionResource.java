@@ -21,9 +21,9 @@ import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
-import org.flowable.rest.api.DataResponse;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+
+import org.flowable.common.rest.api.DataResponse;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -37,7 +37,7 @@ import java.util.Map;
 @RestController
 public class HistoricActivityInstanceCollectionResource extends HistoricActivityInstanceBaseResource {
 
-    @ApiOperation(value = "Get historic activity instances", tags = { "History" }, nickname = "getHistoricActivityInstances")
+    @ApiOperation(value = "List historic activity instances", tags = { "History" }, nickname = "listHistoricActivityInstances")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates that historic activity instances could be queried."),
             @ApiResponse(code = 400, message = "Indicates an parameter was passed in the wrong format. The status-message contains additional information.") })
@@ -55,8 +55,8 @@ public class HistoricActivityInstanceCollectionResource extends HistoricActivity
             @ApiImplicitParam(name = "tenantIdLike", dataType = "string", value = "Only return instances with a tenantId like the given value.", paramType = "query"),
             @ApiImplicitParam(name = "withoutTenantId", dataType = "boolean", value = "If true, only returns instances without a tenantId set. If false, the withoutTenantId parameter is ignored.", paramType = "query")
     })
-    @RequestMapping(value = "/history/historic-activity-instances", method = RequestMethod.GET, produces = "application/json")
-    public DataResponse getHistoricActivityInstances(@ApiParam(hidden = true) @RequestParam Map<String, String> allRequestParams, HttpServletRequest request) {
+    @GetMapping(value = "/history/historic-activity-instances", produces = "application/json")
+    public DataResponse<HistoricActivityInstanceResponse> getHistoricActivityInstances(@ApiParam(hidden = true) @RequestParam Map<String, String> allRequestParams, HttpServletRequest request) {
         HistoricActivityInstanceQueryRequest query = new HistoricActivityInstanceQueryRequest();
 
         // Populate query based on request

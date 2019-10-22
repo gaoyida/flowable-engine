@@ -19,17 +19,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.api.repository.EngineResource;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.ProcessEngineConfiguration;
-import org.flowable.engine.common.api.FlowableException;
 import org.flowable.engine.compatibility.Flowable5CompatibilityHandler;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.DeploymentQueryImpl;
+import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.DeploymentEntity;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
-import org.flowable.engine.impl.persistence.entity.ResourceEntity;
 import org.flowable.engine.impl.repository.DeploymentBuilderImpl;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.DeploymentProperties;
 
@@ -46,6 +50,7 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
         this.deploymentBuilder = deploymentBuilder;
     }
 
+    @Override
     public Deployment execute(CommandContext commandContext) {
 
         // Backwards compatibility with v5
@@ -53,11 +58,9 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
                 && deploymentBuilder.getDeploymentProperties().containsKey(DeploymentProperties.DEPLOY_AS_FLOWABLE5_PROCESS_DEFINITION)
                 && deploymentBuilder.getDeploymentProperties().get(DeploymentProperties.DEPLOY_AS_FLOWABLE5_PROCESS_DEFINITION).equals(Boolean.TRUE)) {
 
-            if (commandContext.getProcessEngineConfiguration().isFlowable5CompatibilityEnabled() &&
-                    commandContext.getProcessEngineConfiguration().getFlowable5CompatibilityHandler() != null) {
-
+            ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
+            if (processEngineConfiguration.isFlowable5CompatibilityEnabled() && processEngineConfiguration.getFlowable5CompatibilityHandler() != null) {
                 return deployAsFlowable5ProcessDefinition(commandContext);
-
             } else {
                 throw new FlowableException("Can't deploy a v5 deployment with no flowable 5 compatibility enabled or no compatibility handler on the classpath");
             }
@@ -69,19 +72,24 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
     protected Deployment executeDeploy(CommandContext commandContext) {
         DeploymentEntity deployment = deploymentBuilder.getDeployment();
 
-        deployment.setDeploymentTime(commandContext.getProcessEngineConfiguration().getClock().getCurrentTime());
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
+        deployment.setDeploymentTime(processEngineConfiguration.getClock().getCurrentTime());
 
         if (deploymentBuilder.isDuplicateFilterEnabled()) {
 
-            List<Deployment> existingDeployments = new ArrayList<Deployment>();
+            List<Deployment> existingDeployments = new ArrayList<>();
             if (deployment.getTenantId() == null || ProcessEngineConfiguration.NO_TENANT_ID.equals(deployment.getTenantId())) {
-                DeploymentEntity existingDeployment = commandContext.getDeploymentEntityManager().findLatestDeploymentByName(deployment.getName());
-                if (existingDeployment != null) {
-                    existingDeployments.add(existingDeployment);
+                List<Deployment> deploymentEntities = new DeploymentQueryImpl(processEngineConfiguration.getCommandExecutor())
+                        .deploymentName(deployment.getName())
+                        .orderByDeploymenTime().desc()
+                        .listPage(0, 1);
+                if (!deploymentEntities.isEmpty()) {
+                    existingDeployments.add(deploymentEntities.get(0));
                 }
+                
             } else {
-                List<Deployment> deploymentList = commandContext.getProcessEngineConfiguration().getRepositoryService().createDeploymentQuery().deploymentName(deployment.getName())
-                        .deploymentTenantId(deployment.getTenantId()).orderByDeploymentId().desc().list();
+                List<Deployment> deploymentList = processEngineConfiguration.getRepositoryService().createDeploymentQuery().deploymentName(deployment.getName())
+                        .deploymentTenantId(deployment.getTenantId()).orderByDeploymenTime().desc().list();
 
                 if (!deploymentList.isEmpty()) {
                     existingDeployments.addAll(deploymentList);
@@ -93,7 +101,7 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
                 existingDeployment = (DeploymentEntity) existingDeployments.get(0);
             }
 
-            if ((existingDeployment != null) && !deploymentsDiffer(deployment, existingDeployment)) {
+            if (existingDeployment != null && !deploymentsDiffer(deployment, existingDeployment)) {
                 return existingDeployment;
             }
         }
@@ -101,33 +109,36 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
         deployment.setNew(true);
 
         // Save the data
-        commandContext.getDeploymentEntityManager().insert(deployment);
+        CommandContextUtil.getDeploymentEntityManager(commandContext).insert(deployment);
 
-        if (commandContext.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-            commandContext.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_CREATED, deployment));
+        FlowableEventDispatcher eventDispatcher = processEngineConfiguration.getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            eventDispatcher
+                .dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_CREATED, deployment));
         }
 
         // Deployment settings
-        Map<String, Object> deploymentSettings = new HashMap<String, Object>();
+        Map<String, Object> deploymentSettings = new HashMap<>();
         deploymentSettings.put(DeploymentSettings.IS_BPMN20_XSD_VALIDATION_ENABLED, deploymentBuilder.isBpmn20XsdValidationEnabled());
         deploymentSettings.put(DeploymentSettings.IS_PROCESS_VALIDATION_ENABLED, deploymentBuilder.isProcessValidationEnabled());
 
         // Actually deploy
-        commandContext.getProcessEngineConfiguration().getDeploymentManager().deploy(deployment, deploymentSettings);
+        processEngineConfiguration.getDeploymentManager().deploy(deployment, deploymentSettings);
 
         if (deploymentBuilder.getProcessDefinitionsActivationDate() != null) {
             scheduleProcessDefinitionActivation(commandContext, deployment);
         }
 
-        if (commandContext.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-            commandContext.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_INITIALIZED, deployment));
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            eventDispatcher
+                .dispatchEvent(FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_INITIALIZED, deployment));
         }
 
         return deployment;
     }
 
     protected Deployment deployAsFlowable5ProcessDefinition(CommandContext commandContext) {
-        Flowable5CompatibilityHandler flowable5CompatibilityHandler = commandContext.getProcessEngineConfiguration().getFlowable5CompatibilityHandler();
+        Flowable5CompatibilityHandler flowable5CompatibilityHandler = CommandContextUtil.getProcessEngineConfiguration(commandContext).getFlowable5CompatibilityHandler();
         if (flowable5CompatibilityHandler == null) {
             throw new FlowableException("Found Flowable 5 process definition, but no compatibility handler on the classpath. "
                     + "Cannot use the deployment property " + DeploymentProperties.DEPLOY_AS_FLOWABLE5_PROCESS_DEFINITION);
@@ -141,17 +152,17 @@ public class DeployCmd<T> implements Command<Deployment>, Serializable {
             return true;
         }
 
-        Map<String, ResourceEntity> resources = deployment.getResources();
-        Map<String, ResourceEntity> savedResources = saved.getResources();
+        Map<String, EngineResource> resources = deployment.getResources();
+        Map<String, EngineResource> savedResources = saved.getResources();
 
         for (String resourceName : resources.keySet()) {
-            ResourceEntity savedResource = savedResources.get(resourceName);
+            EngineResource savedResource = savedResources.get(resourceName);
 
             if (savedResource == null)
                 return true;
 
             if (!savedResource.isGenerated()) {
-                ResourceEntity resource = resources.get(resourceName);
+                EngineResource resource = resources.get(resourceName);
 
                 byte[] bytes = resource.getBytes();
                 byte[] savedBytes = savedResource.getBytes();

@@ -1,23 +1,36 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.editor.language.xml;
+
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.FieldExtension;
+import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.FlowableListener;
+import org.flowable.bpmn.model.ImplementationType;
+import org.flowable.bpmn.model.MapExceptionEntry;
+import org.flowable.bpmn.model.ServiceTask;
+import org.junit.Test;
+
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
-
-import org.flowable.bpmn.model.FlowableListener;
-import org.flowable.bpmn.model.BpmnModel;
-import org.flowable.bpmn.model.FieldExtension;
-import org.flowable.bpmn.model.FlowElement;
-import org.flowable.bpmn.model.ImplementationType;
-import org.flowable.bpmn.model.ServiceTask;
-import org.junit.Test;
-
 public class ServiceTaskConverterTest extends AbstractConverterTest {
 
     @Test
-    public void connvertXMLToModel() throws Exception {
+    public void convertXMLToModel() throws Exception {
         BpmnModel bpmnModel = readXMLFile();
         validateModel(bpmnModel);
     }
@@ -27,9 +40,9 @@ public class ServiceTaskConverterTest extends AbstractConverterTest {
         BpmnModel bpmnModel = readXMLFile();
         BpmnModel parsedModel = exportAndReadXMLFile(bpmnModel);
         validateModel(parsedModel);
-        deployProcess(parsedModel);
     }
 
+    @Override
     protected String getResource() {
         return "servicetaskmodel.bpmn";
     }
@@ -51,6 +64,15 @@ public class ServiceTaskConverterTest extends AbstractConverterTest {
         field = fields.get(1);
         assertEquals("testField2", field.getFieldName());
         assertEquals("${test}", field.getExpression());
+
+        List<MapExceptionEntry> exceptions = serviceTask.getMapExceptions();
+        assertEquals(2, exceptions.size());
+        MapExceptionEntry exception = exceptions.get(0);
+        assertEquals("java", exception.getErrorCode());
+        exception = exceptions.get(1);
+        assertEquals("java", exception.getErrorCode());
+        assertEquals("MyClass", exception.getClassName());
+        assertTrue(exception.isAndChildren());
 
         List<FlowableListener> listeners = serviceTask.getExecutionListeners();
         assertEquals(3, listeners.size());

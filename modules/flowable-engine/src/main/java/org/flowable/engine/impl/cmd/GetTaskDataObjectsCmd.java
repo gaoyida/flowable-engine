@@ -22,19 +22,20 @@ import java.util.Map.Entry;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.ValuedDataObject;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.DynamicBpmnConstants;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
 import org.flowable.engine.impl.DataObjectImpl;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.context.BpmnOverrideContext;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
-import org.flowable.engine.impl.persistence.entity.TaskEntity;
-import org.flowable.engine.impl.persistence.entity.VariableInstance;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
 import org.flowable.engine.runtime.DataObject;
-import org.flowable.engine.task.Task;
+import org.flowable.task.api.Task;
+import org.flowable.task.service.impl.persistence.entity.TaskEntity;
+import org.flowable.variable.api.persistence.entity.VariableInstance;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -59,12 +60,13 @@ public class GetTaskDataObjectsCmd implements Command<Map<String, DataObject>>, 
         this.withLocalizationFallback = withLocalizationFallback;
     }
 
+    @Override
     public Map<String, DataObject> execute(CommandContext commandContext) {
         if (taskId == null) {
             throw new FlowableIllegalArgumentException("taskId is null");
         }
 
-        TaskEntity task = commandContext.getTaskEntityManager().findById(taskId);
+        TaskEntity task = CommandContextUtil.getTaskService().getTask(taskId);
 
         if (task == null) {
             throw new FlowableObjectNotFoundException("task " + taskId + " doesn't exist", Task.class);
@@ -82,13 +84,12 @@ public class GetTaskDataObjectsCmd implements Command<Map<String, DataObject>>, 
             dataObjects = new HashMap<>(variables.size());
 
             for (Entry<String, VariableInstance> entry : variables.entrySet()) {
-                String variableName = entry.getKey();
                 VariableInstance variableEntity = entry.getValue();
 
                 String localizedName = null;
                 String localizedDescription = null;
 
-                ExecutionEntity executionEntity = commandContext.getExecutionEntityManager().findById(variableEntity.getExecutionId());
+                ExecutionEntity executionEntity = CommandContextUtil.getExecutionEntityManager(commandContext).findById(variableEntity.getExecutionId());
                 while (!executionEntity.isScope()) {
                     executionEntity = executionEntity.getParent();
                 }
@@ -113,7 +114,7 @@ public class GetTaskDataObjectsCmd implements Command<Map<String, DataObject>>, 
                 }
 
                 if (locale != null && foundDataObject != null) {
-                    ObjectNode languageNode = Context.getLocalizationElementProperties(locale, foundDataObject.getId(),
+                    ObjectNode languageNode = BpmnOverrideContext.getLocalizationElementProperties(locale, foundDataObject.getId(),
                             task.getProcessDefinitionId(), withLocalizationFallback);
 
                     if (languageNode != null) {
@@ -129,7 +130,9 @@ public class GetTaskDataObjectsCmd implements Command<Map<String, DataObject>>, 
                 }
 
                 if (foundDataObject != null) {
-                    dataObjects.put(variableEntity.getName(), new DataObjectImpl(variableEntity.getName(), variableEntity.getValue(),
+                    dataObjects.put(
+                            variableEntity.getName(), new DataObjectImpl(variableEntity.getId(), variableEntity.getProcessInstanceId(),
+                                    variableEntity.getExecutionId(), variableEntity.getName(), variableEntity.getValue(),
                             foundDataObject.getDocumentation(), foundDataObject.getType(), localizedName, localizedDescription, foundDataObject.getId()));
                 }
             }

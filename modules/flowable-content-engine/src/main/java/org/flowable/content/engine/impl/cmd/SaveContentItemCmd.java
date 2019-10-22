@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,15 +17,17 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.content.api.ContentItem;
 import org.flowable.content.api.ContentMetaDataKeys;
 import org.flowable.content.api.ContentObject;
 import org.flowable.content.api.ContentStorage;
 import org.flowable.content.engine.ContentEngineConfiguration;
-import org.flowable.content.engine.impl.interceptor.Command;
-import org.flowable.content.engine.impl.interceptor.CommandContext;
 import org.flowable.content.engine.impl.persistence.entity.ContentItemEntity;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.flowable.content.engine.impl.util.CommandContextUtil;
 
 /**
  * @author Tijs Rademakers
@@ -46,6 +48,7 @@ public class SaveContentItemCmd implements Command<Void>, Serializable {
         this.inputStream = inputStream;
     }
 
+    @Override
     public Void execute(CommandContext commandContext) {
         if (contentItem == null) {
             throw new FlowableIllegalArgumentException("contentItem is null");
@@ -57,16 +60,23 @@ public class SaveContentItemCmd implements Command<Void>, Serializable {
 
         ContentItemEntity contentItemEntity = (ContentItemEntity) contentItem;
 
-        ContentEngineConfiguration contentEngineConfiguration = commandContext.getContentEngineConfiguration();
+        ContentEngineConfiguration contentEngineConfiguration = CommandContextUtil.getContentEngineConfiguration();
 
         if (inputStream != null) {
             // Stream given, write to store and save a reference to the content object
-            Map<String, Object> metaData = new HashMap<String, Object>();
+            Map<String, Object> metaData = new HashMap<>();
             if (contentItem.getTaskId() != null) {
                 metaData.put(ContentMetaDataKeys.TASK_ID, contentItem.getTaskId());
             } else {
                 if (contentItem.getProcessInstanceId() != null) {
                     metaData.put(ContentMetaDataKeys.PROCESS_INSTANCE_ID, contentItem.getProcessInstanceId());
+                } else {
+                    if (StringUtils.isNotEmpty(contentItem.getScopeType())) {
+                        metaData.put(ContentMetaDataKeys.SCOPE_TYPE, contentItem.getScopeType());
+                    }
+                    if (StringUtils.isNotEmpty(contentItem.getScopeId())) {
+                        metaData.put(ContentMetaDataKeys.SCOPE_ID, contentItem.getScopeId());
+                    }
                 }
             }
 
@@ -79,6 +89,9 @@ public class SaveContentItemCmd implements Command<Void>, Serializable {
             // After storing the stream, store the length to be accessible without having to consult the
             // underlying content storage to get file size
             contentItemEntity.setContentSize(createContentObject.getContentLength());
+
+            // Make lastModified timestamp update whenever the content changes
+            contentItemEntity.setLastModified(contentEngineConfiguration.getClock().getCurrentTime());
         }
 
         if (contentItemEntity.getLastModified() == null) {
@@ -89,11 +102,9 @@ public class SaveContentItemCmd implements Command<Void>, Serializable {
             if (contentItemEntity.getCreated() == null) {
                 contentItemEntity.setCreated(contentEngineConfiguration.getClock().getCurrentTime());
             }
-
-            commandContext.getContentItemEntityManager().insert(contentItemEntity);
-
+            CommandContextUtil.getContentItemEntityManager().insert(contentItemEntity);
         } else {
-            commandContext.getContentItemEntityManager().update(contentItemEntity);
+            CommandContextUtil.getContentItemEntityManager().update(contentItemEntity);
         }
 
         return null;

@@ -12,9 +12,10 @@
  */
 package org.flowable.engine.impl.event.logger;
 
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.event.logger.handler.EventLoggerEventHandler;
-import org.flowable.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.persistence.entity.EventLogEntryEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +24,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DatabaseEventFlusher extends AbstractEventFlusher {
 
-    private static final Logger logger = LoggerFactory.getLogger(DatabaseEventFlusher.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseEventFlusher.class);
 
     @Override
     public void closing(CommandContext commandContext) {
@@ -32,20 +33,22 @@ public class DatabaseEventFlusher extends AbstractEventFlusher {
             return; // Not interested in events about exceptions
         }
 
-        EventLogEntryEntityManager eventLogEntryEntityManager = commandContext.getEventLogEntryEntityManager();
+        EventLogEntryEntityManager eventLogEntryEntityManager = CommandContextUtil.getEventLogEntryEntityManager(commandContext);
         for (EventLoggerEventHandler eventHandler : eventHandlers) {
             try {
                 eventLogEntryEntityManager.insert(eventHandler.generateEventLogEntry(commandContext), false);
             } catch (Exception e) {
-                logger.warn("Could not create event log", e);
+                LOGGER.warn("Could not create event log", e);
             }
         }
     }
 
+    @Override
     public void afterSessionsFlush(CommandContext commandContext) {
 
     }
 
+    @Override
     public void closeFailure(CommandContext commandContext) {
 
     }

@@ -1,4 +1,19 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.rest.api.jpa;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -7,15 +22,26 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpGet;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
 import org.flowable.engine.test.Deployment;
 import org.flowable.rest.api.jpa.model.Message;
+import org.flowable.rest.api.jpa.repository.MessageRepository;
 import org.flowable.rest.service.api.RestUrls;
+import org.flowable.task.api.Task;
+import org.junit.Before;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 public class JpaRestTest extends BaseJPARestTestCase {
+    
+    protected MessageRepository messageRepository;
+    
+    @Before
+    public void initMessageRepository() {
+        this.messageRepository = appContext.getBean(MessageRepository.class);
+    }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/api/jpa/jpa-process.bpmn20.xml" })
     public void testGetJpaVariableViaTaskVariablesCollections() throws Exception {
 
@@ -25,7 +51,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
         assertEquals("Hello World", message.getText());
 
         // add the entity to the process variables and start the process
-        Map<String, Object> processVariables = new HashMap<String, Object>();
+        Map<String, Object> processVariables = new HashMap<>();
         processVariables.put("message", message);
 
         ProcessInstance processInstance = processEngine.getRuntimeService().startProcessInstanceByKey("jpa-process", processVariables);
@@ -36,7 +62,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
 
         // Request all variables (no scope provides) which include global and
         // local
-        HttpResponse response = executeHttpRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_TASK_VARIABLES_COLLECTION, task.getId())), HttpStatus.SC_OK);
+        HttpResponse response = executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_TASK_VARIABLES_COLLECTION, task.getId())), HttpStatus.SC_OK);
 
         JsonNode responseNode = objectMapper.readTree(response.getEntity().getContent()).get(0);
 
@@ -48,6 +74,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
         assertNotNull(responseNode.get("valueUrl"));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/api/jpa/jpa-process.bpmn20.xml" })
     public void testGetJpaVariableViaTaskCollection() throws Exception {
 
@@ -57,7 +84,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
         assertEquals("Hello World", message.getText());
 
         // add the entity to the process variables and start the process
-        Map<String, Object> processVariables = new HashMap<String, Object>();
+        Map<String, Object> processVariables = new HashMap<>();
         processVariables.put("message", message);
 
         ProcessInstance processInstance = processEngine.getRuntimeService().startProcessInstanceByKey("jpa-process", processVariables);
@@ -68,7 +95,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
 
         // Request all variables (no scope provides) which include global and
         // local
-        HttpResponse response = executeHttpRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_TASK_COLLECTION) + "?includeProcessVariables=true"), HttpStatus.SC_OK);
+        HttpResponse response = executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_TASK_COLLECTION) + "?includeProcessVariables=true"), HttpStatus.SC_OK);
 
         JsonNode dataNode = objectMapper.readTree(response.getEntity().getContent()).get("data").get(0);
         assertNotNull(dataNode);
@@ -84,6 +111,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
         assertNotNull(variableNode.get("valueUrl"));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/api/jpa/jpa-process.bpmn20.xml" })
     public void testGetJpaVariableViaHistoricProcessCollection() throws Exception {
 
@@ -93,7 +121,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
         assertEquals("Hello World", message.getText());
 
         // add the entity to the process variables and start the process
-        Map<String, Object> processVariables = new HashMap<String, Object>();
+        Map<String, Object> processVariables = new HashMap<>();
         processVariables.put("message", message);
 
         ProcessInstance processInstance = processEngine.getRuntimeService().startProcessInstanceByKey("jpa-process", processVariables);
@@ -104,7 +132,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
 
         // Request all variables (no scope provides) which include global and
         // local
-        HttpResponse response = executeHttpRequest(
+        HttpResponse response = executeRequest(
                 new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_HISTORIC_PROCESS_INSTANCES) + "?processInstanceId=" + processInstance.getId() + "&includeProcessVariables=true"),
                 HttpStatus.SC_OK);
 
@@ -120,6 +148,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
         assertNotNull(variableNode.get("valueUrl"));
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/api/jpa/jpa-process.bpmn20.xml" })
     public void testGetJpaVariableViaHistoricVariablesCollections() throws Exception {
 
@@ -129,7 +158,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
         assertEquals("Hello World", message.getText());
 
         // add the entity to the process variables and start the process
-        Map<String, Object> processVariables = new HashMap<String, Object>();
+        Map<String, Object> processVariables = new HashMap<>();
         processVariables.put("message", message);
 
         ProcessInstance processInstance = processEngine.getRuntimeService().startProcessInstanceByKey("jpa-process", processVariables);
@@ -140,7 +169,7 @@ public class JpaRestTest extends BaseJPARestTestCase {
 
         // Request all variables (no scope provides) which include global and
         // local
-        HttpResponse response = executeHttpRequest(
+        HttpResponse response = executeRequest(
                 new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_HISTORIC_VARIABLE_INSTANCES) + "?processInstanceId=" + processInstance.getId()), HttpStatus.SC_OK);
 
         JsonNode responseNode = objectMapper.readTree(response.getEntity().getContent());

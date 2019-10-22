@@ -24,19 +24,20 @@ import org.slf4j.LoggerFactory;
  */
 public class RetryInterceptor extends AbstractCommandInterceptor {
 
-    private static Logger log = LoggerFactory.getLogger(RetryInterceptor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RetryInterceptor.class);
 
     protected int numOfRetries = 3;
     protected int waitTimeInMs = 50;
     protected int waitIncreaseFactor = 5;
 
+    @Override
     public <T> T execute(CommandConfig config, Command<T> command) {
         long waitTime = waitTimeInMs;
         int failedAttempts = 0;
 
         do {
             if (failedAttempts > 0) {
-                log.info("Waiting for {}ms before retrying the command.", waitTime);
+                LOGGER.info("Waiting for {}ms before retrying the command.", waitTime);
                 waitBeforeRetry(waitTime);
                 waitTime *= waitIncreaseFactor;
             }
@@ -47,7 +48,7 @@ public class RetryInterceptor extends AbstractCommandInterceptor {
                 return next.execute(config, command);
 
             } catch (ActivitiOptimisticLockingException e) {
-                log.info("Caught optimistic locking exception: {}", e.getMessage(), e);
+                LOGGER.info("Caught optimistic locking exception: {}", e.getMessage(), e);
             }
 
             failedAttempts++;
@@ -60,7 +61,7 @@ public class RetryInterceptor extends AbstractCommandInterceptor {
         try {
             Thread.sleep(waitTime);
         } catch (InterruptedException e) {
-            log.debug("I am interrupted while waiting for a retry.");
+            LOGGER.debug("I am interrupted while waiting for a retry.");
         }
     }
 

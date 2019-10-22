@@ -18,14 +18,13 @@ import java.util.Map;
 import org.flowable.form.engine.impl.parser.FormDefinitionParse;
 import org.flowable.form.engine.impl.persistence.entity.FormDefinitionEntity;
 import org.flowable.form.engine.impl.persistence.entity.FormDeploymentEntity;
-import org.flowable.form.engine.impl.persistence.entity.ResourceEntity;
-import org.flowable.form.model.FormModel;
+import org.flowable.form.engine.impl.persistence.entity.FormResourceEntity;
+import org.flowable.form.model.SimpleFormModel;
 
 /**
- * An intermediate representation of a DeploymentEntity which keeps track of all of the entity's DecisionTableEntities and resources, and BPMN parses, models, and processes associated with each
- * DecisionTableEntity - all produced by parsing the deployment.
+ * An intermediate representation of a DeploymentEntity which keeps track of all of the entity's and resources.
  * 
- * The DecisionTableEntities are expected to be "not fully set-up" - they may be inconsistent with the DeploymentEntity and/or the persisted versions, and if the deployment is new, they will not yet
+ * The FormDefinitionEntities are expected to be "not fully set-up" - they may be inconsistent with the DeploymentEntity and/or the persisted versions, and if the deployment is new, they will not yet
  * be persisted.
  */
 public class ParsedDeployment {
@@ -34,12 +33,12 @@ public class ParsedDeployment {
 
     protected List<FormDefinitionEntity> formDefinitions;
     protected Map<FormDefinitionEntity, FormDefinitionParse> mapFormDefinitionsToParses;
-    protected Map<FormDefinitionEntity, ResourceEntity> mapFormDefinitionsToResources;
+    protected Map<FormDefinitionEntity, FormResourceEntity> mapFormDefinitionsToResources;
 
     public ParsedDeployment(
             FormDeploymentEntity entity, List<FormDefinitionEntity> formDefinitions,
             Map<FormDefinitionEntity, FormDefinitionParse> mapFormDefinitionsToParses,
-            Map<FormDefinitionEntity, ResourceEntity> mapFormDefinitionsToResources) {
+            Map<FormDefinitionEntity, FormResourceEntity> mapFormDefinitionsToResources) {
 
         this.deploymentEntity = entity;
         this.formDefinitions = formDefinitions;
@@ -55,7 +54,7 @@ public class ParsedDeployment {
         return formDefinitions;
     }
 
-    public ResourceEntity getResourceForFormDefinition(FormDefinitionEntity formDefinition) {
+    public FormResourceEntity getResourceForFormDefinition(FormDefinitionEntity formDefinition) {
         return mapFormDefinitionsToResources.get(formDefinition);
     }
 
@@ -63,7 +62,7 @@ public class ParsedDeployment {
         return mapFormDefinitionsToParses.get(formDefinition);
     }
 
-    public FormModel getFormModelForFormDefinition(FormDefinitionEntity formDefinition) {
+    public SimpleFormModel getFormModelForFormDefinition(FormDefinitionEntity formDefinition) {
         FormDefinitionParse parse = getFormDefinitionParseForFormDefinition(formDefinition);
 
         return (parse == null ? null : parse.getFormModel());

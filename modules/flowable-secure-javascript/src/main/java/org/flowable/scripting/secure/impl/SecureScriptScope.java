@@ -13,8 +13,8 @@
 package org.flowable.scripting.secure.impl;
 
 import org.flowable.engine.delegate.DelegateExecution;
-import org.flowable.engine.delegate.DelegateTask;
-import org.flowable.engine.delegate.VariableScope;
+import org.flowable.task.service.delegate.DelegateTask;
+import org.flowable.variable.api.delegate.VariableScope;
 import org.mozilla.javascript.Scriptable;
 
 /**
@@ -66,7 +66,6 @@ public class SecureScriptScope implements Scriptable {
 
     @Override
     public void put(String s, Scriptable scriptable, Object o) {
-        System.out.println("Putting " + s);
     }
 
     @Override

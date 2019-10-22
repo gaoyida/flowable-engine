@@ -15,10 +15,12 @@ package org.flowable.engine.impl;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.query.AbstractNativeQuery;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.NativeHistoricProcessInstanceQuery;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.interceptor.CommandExecutor;
+import org.flowable.engine.impl.util.CommandContextUtil;
 
 public class NativeHistoricProcessInstanceQueryImpl extends AbstractNativeQuery<NativeHistoricProcessInstanceQuery, HistoricProcessInstance> implements NativeHistoricProcessInstanceQuery {
 
@@ -34,12 +36,14 @@ public class NativeHistoricProcessInstanceQueryImpl extends AbstractNativeQuery<
 
     // results ////////////////////////////////////////////////////////////////
 
-    public List<HistoricProcessInstance> executeList(CommandContext commandContext, Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return commandContext.getHistoricProcessInstanceEntityManager().findHistoricProcessInstancesByNativeQuery(parameterMap, firstResult, maxResults);
+    @Override
+    public List<HistoricProcessInstance> executeList(CommandContext commandContext, Map<String, Object> parameterMap) {
+        return CommandContextUtil.getHistoricProcessInstanceEntityManager(commandContext).findHistoricProcessInstancesByNativeQuery(parameterMap);
     }
 
+    @Override
     public long executeCount(CommandContext commandContext, Map<String, Object> parameterMap) {
-        return commandContext.getHistoricProcessInstanceEntityManager().findHistoricProcessInstanceCountByNativeQuery(parameterMap);
+        return CommandContextUtil.getHistoricProcessInstanceEntityManager(commandContext).findHistoricProcessInstanceCountByNativeQuery(parameterMap);
     }
 
 }

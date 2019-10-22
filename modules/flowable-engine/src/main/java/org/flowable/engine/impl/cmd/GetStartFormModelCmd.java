@@ -13,33 +13,29 @@
 package org.flowable.engine.impl.cmd;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.StartEvent;
-import org.flowable.content.api.ContentItem;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.form.model.FormField;
-import org.flowable.form.model.FormFieldTypes;
-import org.flowable.form.model.FormModel;
+import org.flowable.form.api.FormFieldHandler;
+import org.flowable.form.api.FormInfo;
+import org.flowable.form.api.FormService;
 
 /**
  * @author Tijs Rademakers
  */
-public class GetStartFormModelCmd implements Command<FormModel>, Serializable {
+public class GetStartFormModelCmd implements Command<FormInfo>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -51,13 +47,15 @@ public class GetStartFormModelCmd implements Command<FormModel>, Serializable {
         this.processInstanceId = processInstanceId;
     }
 
-    public FormModel execute(CommandContext commandContext) {
-        ProcessEngineConfigurationImpl processEngineConfiguration = commandContext.getProcessEngineConfiguration();
-        if (!processEngineConfiguration.isFormEngineInitialized()) {
+    @Override
+    public FormInfo execute(CommandContext commandContext) {
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
+        FormService formService = CommandContextUtil.getFormService(commandContext);
+        if (formService == null) {
             throw new FlowableIllegalArgumentException("Form engine is not initialized");
         }
 
-        FormModel formModel = null;
+        FormInfo formInfo = null;
         ProcessDefinition processDefinition = ProcessDefinitionUtil.getProcessDefinition(processDefinitionId);
         BpmnModel bpmnModel = ProcessDefinitionUtil.getBpmnModel(processDefinitionId);
         Process process = bpmnModel.getProcessById(processDefinition.getKey());
@@ -65,53 +63,21 @@ public class GetStartFormModelCmd implements Command<FormModel>, Serializable {
         if (startElement instanceof StartEvent) {
             StartEvent startEvent = (StartEvent) startElement;
             if (StringUtils.isNotEmpty(startEvent.getFormKey())) {
-                formModel = processEngineConfiguration.getFormEngineFormService().getFormInstanceModelByKeyAndParentDeploymentId(
-                        startEvent.getFormKey(), processDefinition.getDeploymentId(), null, processInstanceId, null, processDefinition.getTenantId());
+                Deployment deployment = CommandContextUtil.getDeploymentEntityManager(commandContext).findById(processDefinition.getDeploymentId());
+                formInfo = formService.getFormInstanceModelByKeyAndParentDeploymentId(startEvent.getFormKey(), deployment.getParentDeploymentId(), 
+                                null, processInstanceId, null, processDefinition.getTenantId(), processEngineConfiguration.isFallbackToDefaultTenant());
             }
         }
 
         // If form does not exists, we don't want to leak out this info to just anyone
-        if (formModel == null) {
+        if (formInfo == null) {
             throw new FlowableObjectNotFoundException("Form model for process definition " + processDefinitionId + " cannot be found");
         }
 
-        fetchRelatedContentInfoIfNeeded(formModel, processEngineConfiguration);
+        FormFieldHandler formFieldHandler = processEngineConfiguration.getFormFieldHandler();
+        formFieldHandler.enrichFormFields(formInfo);
 
-        return formModel;
-    }
-
-    protected void fetchRelatedContentInfoIfNeeded(FormModel formModel, ProcessEngineConfigurationImpl processEngineConfiguration) {
-        if (!processEngineConfiguration.isContentEngineInitialized()) {
-            return;
-        }
-
-        if (formModel.getFields() != null) {
-            for (FormField formField : formModel.getFields()) {
-                if (FormFieldTypes.UPLOAD.equals(formField.getType())) {
-
-                    List<String> contentItemIds = null;
-                    if (formField.getValue() instanceof List) {
-                        contentItemIds = (List<String>) formField.getValue();
-
-                    } else if (formField.getValue() instanceof String) {
-                        String[] splittedString = ((String) formField.getValue()).split(",");
-                        contentItemIds = new ArrayList<String>();
-                        Collections.addAll(contentItemIds, splittedString);
-                    }
-
-                    if (contentItemIds != null) {
-                        Set<String> contentItemIdSet = new HashSet<>(contentItemIds);
-
-                        List<ContentItem> contentItems = processEngineConfiguration.getContentService()
-                                .createContentItemQuery()
-                                .ids(contentItemIdSet)
-                                .list();
-
-                        formField.setValue(contentItems);
-                    }
-                }
-            }
-        }
+        return formInfo;
     }
 
 }

@@ -14,17 +14,24 @@ package org.flowable.dmn.engine.test;
 
 import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.dmn.api.DmnDeployment;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.impl.db.SchemaManager;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandConfig;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.dmn.api.DmnDeploymentBuilder;
-import org.flowable.dmn.api.DmnRepositoryService;
+import org.flowable.dmn.api.DmnManagementService;
 import org.flowable.dmn.engine.DmnEngine;
 import org.flowable.dmn.engine.DmnEngineConfiguration;
-import org.flowable.dmn.engine.impl.deployer.ParsedDeploymentBuilder;
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
+import org.flowable.dmn.engine.impl.deployer.DmnResourceUtil;
+import org.flowable.dmn.engine.impl.util.CommandContextUtil;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +41,18 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DmnTestHelper {
 
-    private static Logger log = LoggerFactory.getLogger(DmnTestHelper.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DmnTestHelper.class);
 
     public static final String EMPTY_LINE = "\n";
 
-    static Map<String, DmnEngine> dmnEngines = new HashMap<String, DmnEngine>();
+    static Map<String, DmnEngine> dmnEngines = new HashMap<>();
+    
+    private static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = new ArrayList<>();
+    
+    static {
+        TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.add("ACT_DMN_DATABASECHANGELOG");
+        TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.add("ACT_DMN_DATABASECHANGELOGLOCK");
+    }
 
     // Test annotation support /////////////////////////////////////////////
 
@@ -48,33 +62,60 @@ public abstract class DmnTestHelper {
         try {
             method = testClass.getMethod(methodName, (Class<?>[]) null);
         } catch (Exception e) {
-            log.warn("Could not get method by reflection. This could happen if you are using @Parameters in combination with annotations.", e);
+            LOGGER.warn("Could not get method by reflection. This could happen if you are using @Parameters in combination with annotations.", e);
             return null;
         }
-        DmnDeploymentAnnotation deploymentAnnotation = method.getAnnotation(DmnDeploymentAnnotation.class);
+        
+        DmnDeployment deploymentAnnotation = method.getAnnotation(DmnDeployment.class);
         if (deploymentAnnotation != null) {
-            log.debug("annotation @Deployment creates deployment for {}.{}", testClass.getSimpleName(), methodName);
-            String[] resources = deploymentAnnotation.resources();
-            if (resources.length == 0) {
-                String name = method.getName();
-                String resource = getDmnDecisionResource(testClass, name);
-                resources = new String[] { resource };
-            }
-
-            DmnDeploymentBuilder deploymentBuilder = dmnEngine.getDmnRepositoryService().createDeployment().name(testClass.getSimpleName() + "." + methodName);
-
-            for (String resource : resources) {
-                deploymentBuilder.addClasspathResource(resource);
-            }
-
-            deploymentId = deploymentBuilder.deploy().getId();
+            deploymentId = deployResourceFromAnnotation(dmnEngine, testClass, methodName, method, deploymentAnnotation.resources());
+        }
+        DmnDeploymentAnnotation deploymentAnnotation2 = method.getAnnotation(DmnDeploymentAnnotation.class);
+        if (deploymentAnnotation2 != null) {
+            deploymentId = deployResourceFromAnnotation(dmnEngine, testClass, methodName, method, deploymentAnnotation2.resources());
         }
 
         return deploymentId;
     }
 
+    public static String annotationDeploymentSetUp(DmnEngine dmnEngine, Class<?> testClass, Method method, DmnDeployment dmnDeploymentAnnotation) {
+        String deploymentId = null;
+        if (dmnDeploymentAnnotation != null) {
+            deploymentId = deployResourceFromAnnotation(dmnEngine, testClass, method.getName(), method, dmnDeploymentAnnotation.resources());
+        }
+        return deploymentId;
+    }
+
+    public static String annotationDeploymentSetUp(DmnEngine dmnEngine, Class<?> testClass, Method method, DmnDeploymentAnnotation dmnDeploymentAnnotation) {
+        String deploymentId = null;
+        if (dmnDeploymentAnnotation != null) {
+            deploymentId = deployResourceFromAnnotation(dmnEngine, testClass, method.getName(), method, dmnDeploymentAnnotation.resources());
+        }
+        return deploymentId;
+    }
+
+    protected static String deployResourceFromAnnotation(DmnEngine dmnEngine, Class<?> testClass, String methodName,
+            Method method, String[] resources) {
+        String deploymentId;
+        LOGGER.debug("annotation @Deployment creates deployment for {}.{}", testClass.getSimpleName(), methodName);
+        if (resources.length == 0) {
+            String name = method.getName();
+            String resource = getDmnDecisionResource(testClass, name);
+            resources = new String[] { resource };
+        }
+
+        DmnDeploymentBuilder deploymentBuilder = dmnEngine.getDmnRepositoryService().createDeployment().name(testClass.getSimpleName() + "." + methodName);
+
+        for (String resource : resources) {
+            deploymentBuilder.addClasspathResource(resource);
+        }
+
+        deploymentId = deploymentBuilder.deploy().getId();
+        return deploymentId;
+    }
+
     public static void annotationDeploymentTearDown(DmnEngine dmnEngine, String deploymentId, Class<?> testClass, String methodName) {
-        log.debug("annotation @Deployment deletes deployment for {}.{}", testClass.getSimpleName(), methodName);
+        LOGGER.debug("annotation @Deployment deletes deployment for {}.{}", testClass.getSimpleName(), methodName);
         if (deploymentId != null) {
             try {
                 dmnEngine.getDmnRepositoryService().deleteDeployment(deploymentId);
@@ -89,7 +130,7 @@ public abstract class DmnTestHelper {
      * parameter: <code>DmnDeployer.DMN_RESOURCE_SUFFIXES</code>. The first resource matching a suffix will be returned.
      */
     public static String getDmnDecisionResource(Class<?> type, String name) {
-        for (String suffix : ParsedDeploymentBuilder.DMN_RESOURCE_SUFFIXES) {
+        for (String suffix : DmnResourceUtil.DMN_RESOURCE_SUFFIXES) {
             String resource = type.getName().replace('.', '/') + "." + name + "." + suffix;
             InputStream inputStream = DmnTestHelper.class.getClassLoader().getResourceAsStream(resource);
             if (inputStream == null) {
@@ -98,7 +139,7 @@ public abstract class DmnTestHelper {
                 return resource;
             }
         }
-        return type.getName().replace('.', '/') + "." + name + "." + ParsedDeploymentBuilder.DMN_RESOURCE_SUFFIXES[0];
+        return type.getName().replace('.', '/') + "." + name + "." + DmnResourceUtil.DMN_RESOURCE_SUFFIXES[0];
     }
 
     // Engine startup and shutdown helpers
@@ -107,9 +148,9 @@ public abstract class DmnTestHelper {
     public static DmnEngine getDmnEngine(String configurationResource) {
         DmnEngine dmnEngine = dmnEngines.get(configurationResource);
         if (dmnEngine == null) {
-            log.debug("==== BUILDING DMN ENGINE ========================================================================");
+            LOGGER.debug("==== BUILDING DMN ENGINE ========================================================================");
             dmnEngine = DmnEngineConfiguration.createDmnEngineConfigurationFromResource(configurationResource).setDatabaseSchemaUpdate(DmnEngineConfiguration.DB_SCHEMA_UPDATE_DROP_CREATE).buildDmnEngine();
-            log.debug("==== DMN ENGINE CREATED =========================================================================");
+            LOGGER.debug("==== DMN ENGINE CREATED =========================================================================");
             dmnEngines.put(configurationResource, dmnEngine);
         }
         return dmnEngine;
@@ -126,12 +167,45 @@ public abstract class DmnTestHelper {
      * Each test is assumed to clean up all DB content it entered. After a test method executed, this method scans all tables to see if the DB is completely clean. It throws AssertionFailed in case
      * the DB is not clean. If the DB is not clean, it is cleaned by performing a create a drop.
      */
-    public static void assertAndEnsureCleanDb(DmnEngine dmnEngine) {
-        log.debug("verifying that db is clean after test");
-        DmnRepositoryService repositoryService = dmnEngine.getDmnEngineConfiguration().getDmnRepositoryService();
-        List<DmnDeployment> deployments = repositoryService.createDeploymentQuery().list();
-        if (deployments != null && !deployments.isEmpty()) {
-            throw new AssertionError("DmnDeployments is not empty");
+    public static void assertAndEnsureCleanDb(final DmnEngine dmnEngine) {
+        LOGGER.debug("verifying that db is clean after test");
+        DmnEngineConfiguration dmnEngineConfiguration = dmnEngine.getDmnEngineConfiguration();
+        DmnManagementService managementService = dmnEngine.getDmnManagementService();
+        Map<String, Long> tableCounts = managementService.getTableCount();
+        StringBuilder outputMessage = new StringBuilder();
+        for (String tableName : tableCounts.keySet()) {
+            String tableNameWithoutPrefix = tableName.replace(dmnEngineConfiguration.getDatabaseTablePrefix(), "");
+            if (!TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK.contains(tableNameWithoutPrefix)) {
+                Long count = tableCounts.get(tableName);
+                if (count != 0L) {
+                    outputMessage.append("  ").append(tableName).append(": ").append(count).append(" record(s) ");
+                }
+            }
+        }
+
+        if (outputMessage.length() > 0) {
+            outputMessage.insert(0, "DB NOT CLEAN: \n");
+            LOGGER.error(EMPTY_LINE);
+            LOGGER.error(outputMessage.toString());
+
+            LOGGER.info("dropping and recreating db");
+
+            CommandExecutor commandExecutor = dmnEngine.getDmnEngineConfiguration().getCommandExecutor();
+            CommandConfig config = new CommandConfig().transactionNotSupported();
+            commandExecutor.execute(config, new Command<Object>() {
+                @Override
+                public Object execute(CommandContext commandContext) {
+                    SchemaManager schemaManager = CommandContextUtil.getDmnEngineConfiguration().getSchemaManager();
+                    schemaManager.schemaDrop();
+                    schemaManager.schemaCreate();
+                    return null;
+                }
+            });
+
+            Assert.fail(outputMessage.toString());
+            
+        } else {
+            LOGGER.info("database was clean");
         }
     }
 

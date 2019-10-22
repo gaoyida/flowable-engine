@@ -15,16 +15,18 @@ package org.flowable.idm.engine.impl;
 
 import java.util.List;
 
-import org.flowable.engine.common.impl.Page;
+import org.flowable.common.engine.api.query.QueryCacheValues;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.impl.query.AbstractQuery;
 import org.flowable.idm.api.Privilege;
 import org.flowable.idm.api.PrivilegeQuery;
-import org.flowable.idm.engine.impl.interceptor.CommandContext;
-import org.flowable.idm.engine.impl.interceptor.CommandExecutor;
+import org.flowable.idm.engine.impl.util.CommandContextUtil;
 
 /**
  * @author Joram Barrez
  */
-public class PrivilegeQueryImpl extends AbstractQuery<PrivilegeQuery, Privilege> implements PrivilegeQuery {
+public class PrivilegeQueryImpl extends AbstractQuery<PrivilegeQuery, Privilege> implements PrivilegeQuery, QueryCacheValues {
 
     private static final long serialVersionUID = 1L;
 
@@ -117,12 +119,12 @@ public class PrivilegeQueryImpl extends AbstractQuery<PrivilegeQuery, Privilege>
 
     @Override
     public long executeCount(CommandContext commandContext) {
-        return commandContext.getPrivilegeEntityManager().findPrivilegeCountByQueryCriteria(this);
+        return CommandContextUtil.getPrivilegeEntityManager(commandContext).findPrivilegeCountByQueryCriteria(this);
     }
 
     @Override
-    public List<Privilege> executeList(CommandContext commandContext, Page page) {
-        return commandContext.getPrivilegeEntityManager().findPrivilegeByQueryCriteria(this, page);
+    public List<Privilege> executeList(CommandContext commandContext) {
+        return CommandContextUtil.getPrivilegeEntityManager(commandContext).findPrivilegeByQueryCriteria(this);
     }
 
 }

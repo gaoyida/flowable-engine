@@ -15,13 +15,12 @@ package org.flowable.dmn.engine.impl.deployer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.flowable.dmn.engine.impl.context.Context;
-import org.flowable.dmn.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.cfg.IdGenerator;
 import org.flowable.dmn.engine.impl.persistence.deploy.Deployer;
 import org.flowable.dmn.engine.impl.persistence.entity.DecisionTableEntity;
 import org.flowable.dmn.engine.impl.persistence.entity.DecisionTableEntityManager;
 import org.flowable.dmn.engine.impl.persistence.entity.DmnDeploymentEntity;
-import org.flowable.engine.common.impl.cfg.IdGenerator;
+import org.flowable.dmn.engine.impl.util.CommandContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,15 +30,17 @@ import org.slf4j.LoggerFactory;
  */
 public class DmnDeployer implements Deployer {
 
-    private static final Logger log = LoggerFactory.getLogger(DmnDeployer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DmnDeployer.class);
 
     protected IdGenerator idGenerator;
     protected ParsedDeploymentBuilderFactory parsedDeploymentBuilderFactory;
     protected DmnDeploymentHelper dmnDeploymentHelper;
     protected CachingAndArtifactsManager cachingAndArtifactsManager;
+    protected boolean usePrefixId;
 
+    @Override
     public void deploy(DmnDeploymentEntity deployment, Map<String, Object> deploymentSettings) {
-        log.debug("Processing deployment {}", deployment.getName());
+        LOGGER.debug("Processing deployment {}", deployment.getName());
 
         // The ParsedDeployment represents the deployment, the decision tables, and the DMN
         // resource, parse, and model associated with each decision table.
@@ -66,7 +67,7 @@ public class DmnDeployer implements Deployer {
      */
     protected Map<DecisionTableEntity, DecisionTableEntity> getPreviousVersionsOfDecisionTables(ParsedDeployment parsedDeployment) {
 
-        Map<DecisionTableEntity, DecisionTableEntity> result = new LinkedHashMap<DecisionTableEntity, DecisionTableEntity>();
+        Map<DecisionTableEntity, DecisionTableEntity> result = new LinkedHashMap<>();
 
         for (DecisionTableEntity newDefinition : parsedDeployment.getAllDecisionTables()) {
             DecisionTableEntity existingDefinition = dmnDeploymentHelper.getMostRecentVersionOfDecisionTable(newDefinition);
@@ -94,7 +95,11 @@ public class DmnDeployer implements Deployer {
             }
 
             decisionTable.setVersion(version);
-            decisionTable.setId(idGenerator.getNextId());
+            if (usePrefixId) {
+                decisionTable.setId(decisionTable.getIdPrefix() + idGenerator.getNextId());
+            } else {
+                decisionTable.setId(idGenerator.getNextId());
+            }
         }
     }
 
@@ -102,8 +107,7 @@ public class DmnDeployer implements Deployer {
      * Saves each decision table. It is assumed that the deployment is new, the definitions have never been saved before, and that they have all their values properly set up.
      */
     protected void persistDecisionTables(ParsedDeployment parsedDeployment) {
-        CommandContext commandContext = Context.getCommandContext();
-        DecisionTableEntityManager decisionTableEntityManager = commandContext.getDecisionTableEntityManager();
+        DecisionTableEntityManager decisionTableEntityManager = CommandContextUtil.getDecisionTableEntityManager();
 
         for (DecisionTableEntity decisionTable : parsedDeployment.getAllDecisionTables()) {
             decisionTableEntityManager.insert(decisionTable);
@@ -154,5 +158,13 @@ public class DmnDeployer implements Deployer {
 
     public void setCachingAndArtifactsManager(CachingAndArtifactsManager manager) {
         this.cachingAndArtifactsManager = manager;
+    }
+
+    public boolean isUsePrefixId() {
+        return usePrefixId;
+    }
+
+    public void setUsePrefixId(boolean usePrefixId) {
+        this.usePrefixId = usePrefixId;
     }
 }

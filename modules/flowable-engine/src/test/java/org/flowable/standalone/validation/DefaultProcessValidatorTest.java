@@ -16,6 +16,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,8 +33,8 @@ import org.flowable.validation.ValidationError;
 import org.flowable.validation.validator.Problems;
 import org.flowable.validation.validator.ValidatorSetNames;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author jbarrez
@@ -42,7 +43,7 @@ public class DefaultProcessValidatorTest {
 
     protected ProcessValidator processValidator;
 
-    @Before
+    @BeforeEach
     public void setupProcessValidator() {
         ProcessValidatorFactory processValidatorFactory = new ProcessValidatorFactory();
         this.processValidator = processValidatorFactory.createDefaultProcessValidator();
@@ -53,13 +54,13 @@ public class DefaultProcessValidatorTest {
 
         InputStream xmlStream = this.getClass().getClassLoader().getResourceAsStream("org/flowable/engine/test/validation/invalidProcess.bpmn20.xml");
         XMLInputFactory xif = XMLInputFactory.newInstance();
-        InputStreamReader in = new InputStreamReader(xmlStream, "UTF-8");
+        InputStreamReader in = new InputStreamReader(xmlStream, StandardCharsets.UTF_8);
         XMLStreamReader xtr = xif.createXMLStreamReader(in);
         BpmnModel bpmnModel = new BpmnXMLConverter().convertToBpmnModel(xtr);
         Assert.assertNotNull(bpmnModel);
 
         List<ValidationError> allErrors = processValidator.validate(bpmnModel);
-        Assert.assertEquals(65, allErrors.size());
+        Assert.assertEquals(70, allErrors.size());
 
         String setName = ValidatorSetNames.FLOWABLE_EXECUTABLE_PROCESS; // shortening it a bit
 
@@ -124,6 +125,8 @@ public class DefaultProcessValidatorTest {
         assertCommonProblemFieldForActivity(problems.get(0));
         problems = findErrors(allErrors, setName, Problems.SERVICE_TASK_WEBSERVICE_INVALID_OPERATION_REF, 1);
         assertCommonProblemFieldForActivity(problems.get(0));
+        problems = findErrors(allErrors, setName, Problems.SERVICE_TASK_USE_LOCAL_SCOPE_FOR_RESULT_VAR_WITHOUT_RESULT_VARIABLE_NAME, 1);
+        assertCommonProblemFieldForActivity(problems.get(0));
 
         // Send task
         problems = findErrors(allErrors, setName, Problems.SEND_TASK_INVALID_IMPLEMENTATION, 1);
@@ -138,6 +141,14 @@ public class DefaultProcessValidatorTest {
         assertCommonProblemFieldForActivity(problems.get(0));
         assertCommonProblemFieldForActivity(problems.get(1));
         problems = findErrors(allErrors, setName, Problems.MAIL_TASK_NO_CONTENT, 4);
+        assertCommonProblemFieldForActivity(problems.get(0));
+        assertCommonProblemFieldForActivity(problems.get(1));
+
+        // Http task
+        problems = findErrors(allErrors, setName, Problems.HTTP_TASK_NO_REQUEST_METHOD, 2);
+        assertCommonProblemFieldForActivity(problems.get(0));
+        assertCommonProblemFieldForActivity(problems.get(1));
+        problems = findErrors(allErrors, setName, Problems.HTTP_TASK_NO_REQUEST_URL, 2);
         assertCommonProblemFieldForActivity(problems.get(0));
         assertCommonProblemFieldForActivity(problems.get(1));
 
@@ -255,7 +266,7 @@ public class DefaultProcessValidatorTest {
                 "    <userTask id='theTask1' name='Input is one' /> " + "    <userTask id='theTask2' name='Default input' /> " + "  </process>" + "</definitions>";
 
         XMLInputFactory xif = XMLInputFactory.newInstance();
-        InputStreamReader in = new InputStreamReader(new ByteArrayInputStream(flowWithoutConditionNoDefaultFlow.getBytes()), "UTF-8");
+        InputStreamReader in = new InputStreamReader(new ByteArrayInputStream(flowWithoutConditionNoDefaultFlow.getBytes()), StandardCharsets.UTF_8);
         XMLStreamReader xtr = xif.createXMLStreamReader(in);
         BpmnModel bpmnModel = new BpmnXMLConverter().convertToBpmnModel(xtr);
         Assert.assertNotNull(bpmnModel);
@@ -349,7 +360,7 @@ public class DefaultProcessValidatorTest {
     }
 
     protected List<ValidationError> findErrors(List<ValidationError> errors, String validatorSetName, String problemName) {
-        List<ValidationError> results = new ArrayList<ValidationError>();
+        List<ValidationError> results = new ArrayList<>();
         for (ValidationError error : errors) {
             if (error.getValidatorSetName().equals(validatorSetName) && error.getProblem().equals(problemName)) {
                 results.add(error);

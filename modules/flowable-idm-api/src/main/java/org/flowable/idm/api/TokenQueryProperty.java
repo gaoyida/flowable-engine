@@ -16,7 +16,7 @@ package org.flowable.idm.api;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
 
 /**
  * Contains the possible properties that can be used by the {@link TokenQuery}.
@@ -27,7 +27,7 @@ public class TokenQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, TokenQueryProperty> properties = new HashMap<String, TokenQueryProperty>();
+    private static final Map<String, TokenQueryProperty> properties = new HashMap<>();
 
     public static final TokenQueryProperty TOKEN_ID = new TokenQueryProperty("RES.ID_");
     public static final TokenQueryProperty TOKEN_DATE = new TokenQueryProperty("RES.TOKEN_DATE_");
@@ -39,6 +39,7 @@ public class TokenQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

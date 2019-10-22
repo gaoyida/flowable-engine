@@ -12,7 +12,8 @@
  */
 package org.flowable.engine.impl.agenda;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.flowable.bpmn.model.Activity;
@@ -22,19 +23,24 @@ import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.FlowNode;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.SubProcess;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.impl.util.CollectionUtil;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.util.CollectionUtil;
 import org.flowable.engine.delegate.ExecutionListener;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
-import org.flowable.engine.impl.context.Context;
+import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.delegate.ActivityBehavior;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.jobexecutor.AsyncContinuationJobHandler;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
-import org.flowable.engine.impl.persistence.entity.JobEntity;
+import org.flowable.engine.impl.persistence.entity.ExecutionEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.ProcessDefinitionUtil;
 import org.flowable.engine.logging.LogMDC;
-import org.flowable.engine.runtime.Job;
+import org.flowable.job.api.Job;
+import org.flowable.job.service.JobService;
+import org.flowable.job.service.impl.persistence.entity.JobEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +54,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ContinueProcessOperation extends AbstractOperation {
 
-    private static Logger logger = LoggerFactory.getLogger(ContinueProcessOperation.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ContinueProcessOperation.class);
 
     protected boolean forceSynchronousOperation;
     protected boolean inCompensation;
@@ -83,6 +89,8 @@ public class ContinueProcessOperation extends AbstractOperation {
     }
 
     protected void continueThroughFlowNode(FlowNode flowNode) {
+        
+        execution.setActive(true);
 
         // Check if it's the initial flow element. If so, we must fire the execution listeners for the process too
         if (flowNode.getIncomingFlows() != null
@@ -94,7 +102,7 @@ public class ContinueProcessOperation extends AbstractOperation {
         // For a subprocess, a new child execution is created that will visit the steps of the subprocess
         // The original execution that arrived here will wait until the subprocess is finished
         // and will then be used to continue the process instance.
-        if (flowNode instanceof SubProcess) {
+        if (!forceSynchronousOperation && flowNode instanceof SubProcess) {
             createChildExecutionForSubProcess((SubProcess) flowNode);
         }
 
@@ -117,27 +125,30 @@ public class ContinueProcessOperation extends AbstractOperation {
         // We create a new execution and delete the incoming one to have a proper scope that
         // does not conflict anything with any existing scopes
 
-        ExecutionEntity subProcessExecution = commandContext.getExecutionEntityManager().createChildExecution(parentScopeExecution);
+        ExecutionEntity subProcessExecution = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(parentScopeExecution);
         subProcessExecution.setCurrentFlowElement(subProcess);
         subProcessExecution.setScope(true);
 
-        commandContext.getExecutionEntityManager().deleteExecutionAndRelatedData(execution, null, false);
+        CommandContextUtil.getExecutionEntityManager(commandContext).deleteRelatedDataForExecution(execution, null);
+        CommandContextUtil.getExecutionEntityManager(commandContext).delete(execution);
         execution = subProcessExecution;
     }
 
     protected void executeSynchronous(FlowNode flowNode) {
-        commandContext.getHistoryManager().recordActivityStart(execution);
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityStart(execution);
 
         // Execution listener: event 'start'
         if (CollectionUtil.isNotEmpty(flowNode.getExecutionListeners())) {
             executeExecutionListeners(flowNode, ExecutionListener.EVENTNAME_START);
         }
 
-        // Execute any boundary events, sub process boundary events will be executed from the activity behavior
+        // Create any boundary events, sub process boundary events will be created from the activity behavior
+        List<ExecutionEntity> boundaryEventExecutions = null;
+        List<BoundaryEvent> boundaryEvents = null;
         if (!inCompensation && flowNode instanceof Activity) { // Only activities can have boundary events
-            List<BoundaryEvent> boundaryEvents = ((Activity) flowNode).getBoundaryEvents();
+            boundaryEvents = ((Activity) flowNode).getBoundaryEvents();
             if (CollectionUtil.isNotEmpty(boundaryEvents)) {
-                executeBoundaryEvents(boundaryEvents, execution);
+                boundaryEventExecutions = createBoundaryEvents(boundaryEvents, execution);
             }
         }
 
@@ -146,16 +157,34 @@ public class ContinueProcessOperation extends AbstractOperation {
 
         if (activityBehavior != null) {
             executeActivityBehavior(activityBehavior, flowNode);
-
+            executeBoundaryEvents(boundaryEvents, boundaryEventExecutions);
         } else {
-            logger.debug("No activityBehavior on activity '{}' with execution {}", flowNode.getId(), execution.getId());
-            Context.getAgenda().planTakeOutgoingSequenceFlowsOperation(execution, true);
+            executeBoundaryEvents(boundaryEvents, boundaryEventExecutions);
+            LOGGER.debug("No activityBehavior on activity '{}' with execution {}", flowNode.getId(), execution.getId());
+            CommandContextUtil.getAgenda().planTakeOutgoingSequenceFlowsOperation(execution, true);
         }
     }
 
     protected void executeAsynchronous(FlowNode flowNode) {
-        JobEntity job = commandContext.getJobManager().createAsyncJob(execution, flowNode.isExclusive());
-        commandContext.getJobManager().scheduleAsyncJob(job);
+        JobService jobService = CommandContextUtil.getJobService(commandContext);
+        
+        JobEntity job = jobService.createJob();
+        job.setExecutionId(execution.getId());
+        job.setProcessInstanceId(execution.getProcessInstanceId());
+        job.setProcessDefinitionId(execution.getProcessDefinitionId());
+        job.setElementId(flowNode.getId());
+        job.setElementName(flowNode.getName());
+        job.setJobHandlerType(AsyncContinuationJobHandler.TYPE);
+
+        // Inherit tenant id (if applicable)
+        if (execution.getTenantId() != null) {
+            job.setTenantId(execution.getTenantId());
+        }
+        
+        execution.getJobs().add(job);
+        
+        jobService.createAsyncJob(job, flowNode.isExclusive());
+        jobService.scheduleAsyncJob(job);
     }
 
     protected void executeMultiInstanceSynchronous(FlowNode flowNode) {
@@ -164,13 +193,9 @@ public class ContinueProcessOperation extends AbstractOperation {
         if (CollectionUtil.isNotEmpty(flowNode.getExecutionListeners())) {
             executeExecutionListeners(flowNode, ExecutionListener.EVENTNAME_START);
         }
-
-        // Execute any boundary events, sub process boundary events will be executed from the activity behavior
-        if (!inCompensation && flowNode instanceof Activity) { // Only activities can have boundary events
-            List<BoundaryEvent> boundaryEvents = ((Activity) flowNode).getBoundaryEvents();
-            if (CollectionUtil.isNotEmpty(boundaryEvents)) {
-                executeBoundaryEvents(boundaryEvents, execution);
-            }
+        
+        if (!hasMultiInstanceRootExecution(execution, flowNode)) {
+            execution = createMultiInstanceRootExecution(execution);
         }
 
         // Execute the multi instance behavior
@@ -178,19 +203,72 @@ public class ContinueProcessOperation extends AbstractOperation {
 
         if (activityBehavior != null) {
             executeActivityBehavior(activityBehavior, flowNode);
-
+            
+            if (!execution.isDeleted() && !execution.isEnded()) {
+                // Create any boundary events, sub process boundary events will be created from the activity behavior
+                List<ExecutionEntity> boundaryEventExecutions = null;
+                List<BoundaryEvent> boundaryEvents = null;
+                if (!inCompensation && flowNode instanceof Activity) { // Only activities can have boundary events
+                    boundaryEvents = ((Activity) flowNode).getBoundaryEvents();
+                    if (CollectionUtil.isNotEmpty(boundaryEvents)) {
+                        boundaryEventExecutions = createBoundaryEvents(boundaryEvents, execution);
+                    }
+                }
+                
+                executeBoundaryEvents(boundaryEvents, boundaryEventExecutions);
+            }
+            
         } else {
             throw new FlowableException("Expected an activity behavior in flow node " + flowNode.getId());
         }
     }
+    
+    protected boolean hasMultiInstanceRootExecution(ExecutionEntity execution, FlowNode flowNode) {
+        ExecutionEntity currentExecution = execution.getParent();
+        while (currentExecution != null) {
+            if (currentExecution.isMultiInstanceRoot() && flowNode.getId().equals(currentExecution.getActivityId())) {
+                return true;
+            }
+            currentExecution = currentExecution.getParent();
+        }
+        return false;
+    }
+    
+    protected ExecutionEntity createMultiInstanceRootExecution(ExecutionEntity execution) {
+        ExecutionEntity parentExecution = execution.getParent();
+        FlowElement flowElement = execution.getCurrentFlowElement();
+        
+        ExecutionEntityManager executionEntityManager = CommandContextUtil.getExecutionEntityManager();
+        executionEntityManager.deleteRelatedDataForExecution(execution, null);
+        executionEntityManager.delete(execution);
+        
+        ExecutionEntity multiInstanceRootExecution = executionEntityManager.createChildExecution(parentExecution);
+        multiInstanceRootExecution.setCurrentFlowElement(flowElement);
+        multiInstanceRootExecution.setMultiInstanceRoot(true);
+        multiInstanceRootExecution.setActive(false);
+        return multiInstanceRootExecution;
+    }
 
     protected void executeActivityBehavior(ActivityBehavior activityBehavior, FlowNode flowNode) {
-        logger.debug("Executing activityBehavior {} on activity '{}' with execution {}", activityBehavior.getClass(), flowNode.getId(), execution.getId());
+        LOGGER.debug("Executing activityBehavior {} on activity '{}' with execution {}", activityBehavior.getClass(), flowNode.getId(), execution.getId());
 
-        if (Context.getProcessEngineConfiguration() != null && Context.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
-            Context.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(
-                    FlowableEventBuilder.createActivityEvent(FlowableEngineEventType.ACTIVITY_STARTED, flowNode.getId(), flowNode.getName(), execution.getId(),
-                            execution.getProcessInstanceId(), execution.getProcessDefinitionId(), flowNode));
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration();
+        FlowableEventDispatcher eventDispatcher = null;
+        if (processEngineConfiguration != null) {
+            eventDispatcher = processEngineConfiguration.getEventDispatcher();
+        }
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+
+            if (flowNode instanceof Activity && ((Activity) flowNode).hasMultiInstanceLoopCharacteristics()) {
+                processEngineConfiguration.getEventDispatcher().dispatchEvent(
+                        FlowableEventBuilder.createMultiInstanceActivityEvent(FlowableEngineEventType.MULTI_INSTANCE_ACTIVITY_STARTED, flowNode.getId(),
+                                flowNode.getName(), execution.getId(), execution.getProcessInstanceId(), execution.getProcessDefinitionId(), flowNode));
+            }
+            else {
+                processEngineConfiguration.getEventDispatcher().dispatchEvent(
+                        FlowableEventBuilder.createActivityEvent(FlowableEngineEventType.ACTIVITY_STARTED, flowNode.getId(), flowNode.getName(), execution.getId(),
+                                execution.getProcessInstanceId(), execution.getProcessDefinitionId(), flowNode));
+            }
         }
 
         try {
@@ -204,7 +282,6 @@ public class ContinueProcessOperation extends AbstractOperation {
     }
 
     protected void continueThroughSequenceFlow(SequenceFlow sequenceFlow) {
-
         // Execution listener. Sequenceflow only 'take' makes sense ... but we've supported all three since the beginning
         if (CollectionUtil.isNotEmpty(sequenceFlow.getExecutionListeners())) {
             executeExecutionListeners(sequenceFlow, ExecutionListener.EVENTNAME_START);
@@ -213,10 +290,15 @@ public class ContinueProcessOperation extends AbstractOperation {
         }
 
         // Firing event that transition is being taken
-        if (Context.getProcessEngineConfiguration() != null && Context.getProcessEngineConfiguration().getEventDispatcher().isEnabled()) {
+        ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration();
+        FlowableEventDispatcher eventDispatcher = null;
+        if (processEngineConfiguration != null) {
+            eventDispatcher = processEngineConfiguration.getEventDispatcher();
+        }
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
             FlowElement sourceFlowElement = sequenceFlow.getSourceFlowElement();
             FlowElement targetFlowElement = sequenceFlow.getTargetFlowElement();
-            Context.getProcessEngineConfiguration().getEventDispatcher().dispatchEvent(
+            processEngineConfiguration.getEventDispatcher().dispatchEvent(
                     FlowableEventBuilder.createSequenceFlowTakenEvent(
                             execution,
                             FlowableEngineEventType.SEQUENCEFLOW_TAKEN,
@@ -231,14 +313,26 @@ public class ContinueProcessOperation extends AbstractOperation {
                             targetFlowElement != null ? ((FlowNode) targetFlowElement).getBehavior() : null));
         }
 
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordSequenceFlowTaken(execution);
+
         FlowElement targetFlowElement = sequenceFlow.getTargetFlowElement();
         execution.setCurrentFlowElement(targetFlowElement);
 
-        logger.debug("Sequence flow '{}' encountered. Continuing process by following it using execution {}", sequenceFlow.getId(), execution.getId());
-        agenda.planContinueProcessOperation(execution);
+        LOGGER.debug("Sequence flow '{}' encountered. Continuing process by following it using execution {}", sequenceFlow.getId(), execution.getId());
+        
+        execution.setActive(false);
+        //agenda.planContinueProcessOperation(execution);
+        
+        if (targetFlowElement instanceof FlowNode) {
+            continueThroughFlowNode((FlowNode) targetFlowElement);
+        } else {
+            agenda.planContinueProcessOperation(execution);
+        }
     }
 
-    protected void executeBoundaryEvents(Collection<BoundaryEvent> boundaryEvents, ExecutionEntity execution) {
+    protected List<ExecutionEntity> createBoundaryEvents(List<BoundaryEvent> boundaryEvents, ExecutionEntity execution) {
+
+        List<ExecutionEntity> boundaryEventExecutions = new ArrayList<>(boundaryEvents.size());
 
         // The parent execution becomes a scope, and a child execution is created for each of the boundary events
         for (BoundaryEvent boundaryEvent : boundaryEvents) {
@@ -249,15 +343,28 @@ public class ContinueProcessOperation extends AbstractOperation {
             }
 
             // A Child execution of the current execution is created to represent the boundary event being active
-            ExecutionEntity childExecutionEntity = commandContext.getExecutionEntityManager().createChildExecution(execution);
+            ExecutionEntity childExecutionEntity = CommandContextUtil.getExecutionEntityManager(commandContext).createChildExecution(execution);
             childExecutionEntity.setParentId(execution.getId());
             childExecutionEntity.setCurrentFlowElement(boundaryEvent);
             childExecutionEntity.setScope(false);
-
-            ActivityBehavior boundaryEventBehavior = ((ActivityBehavior) boundaryEvent.getBehavior());
-            logger.debug("Executing boundary event activityBehavior {} with execution {}", boundaryEventBehavior.getClass(), childExecutionEntity.getId());
-            boundaryEventBehavior.execute(childExecutionEntity);
+            boundaryEventExecutions.add(childExecutionEntity);
         }
+
+        return boundaryEventExecutions;
     }
 
+    protected void executeBoundaryEvents(List<BoundaryEvent> boundaryEvents, List<ExecutionEntity> boundaryEventExecutions) {
+        if (!CollectionUtil.isEmpty(boundaryEventExecutions)) {
+            Iterator<BoundaryEvent> boundaryEventsIterator = boundaryEvents.iterator();
+            Iterator<ExecutionEntity> boundaryEventExecutionsIterator = boundaryEventExecutions.iterator();
+
+            while (boundaryEventsIterator.hasNext() && boundaryEventExecutionsIterator.hasNext()) {
+                BoundaryEvent boundaryEvent = boundaryEventsIterator.next();
+                ExecutionEntity boundaryEventExecution = boundaryEventExecutionsIterator.next();
+                ActivityBehavior boundaryEventBehavior = ((ActivityBehavior) boundaryEvent.getBehavior());
+                LOGGER.debug("Executing boundary event activityBehavior {} with execution {}", boundaryEventBehavior.getClass(), boundaryEventExecution.getId());
+                boundaryEventBehavior.execute(boundaryEventExecution);
+            }
+        }
+    }
 }

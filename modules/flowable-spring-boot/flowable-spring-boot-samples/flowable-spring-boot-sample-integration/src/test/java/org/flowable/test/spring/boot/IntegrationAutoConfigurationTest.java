@@ -1,102 +1,51 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.test.spring.boot;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
-import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.spring.boot.DataSourceProcessEngineAutoConfiguration;
-import org.flowable.spring.integration.FlowableInboundGateway;
-import org.flowable.spring.integration.IntegrationActivityBehavior;
 import org.junit.Assert;
 import org.junit.Test;
-import org.springframework.boot.autoconfigure.integration.IntegrationAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.integration.dsl.IntegrationFlow;
-import org.springframework.integration.dsl.IntegrationFlows;
-import org.springframework.integration.dsl.support.GenericHandler;
-import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.web.client.RestTemplate;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import flowable.Application;
 
 /**
  * Test the Spring Integration inbound inboundGateway support.
  *
  * @author Josh Long
  */
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = Application.class)
 public class IntegrationAutoConfigurationTest {
-
-    @Configuration
-    @Import(BaseConfiguration.class)
-    public static class InboundGatewayConfiguration {
-        @Bean
-        public IntegrationActivityBehavior flowableDelegate(FlowableInboundGateway activitiInboundGateway) {
-            return new IntegrationActivityBehavior(activitiInboundGateway);
-        }
-
-        @Bean
-        public FlowableInboundGateway inboundGateway(ProcessEngine processEngine) {
-            return new FlowableInboundGateway(processEngine, "customerId", "projectId", "orderId");
-        }
-
-        @Bean
-        public IntegrationFlow inboundProcess(FlowableInboundGateway inboundGateway) {
-            return IntegrationFlows
-                    .from(inboundGateway)
-                    .handle(new GenericHandler<DelegateExecution>() {
-                        @Override
-                        public Object handle(DelegateExecution execution, Map<String, Object> headers) {
-                            return MessageBuilder.withPayload(execution)
-                                    .setHeader("projectId", projectId)
-                                    .setHeader("orderId", "246")
-                                    .copyHeaders(headers).build();
-                        }
-                    })
-                    .get();
-        }
-
-        @Bean(name = "analysingService")
-        public AnalysingService service() {
-            return new AnalysingService();
-        }
-
-        public static class AnalysingService {
-            private final AtomicReference<String> stringAtomicReference = new AtomicReference<String>();
-
-            public void dump(String projectId) {
-                this.stringAtomicReference.set(projectId);
-            }
-
-            public AtomicReference<String> getStringAtomicReference() {
-                return stringAtomicReference;
-            }
-        }
-    }
 
     public static final String projectId = "2143243";
 
-    private AnnotationConfigApplicationContext context(Class<?>... clzz) {
-        AnnotationConfigApplicationContext annotationConfigApplicationContext = new AnnotationConfigApplicationContext();
-        annotationConfigApplicationContext.register(clzz);
-        annotationConfigApplicationContext.refresh();
-        return annotationConfigApplicationContext;
-    }
-
+    @Autowired
+    private ApplicationContext applicationContext;
     @Test
     public void testLaunchingGatewayProcessDefinition() throws Exception {
-        AnnotationConfigApplicationContext applicationContext = this.context(InboundGatewayConfiguration.class);
-
         RepositoryService repositoryService = applicationContext.getBean(RepositoryService.class);
         RuntimeService runtimeService = applicationContext.getBean(RuntimeService.class);
         ProcessEngine processEngine = applicationContext.getBean(ProcessEngine.class);
@@ -109,29 +58,11 @@ public class IntegrationAutoConfigurationTest {
                 .list();
         ProcessDefinition processDefinition = processDefinitionList.iterator().next();
         Assert.assertEquals(integrationGatewayProcess, processDefinition.getKey());
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("customerId", 232);
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(integrationGatewayProcess, vars);
         Assert.assertNotNull("the processInstance should not be null", processInstance);
-        Assert.assertEquals(projectId, applicationContext.getBean(InboundGatewayConfiguration.AnalysingService.class)
+        Assert.assertEquals(projectId, applicationContext.getBean(Application.AnalysingService.class)
                 .getStringAtomicReference().get());
     }
-
-    @Configuration
-    @Import({ DataSourceAutoConfiguration.class,
-            DataSourceProcessEngineAutoConfiguration.DataSourceProcessEngineConfiguration.class,
-            IntegrationAutoConfiguration.class })
-    public static class BaseConfiguration {
-
-        @Bean
-        public RestTemplate restTemplate() {
-            return new RestTemplate();
-        }
-
-        @Bean
-        public TaskExecutor taskExecutor() {
-            return new SimpleAsyncTaskExecutor();
-        }
-    }
-
 }

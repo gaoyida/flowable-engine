@@ -12,10 +12,11 @@
  */
 package org.flowable.engine.impl.cmd;
 
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.persistence.entity.PropertyEntity;
 import org.flowable.engine.impl.persistence.entity.PropertyEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,9 +25,9 @@ import org.slf4j.LoggerFactory;
  */
 public class ValidateExecutionRelatedEntityCountCfgCmd implements Command<Void> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ValidateExecutionRelatedEntityCountCfgCmd.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ValidateExecutionRelatedEntityCountCfgCmd.class);
 
-    public static String PROPERTY_EXECUTION_RELATED_ENTITY_COUNT = "cfg.execution-related-entities-count";
+    public static final String PROPERTY_EXECUTION_RELATED_ENTITY_COUNT = "cfg.execution-related-entities-count";
 
     @Override
     public Void execute(CommandContext commandContext) {
@@ -34,18 +35,26 @@ public class ValidateExecutionRelatedEntityCountCfgCmd implements Command<Void> 
         /*
          * If execution related entity counting is on in config | Current property in database : Result
          * 
-         * A) true | not there : write new property with value 'true' B) true | true : all good C) true | false : the feature was disabled before, but it is enabled now. Old executions will have a
+         * A) true | not there : write new property with value 'true' 
+         * 
+         * B) true | true : all good 
+         * 
+         * C) true | false : the feature was disabled before, but it is enabled now. Old executions will have a
          * local flag with false. It is now enabled. This is fine, will be handled in logic. Update the property.
          * 
-         * D) false | not there: write new property with value 'false' E) false | true : the feature was disabled before and enabled now. To guarantee data consistency, we need to remove the flag from
-         * all executions. Update the property. F) false | false : all good
+         * D) false | not there: write new property with value 'false' 
+         * 
+         * E) false | true : the feature was disabled before and enabled now. 
+         * To guarantee data consistency, we need to remove the flag from all executions. Update the property. 
+         * 
+         * F) false | false : all good
          * 
          * In case A and D (not there), the property needs to be written to the db Only in case E something needs to be done explicitly, the others are okay.
          */
 
-        PropertyEntityManager propertyEntityManager = commandContext.getPropertyEntityManager();
+        PropertyEntityManager propertyEntityManager = CommandContextUtil.getPropertyEntityManager(commandContext);
 
-        boolean configProperty = commandContext.getProcessEngineConfiguration().getPerformanceSettings().isEnableExecutionRelationshipCounts();
+        boolean configProperty = CommandContextUtil.getProcessEngineConfiguration(commandContext).getPerformanceSettings().isEnableExecutionRelationshipCounts();
         PropertyEntity propertyEntity = propertyEntityManager.findById(PROPERTY_EXECUTION_RELATED_ENTITY_COUNT);
 
         if (propertyEntity == null) {
@@ -61,11 +70,11 @@ public class ValidateExecutionRelatedEntityCountCfgCmd implements Command<Void> 
 
             boolean propertyValue = Boolean.valueOf(propertyEntity.getValue().toLowerCase());
             if (!configProperty && propertyValue) {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Configuration change: execution related entity counting feature was enabled before, but now disabled. "
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info("Configuration change: execution related entity counting feature was enabled before, but now disabled. "
                             + "Updating all execution entities.");
                 }
-                commandContext.getProcessEngineConfiguration().getExecutionDataManager().updateAllExecutionRelatedEntityCountFlags(configProperty);
+                CommandContextUtil.getProcessEngineConfiguration(commandContext).getExecutionDataManager().updateAllExecutionRelatedEntityCountFlags(configProperty);
             }
 
             // Update property

@@ -19,15 +19,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.flowable.engine.common.impl.util.IoUtil;
+import org.flowable.common.engine.impl.util.IoUtil;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.repository.Deployment;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Tom Baeyens
  */
 public class DeploymentPersistenceTest extends PluggableFlowableTestCase {
 
+    @Test
     public void testDeploymentPersistence() {
         Deployment deployment = repositoryService.createDeployment().name("strings").addString("org/flowable/test/HelloWorld.string", "hello world").addString("org/flowable/test/TheAnswer.string", "42")
                 .deploy();
@@ -41,10 +43,10 @@ public class DeploymentPersistenceTest extends PluggableFlowableTestCase {
 
         String deploymentId = deployment.getId();
         List<String> resourceNames = repositoryService.getDeploymentResourceNames(deploymentId);
-        Set<String> expectedResourceNames = new HashSet<String>();
+        Set<String> expectedResourceNames = new HashSet<>();
         expectedResourceNames.add("org/flowable/test/HelloWorld.string");
         expectedResourceNames.add("org/flowable/test/TheAnswer.string");
-        assertEquals(expectedResourceNames, new HashSet<String>(resourceNames));
+        assertEquals(expectedResourceNames, new HashSet<>(resourceNames));
 
         InputStream resourceStream = repositoryService.getResourceAsStream(deploymentId, "org/flowable/test/HelloWorld.string");
         assertTrue(Arrays.equals("hello world".getBytes(), IoUtil.readInputStream(resourceStream, "test")));

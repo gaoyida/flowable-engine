@@ -18,9 +18,9 @@ import org.activiti.engine.impl.bpmn.behavior.BoundaryEventActivityBehavior;
 import org.activiti.engine.impl.interceptor.CommandContext;
 import org.activiti.engine.impl.persistence.entity.ExecutionEntity;
 import org.activiti.engine.impl.pvm.process.ActivityImpl;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.impl.delegate.ActivityBehavior;
-import org.flowable.engine.runtime.Job;
+import org.flowable.job.api.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,16 +30,18 @@ import org.slf4j.LoggerFactory;
  */
 public class TimerExecuteNestedActivityJobHandler extends TimerEventHandler implements JobHandler {
 
-    private static Logger log = LoggerFactory.getLogger(TimerExecuteNestedActivityJobHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TimerExecuteNestedActivityJobHandler.class);
 
     public static final String TYPE = "timer-transition";
     public static final String PROPERTYNAME_TIMER_ACTIVITY_ID = "activityId";
     public static final String PROPERTYNAME_END_DATE_EXPRESSION = "timerEndDate";
 
+    @Override
     public String getType() {
         return TYPE;
     }
 
+    @Override
     public void execute(Job job, String configuration, ExecutionEntity execution, CommandContext commandContext) {
 
         String nestedActivityId = TimerEventHandler.getActivityIdFromConfiguration(configuration);
@@ -61,11 +63,11 @@ public class TimerExecuteNestedActivityJobHandler extends TimerEventHandler impl
                     .getActivityBehavior()
                     .execute(execution);
         } catch (RuntimeException e) {
-            log.error("exception during timer execution", e);
+            LOGGER.error("exception during timer execution", e);
             throw e;
 
         } catch (Exception e) {
-            log.error("exception during timer execution", e);
+            LOGGER.error("exception during timer execution", e);
             throw new ActivitiException("exception during timer execution: " + e.getMessage(), e);
         }
     }

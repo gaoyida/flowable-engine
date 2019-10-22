@@ -1,4 +1,19 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.rest.service.api.repository;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.ByteArrayInputStream;
 import java.util.List;
@@ -12,6 +27,7 @@ import org.apache.http.message.BasicHeader;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -25,6 +41,7 @@ public class DeploymentResourceResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting a single resource, deployed in a deployment. GET repository/deployments/{deploymentId}/resources/{resourceId}
      */
+    @Test
     public void testGetDeploymentResource() throws Exception {
         try {
             String rawResourceName = "org/flowable/rest/service/api/repository/oneTaskProcess.bpmn20.xml";
@@ -57,6 +74,7 @@ public class DeploymentResourceResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting a single resource for an unexisting deployment. GET repository/deployments/{deploymentId}/resources/{resourceId}
      */
+    @Test
     public void testGetDeploymentResourceUnexistingDeployment() throws Exception {
         HttpGet httpGet = new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_DEPLOYMENT_RESOURCE, "unexisting", "resource.png"));
         httpGet.addHeader(new BasicHeader(HttpHeaders.ACCEPT, "image/png,application/json"));
@@ -66,6 +84,7 @@ public class DeploymentResourceResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting an unexisting resource for an existing deployment. GET repository/deployments/{deploymentId}/resources/{resourceId}
      */
+    @Test
     public void testGetDeploymentResourceUnexistingResource() throws Exception {
         try {
             Deployment deployment = repositoryService.createDeployment().name("Deployment 1").addInputStream("test.txt", new ByteArrayInputStream("Test content".getBytes())).deploy();
@@ -86,6 +105,7 @@ public class DeploymentResourceResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting a deployment resource content. GET repository/deployments/{deploymentId}/resources/{resourceId}
      */
+    @Test
     public void testGetDeploymentResourceContent() throws Exception {
         try {
             Deployment deployment = repositoryService.createDeployment().name("Deployment 1").addInputStream("test.txt", new ByteArrayInputStream("Test content".getBytes())).deploy();

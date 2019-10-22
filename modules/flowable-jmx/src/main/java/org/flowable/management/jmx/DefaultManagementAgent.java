@@ -43,10 +43,10 @@ import org.slf4j.LoggerFactory;
 
 public class DefaultManagementAgent implements ManagementAgent {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DefaultManagementAgent.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultManagementAgent.class);
 
     protected MBeanServer server;
-    protected final ConcurrentMap<ObjectName, ObjectName> mbeansRegistered = new ConcurrentHashMap<ObjectName, ObjectName>();
+    protected final ConcurrentMap<ObjectName, ObjectName> mbeansRegistered = new ConcurrentHashMap<>();
     protected JMXConfigurator jmxConfigurator;
     protected Registry registry;
     protected JMXConnectorServer cs;
@@ -58,21 +58,24 @@ public class DefaultManagementAgent implements ManagementAgent {
 
     }
 
+    @Override
     public void register(Object obj, ObjectName name) throws JMException {
         register(obj, name, false);
     }
 
+    @Override
     public void register(Object obj, ObjectName name, boolean forceRegistration) throws JMException {
         try {
             Object mbean = assembler.assemble(obj, name);
-            if (mbean != null)
+            if (mbean != null) {
                 // and register the mbean
                 registerMBeanWithServer(mbean, name, forceRegistration);
-            else
+            } else {
                 registerMBeanWithServer(obj, name, forceRegistration);
+            }
 
         } catch (NotCompliantMBeanException e) {
-            LOG.error("Mbean {} is not compliant MBean.", name, e);
+            LOGGER.error("Mbean {} is not compliant MBean.", name, e);
             registerMBeanWithServer(obj, name, forceRegistration);
 
         }
@@ -84,42 +87,43 @@ public class DefaultManagementAgent implements ManagementAgent {
         boolean exists = isRegistered(name);
         if (exists) {
             if (forceRegistration) {
-                LOG.info("ForceRegistration enabled, unregistering existing MBean with ObjectName: {}", name);
+                LOGGER.info("ForceRegistration enabled, unregistering existing MBean with ObjectName: {}", name);
                 server.unregisterMBean(name);
             } else {
                 // okay ignore we do not want to force it and it could be a
                 // shared
                 // instance
-                LOG.debug("MBean already registered with ObjectName: {}", name);
+                LOGGER.debug("MBean already registered with ObjectName: {}", name);
             }
         }
 
         // register bean if by force or not exists
         ObjectInstance instance = null;
         if (forceRegistration || !exists) {
-            LOG.trace("Registering MBean with ObjectName: {}", name);
+            LOGGER.trace("Registering MBean with ObjectName: {}", name);
             instance = server.registerMBean(obj, name);
         }
 
-        // need to use the name returned from the server as some JEE servers may
-        // modify the name
+        // need to use the name returned from the server as some JEE servers may modify the name
         if (instance != null) {
             ObjectName registeredName = instance.getObjectName();
-            LOG.debug("Registered MBean with ObjectName: {}", registeredName);
+            LOGGER.debug("Registered MBean with ObjectName: {}", registeredName);
             mbeansRegistered.put(name, registeredName);
         }
     }
 
+    @Override
     public boolean isRegistered(ObjectName name) {
         ObjectName on = mbeansRegistered.get(name);
         return (on != null && server.isRegistered(on)) || server.isRegistered(name);
     }
 
+    @Override
     public void unregister(ObjectName name) throws JMException {
         if (isRegistered(name)) {
             ObjectName on = mbeansRegistered.remove(name);
             server.unregisterMBean(on);
-            LOG.debug("Unregistered MBean with ObjectName: {}", name);
+            LOGGER.debug("Unregistered MBean with ObjectName: {}", name);
         } else {
             mbeansRegistered.remove(name);
         }
@@ -135,6 +139,7 @@ public class DefaultManagementAgent implements ManagementAgent {
         this.server = mbeanServer;
     }
 
+    @Override
     public void doStart() {
         createMBeanServer();
     }
@@ -148,7 +153,7 @@ public class DefaultManagementAgent implements ManagementAgent {
                 createJmxConnector(Utils.getHostName());
             }
         } catch (IOException ioe) {
-            LOG.warn("Could not create and start JMX connector.", ioe);
+            LOGGER.warn("Could not create and start JMX connector.", ioe);
         }
 
     }
@@ -162,8 +167,7 @@ public class DefaultManagementAgent implements ManagementAgent {
         List<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
 
         for (MBeanServer server : servers) {
-            LOG.debug("Found MBeanServer with default domain {}", server.getDefaultDomain());
-            System.out.println(server.getDefaultDomain());
+            LOGGER.debug("Found MBeanServer with default domain {}", server.getDefaultDomain());
 
             if (jmxConfigurator.getMbeanDomain().equals(server.getDefaultDomain())) {
                 return server;
@@ -178,7 +182,6 @@ public class DefaultManagementAgent implements ManagementAgent {
     public void findAndRegisterMbeans() throws Exception {
         register(new ProcessDefinitionsMBean(jmxConfigurator.getProcessEngineConfig()), new ObjectName(jmxConfigurator.getDomain(), "type", "Deployments"));
         register(new JobExecutorMBean(jmxConfigurator.getProcessEngineConfig()), new ObjectName(jmxConfigurator.getDomain(), "type", "JobExecutor"));
-
     }
 
     public void createJmxConnector(String host) throws IOException {
@@ -187,20 +190,19 @@ public class DefaultManagementAgent implements ManagementAgent {
         Integer registryPort = jmxConfigurator.getRegistryPort();
         Integer connectorPort = jmxConfigurator.getConnectorPort();
         if (serviceUrlPath == null) {
-            LOG.warn("Service url path is null. JMX connector creation skipped");
+            LOGGER.warn("Service url path is null. JMX connector creation skipped");
             return;
         }
         if (registryPort == null) {
-            LOG.warn("Registery port is null. JMX connector creation skipped.");
+            LOGGER.warn("Registery port is null. JMX connector creation skipped.");
             return;
         }
 
         try {
             registry = LocateRegistry.createRegistry(registryPort);
-            LOG.debug("Created JMXConnector RMI registry on port {}", registryPort);
+            LOGGER.debug("Created JMXConnector RMI registry on port {}", registryPort);
         } catch (RemoteException ex) {
-            // The registry may had been created, we could get the registry
-            // instead
+            // The registry may had been created, we could get the registry instead
         }
 
         // must start with leading slash
@@ -220,16 +222,17 @@ public class DefaultManagementAgent implements ManagementAgent {
         // terminated when the JMX connector has been started)
         Thread thread = new Thread(new Runnable() {
 
+            @Override
             public void run() {
                 try {
-                    LOG.debug("Staring JMX Connector thread to listen at: {}", url);
+                    LOGGER.debug("Staring JMX Connector thread to listen at: {}", url);
                     cs.start();
-                    LOG.info("JMX Connector thread started and listening at: {}", url);
+                    LOGGER.info("JMX Connector thread started and listening at: {}", url);
                 } catch (IOException ioe) {
                     if (ioe.getCause() instanceof javax.naming.NameAlreadyBoundException) {
-                        LOG.warn("JMX connection:{} already exists.", url);
+                        LOGGER.warn("JMX connection:{} already exists.", url);
                     } else {
-                        LOG.warn("Could not start JMXConnector thread at: {}. JMX Connector not in use.", url, ioe);
+                        LOGGER.warn("Could not start JMXConnector thread at: {}. JMX Connector not in use.", url, ioe);
                     }
                 }
             }

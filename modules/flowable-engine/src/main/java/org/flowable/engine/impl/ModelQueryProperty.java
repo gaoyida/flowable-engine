@@ -16,7 +16,7 @@ package org.flowable.engine.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
 import org.flowable.engine.repository.ModelQuery;
 
 /**
@@ -29,7 +29,7 @@ public class ModelQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, ModelQueryProperty> properties = new HashMap<String, ModelQueryProperty>();
+    private static final Map<String, ModelQueryProperty> properties = new HashMap<>();
 
     public static final ModelQueryProperty MODEL_CATEGORY = new ModelQueryProperty("RES.CATEGORY_");
     public static final ModelQueryProperty MODEL_ID = new ModelQueryProperty("RES.ID_");
@@ -47,6 +47,7 @@ public class ModelQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

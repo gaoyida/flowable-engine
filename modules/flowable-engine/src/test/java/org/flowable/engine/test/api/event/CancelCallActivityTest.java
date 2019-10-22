@@ -13,23 +13,30 @@
 package org.flowable.engine.test.api.event;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
-import org.flowable.engine.common.api.delegate.event.FlowableEntityEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.common.api.delegate.event.FlowableEventListener;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEntityEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.engine.delegate.event.AbstractFlowableEngineEventListener;
 import org.flowable.engine.delegate.event.FlowableActivityCancelledEvent;
 import org.flowable.engine.delegate.event.FlowableActivityEvent;
 import org.flowable.engine.delegate.event.FlowableCancelledEvent;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.engine.delegate.event.FlowableProcessStartedEvent;
 import org.flowable.engine.event.EventLogEntry;
 import org.flowable.engine.impl.event.logger.EventLogger;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
-import org.flowable.engine.impl.persistence.entity.TaskEntity;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.test.Deployment;
+import org.flowable.task.service.impl.persistence.entity.TaskEntity;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class CancelCallActivityTest extends PluggableFlowableTestCase {
 
@@ -37,9 +44,10 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
 
     protected EventLogger databaseEventLogger;
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
-        super.setUp();
+        listener = new CallActivityEventListener();
+        processEngineConfiguration.getEventDispatcher().addEventListener(listener);
 
         // Database event logger setup
         databaseEventLogger = new EventLogger(processEngineConfiguration.getClock(),
@@ -47,7 +55,7 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
         runtimeService.addEventListener(databaseEventLogger);
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
 
         if (listener != null) {
@@ -63,17 +71,9 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
         // Database event logger teardown
         runtimeService.removeEventListener(databaseEventLogger);
 
-        super.tearDown();
     }
 
-    @Override
-    protected void initializeServices() {
-        super.initializeServices();
-
-        listener = new CallActivityEventListener();
-        processEngineConfiguration.getEventDispatcher().addEventListener(listener);
-    }
-
+    @Test
     @Deployment(resources = {
             "org/flowable/engine/test/api/event/CancelCallActivityTest.testActivityMessageBoundaryEventsOnCallActivity.bpmn20.xml",
             "org/flowable/engine/test/api/event/CancelCallActivityTest.testActivityMessageBoundaryEventsCalledActivity.bpmn20.xml" })
@@ -120,7 +120,6 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
         assertEquals(FlowableEngineEventType.ENTITY_CREATED, entityEvent.getType());
         executionEntity = (ExecutionEntity) entityEvent.getEntity();
         assertEquals("cancelBoundaryEvent", executionEntity.getActivityId());
-        String boundaryExecutionId = executionEntity.getId();
 
         activityEvent = (FlowableActivityEvent) mylistener.getEventsReceived().get(6);
         assertEquals(FlowableEngineEventType.ACTIVITY_STARTED, activityEvent.getType());
@@ -132,7 +131,6 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
         executionEntity = (ExecutionEntity) entityEvent.getEntity();
         assertNull(executionEntity.getParentId());
         assertEquals(executionEntity.getId(), executionEntity.getProcessInstanceId());
-        String externalExecutionId = executionEntity.getId();
 
         // this is the task within the external subprocess
         entityEvent = (FlowableEntityEvent) mylistener.getEventsReceived().get(8);
@@ -166,25 +164,24 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
         TaskEntity taskEntity = (TaskEntity) entityEvent.getEntity();
         assertEquals("User Task2 in External", taskEntity.getName());
 
-        // activityId is the call activity and the execution is the boundary event as we have seen before
-        // We get this event in workflow but we ignore the activityType of "callActivity"
-        activityEvent = (FlowableActivityEvent) mylistener.getEventsReceived().get(14);
-        assertEquals(FlowableEngineEventType.ACTIVITY_CANCELLED, activityEvent.getType());
-        assertEquals("callActivity", activityEvent.getActivityType());
-        assertEquals(boundaryExecutionId, activityEvent.getExecutionId());
-
-        FlowableActivityCancelledEvent taskCancelledEvent = (FlowableActivityCancelledEvent) mylistener.getEventsReceived().get(15);
+        FlowableActivityCancelledEvent taskCancelledEvent = (FlowableActivityCancelledEvent) mylistener.getEventsReceived().get(14);
         assertEquals(FlowableEngineEventType.ACTIVITY_CANCELLED, taskCancelledEvent.getType());
         assertEquals(taskEntity.getName(), taskCancelledEvent.getActivityName());
+        assertEquals("userTask", taskCancelledEvent.getActivityType());
 
-        FlowableCancelledEvent processCancelledEvent = (FlowableCancelledEvent) mylistener.getEventsReceived().get(16);
+        FlowableCancelledEvent processCancelledEvent = (FlowableCancelledEvent) mylistener.getEventsReceived().get(15);
         assertEquals(FlowableEngineEventType.PROCESS_CANCELLED, processCancelledEvent.getType());
         assertEquals(processCancelledEvent.getProcessInstanceId(), processCancelledEvent.getExecutionId());
+        
+        activityEvent = (FlowableActivityEvent) mylistener.getEventsReceived().get(16);
+        assertEquals(FlowableEngineEventType.ACTIVITY_CANCELLED, activityEvent.getType());
+        assertEquals("callActivity", activityEvent.getActivityType());
 
         activityEvent = (FlowableActivityEvent) mylistener.getEventsReceived().get(17);
         assertEquals(FlowableEngineEventType.ACTIVITY_COMPLETED, activityEvent.getType());
         assertEquals("boundaryEvent", activityEvent.getActivityType());
         assertEquals("cancelBoundaryEvent", activityEvent.getActivityId());
+        assertEquals(executionWithMessage.getId(), activityEvent.getExecutionId());
 
         // task in the main definition
         activityEvent = (FlowableActivityEvent) mylistener.getEventsReceived().get(18);
@@ -200,13 +197,23 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
         assertEquals(20, mylistener.getEventsReceived().size());
     }
 
-    class CallActivityEventListener implements FlowableEventListener {
+    class CallActivityEventListener extends AbstractFlowableEngineEventListener {
 
         private List<FlowableEvent> eventsReceived;
 
         public CallActivityEventListener() {
-            eventsReceived = new ArrayList<FlowableEvent>();
-
+            super(new HashSet<>(Arrays.asList(
+                    FlowableEngineEventType.ENTITY_CREATED,
+                    FlowableEngineEventType.ACTIVITY_STARTED,
+                    FlowableEngineEventType.ACTIVITY_COMPLETED,
+                    FlowableEngineEventType.ACTIVITY_CANCELLED,
+                    FlowableEngineEventType.TASK_CREATED,
+                    FlowableEngineEventType.TASK_COMPLETED,
+                    FlowableEngineEventType.PROCESS_STARTED,
+                    FlowableEngineEventType.PROCESS_COMPLETED,
+                    FlowableEngineEventType.PROCESS_CANCELLED
+            )));
+            eventsReceived = new ArrayList<>();
         }
 
         public List<FlowableEvent> getEventsReceived() {
@@ -218,29 +225,50 @@ public class CancelCallActivityTest extends PluggableFlowableTestCase {
         }
 
         @Override
-        public void onEvent(FlowableEvent event) {
-            FlowableEngineEventType engineEventType = (FlowableEngineEventType) event.getType();
-            switch (engineEventType) {
-            case ENTITY_CREATED:
-                FlowableEntityEvent entityEvent = (FlowableEntityEvent) event;
-                if (entityEvent.getEntity() instanceof ExecutionEntity) {
-                    eventsReceived.add(event);
-                }
-                break;
-            case ACTIVITY_STARTED:
-            case ACTIVITY_COMPLETED:
-            case ACTIVITY_CANCELLED:
-            case TASK_CREATED:
-            case TASK_COMPLETED:
-            case PROCESS_STARTED:
-            case PROCESS_COMPLETED:
-            case PROCESS_CANCELLED:
+        protected void entityCreated(FlowableEngineEntityEvent event) {
+            if (event.getEntity() instanceof ExecutionEntity) {
                 eventsReceived.add(event);
-                break;
-            default:
-                break;
-
             }
+        }
+
+        @Override
+        protected void activityStarted(FlowableActivityEvent event) {
+            eventsReceived.add(event);
+        }
+
+        @Override
+        protected void activityCancelled(FlowableActivityCancelledEvent event) {
+            eventsReceived.add(event);
+        }
+
+        @Override
+        protected void activityCompleted(FlowableActivityEvent event) {
+            eventsReceived.add(event);
+        }
+
+        @Override
+        protected void taskCreated(FlowableEngineEntityEvent event) {
+            eventsReceived.add(event);
+        }
+
+        @Override
+        protected void taskCompleted(FlowableEngineEntityEvent event) {
+            eventsReceived.add(event);
+        }
+
+        @Override
+        protected void processStarted(FlowableProcessStartedEvent event) {
+            eventsReceived.add(event);
+        }
+
+        @Override
+        protected void processCompleted(FlowableEngineEntityEvent event) {
+            eventsReceived.add(event);
+        }
+
+        @Override
+        protected void processCancelled(FlowableCancelledEvent event) {
+            eventsReceived.add(event);
         }
 
         @Override

@@ -14,7 +14,7 @@ package org.flowable.engine;
 
 import java.util.List;
 
-import org.flowable.engine.common.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.GroupQuery;
 import org.flowable.idm.api.NativeGroupQuery;
@@ -39,14 +39,24 @@ public interface IdentityService {
     User newUser(String userId);
 
     /**
-     * Saves the user. If the user already existed, the user is updated.
+     * Saves the user. If the user already existed, the user is updated except user password.
+     * Use {@link #updateUserPassword(User)} to update existing user password.
      * 
      * @param user
      *            user to save, cannot be null.
      * @throws RuntimeException
      *             when a user with the same name already exists.
+     * @see #updateUserPassword(User)
      */
     void saveUser(User user);
+
+    /**
+     * Update user password. Use {@link #saveUser(User)} for new user.
+     *
+     * @param user user password to change, cannot be null.
+     * @see #saveUser(User)
+     */
+    void updateUserPassword(User user);
 
     /**
      * Creates a {@link UserQuery} that allows to programmatically query the users.
@@ -54,13 +64,13 @@ public interface IdentityService {
     UserQuery createUserQuery();
 
     /**
-     * Returns a new {@link org.flowable.engine.common.api.query.NativeQuery} for tasks.
+     * Returns a new {@link org.flowable.common.engine.api.query.NativeQuery} for tasks.
      */
     NativeUserQuery createNativeUserQuery();
 
     /**
      * @param userId
-     *            id of user to delete, cannot be null. When an id is passed for an unexisting user, this operation is ignored.
+     *            id of user to delete, cannot be null. When an id is passed for a non-existent user, this operation is ignored.
      */
     void deleteUser(String userId);
 
@@ -78,7 +88,7 @@ public interface IdentityService {
     GroupQuery createGroupQuery();
 
     /**
-     * Returns a new {@link org.flowable.engine.common.api.query.NativeQuery} for tasks.
+     * Returns a new {@link org.flowable.common.engine.api.query.NativeQuery} for tasks.
      */
     NativeGroupQuery createNativeGroupQuery();
 

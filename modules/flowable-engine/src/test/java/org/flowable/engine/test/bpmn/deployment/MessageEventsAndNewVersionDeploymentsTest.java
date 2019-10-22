@@ -13,14 +13,17 @@
 
 package org.flowable.engine.test.bpmn.deployment;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.common.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.impl.test.PluggableFlowableTestCase;
-import org.flowable.engine.runtime.EventSubscription;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
+import org.flowable.eventsubscription.api.EventSubscription;
+import org.junit.jupiter.api.Test;
 
 /**
  * A test specifically written to test how events (start/boundary) are handled when deploying a new version of a process definition.
@@ -43,6 +46,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
      * BOUNDARY MESSAGE EVENT
      */
 
+    @Test
     public void testMessageBoundaryEvent() {
         String deploymentId1 = deployBoundaryMessageTestProcess();
         runtimeService.startProcessInstanceByKey("messageTest");
@@ -54,10 +58,10 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
 
         assertReceiveMessage("myMessage", 2);
 
-        List<Task> tasks = taskService.createTaskQuery().list();
+        List<org.flowable.task.api.Task> tasks = taskService.createTaskQuery().list();
         assertEquals(2, tasks.size());
 
-        for (Task task : tasks) {
+        for (org.flowable.task.api.Task task : tasks) {
             assertEquals("Task after message", task.getName());
         }
 
@@ -67,6 +71,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
     /**
      * Verifying that the event subscriptions do get removed when removing a deployment.
      */
+    @Test
     public void testBoundaryEventSubscriptionDeletedOnDeploymentDelete() {
         String deploymentId = deployBoundaryMessageTestProcess();
         runtimeService.startProcessInstanceByKey("messageTest");
@@ -88,7 +93,8 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
     /**
      * Verifying that the event subscriptions do get removed when removing a process instance.
      */
-    public void testBoundaryEventSubscrptionsDeletedOnProcessInstanceDelete() {
+    @Test
+    public void testBoundaryEventSubscriptionsDeletedOnProcessInstanceDelete() {
         String deploymentId1 = deployBoundaryMessageTestProcess();
         runtimeService.startProcessInstanceByKey("messageTest");
         assertEquals("My Task", taskService.createTaskQuery().singleResult().getName());
@@ -114,6 +120,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
      * START MESSAGE EVENT
      */
 
+    @Test
     public void testStartMessageEvent() {
         String deploymentId1 = deployStartMessageTestProcess();
         assertEquals(1, getAllEventSubscriptions().size());
@@ -132,6 +139,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId1, deploymentId2);
     }
 
+    @Test
     public void testMessageStartEventSubscriptionAfterDeploymentDelete() {
 
         // Deploy two version of process definition, delete latest and check if all is good
@@ -167,6 +175,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
     /**
      * v1 -> has start message event v2 -> has no start message event v3 -> has start message event
      */
+    @Test
     public void testDeployIntermediateVersionWithoutMessageStartEvent() {
         String deploymentId1 = deployStartMessageTestProcess();
         assertEquals(1, getAllEventSubscriptions().size());
@@ -178,11 +187,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         String deploymentId2 = deployProcessWithoutEvents();
         assertEquals(0, getAllEventSubscriptions().size());
         assertEquals(1, runtimeService.createProcessInstanceQuery().count());
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(1, runtimeService.createProcessInstanceQuery().count());
         assertEventSubscriptionsCount(0);
 
@@ -200,6 +205,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId1, deploymentId2, deploymentId3);
     }
 
+    @Test
     public void testDeleteDeploymentWithStartMessageEvents1() {
         String deploymentId1;
         String deploymentId2;
@@ -212,6 +218,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId1, deploymentId2);
     }
 
+    @Test
     public void testDeleteDeploymentWithStartMessageEvents2() {
         String deploymentId1 = deployStartMessageTestProcess();
         String deploymentId2 = deployProcessWithoutEvents();
@@ -224,6 +231,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId1, deploymentId3);
     }
 
+    @Test
     public void testDeleteDeploymentWithStartMessageEvents3() {
         String deploymentId1 = deployStartMessageTestProcess();
         String deploymentId2 = deployProcessWithoutEvents();
@@ -236,6 +244,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId2, deploymentId3);
     }
 
+    @Test
     public void testDeleteDeploymentWithStartMessageEvents4() {
         String deploymentId1 = deployStartMessageTestProcess();
         String deploymentId2 = deployProcessWithoutEvents();
@@ -249,15 +258,12 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId1);
     }
 
+    @Test
     public void testDeleteDeploymentWithStartMessageEvents5() {
         String deploymentId1 = deployStartMessageTestProcess();
         String deploymentId2 = deployProcessWithoutEvents();
         assertEventSubscriptionsCount(0);
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(0, runtimeService.createExecutionQuery().count());
         repositoryService.deleteDeployment(deploymentId2, true);
         assertEventSubscriptionsCount(1); // the first is now the one with the signal
@@ -267,56 +273,38 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId1);
     }
 
+    @Test
     public void testDeleteDeploymentWithStartMessageEvents6() {
         String deploymentId1 = deployStartMessageTestProcess();
         String deploymentId2 = deployProcessWithoutEvents();
         String deploymentId3 = deployStartMessageTestProcess();
         String deploymentId4 = deployProcessWithoutEvents();
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(0, runtimeService.createExecutionQuery().count());
 
         repositoryService.deleteDeployment(deploymentId2, true);
         repositoryService.deleteDeployment(deploymentId3, true);
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(0, runtimeService.createExecutionQuery().count());
 
         repositoryService.deleteDeployment(deploymentId1, true);
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(0, runtimeService.createExecutionQuery().count());
         cleanup(deploymentId4);
     }
 
+    @Test
     public void testDeleteDeploymentWithStartMessageEvents7() {
         String deploymentId1 = deployStartMessageTestProcess();
         String deploymentId2 = deployProcessWithoutEvents();
         String deploymentId3 = deployStartMessageTestProcess();
         String deploymentId4 = deployProcessWithoutEvents();
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(0, runtimeService.createExecutionQuery().count());
 
         repositoryService.deleteDeployment(deploymentId2, true);
         repositoryService.deleteDeployment(deploymentId3, true);
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(0, runtimeService.createExecutionQuery().count());
 
         repositoryService.deleteDeployment(deploymentId4, true);
@@ -329,6 +317,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
      * BOTH BOUNDARY AND START MESSAGE
      */
 
+    @Test
     public void testBothBoundaryAndStartEvent() {
 
         // Deploy process with both boundary and start event
@@ -344,11 +333,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
 
         // Deploy version with only a boundary signal
         String deploymentId2 = deployBoundaryMessageTestProcess();
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(2, runtimeService.createProcessInstanceQuery().count());
         assertEventSubscriptionsCount(2); // 2 boundary events remain
 
@@ -360,11 +345,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
 
         // Delete last version again, making the one with the boundary the latest
         repositoryService.deleteDeployment(deploymentId3, true);
-        try {
-            runtimeService.startProcessInstanceByMessage("myStartMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myStartMessage"));
         assertEquals(2, runtimeService.createProcessInstanceQuery().count()); // -1, cause process instance of deploymentId3 is gone too
         assertEventSubscriptionsCount(2); // The 2 boundary remains
 
@@ -381,6 +362,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         cleanup(deploymentId1);
     }
 
+    @Test
     public void testBothBoundaryAndStartSameMessageId() {
 
         // Deploy process with both boundary and start event
@@ -395,7 +377,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
             runtimeService.startProcessInstanceByMessage("myMessage");
         }
 
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             assertEquals(9, historyService.createHistoricProcessInstanceQuery().count());
         }
         assertEquals(10, getAllEventSubscriptions().size()); // 1 for the start, 9 for boundary
@@ -406,11 +388,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
         assertEquals(10, runtimeService.createProcessInstanceQuery().count());
         assertEventSubscriptionsCount(10); // Remains 10: 1 one was removed, but one added for the new message
 
-        try {
-            runtimeService.startProcessInstanceByMessage("myMessage");
-            fail();
-        } catch (Exception e) {
-        }
+        assertThatThrownBy(() -> runtimeService.startProcessInstanceByMessage("myMessage"));
 
         cleanup(deploymentId1, deploymentId2);
     }
@@ -449,9 +427,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
     }
 
     private void cleanup(String... deploymentIds) {
-        for (String deploymentId : deploymentIds) {
-            repositoryService.deleteDeployment(deploymentId, true);
-        }
+        deleteDeployments();
     }
 
     private List<String> getExecutionIdsForMessageEventSubscription(final String messageName) {
@@ -462,7 +438,7 @@ public class MessageEventsAndNewVersionDeploymentsTest extends PluggableFlowable
                 .desc()
                 .list();
 
-        List<String> executionIds = new ArrayList<String>();
+        List<String> executionIds = new ArrayList<>();
         for (EventSubscription eventSubscription : eventSubscriptions) {
             executionIds.add(eventSubscription.getExecutionId());
         }

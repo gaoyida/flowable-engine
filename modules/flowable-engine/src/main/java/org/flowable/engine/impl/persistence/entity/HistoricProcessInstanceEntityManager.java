@@ -15,7 +15,7 @@ package org.flowable.engine.impl.persistence.entity;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.common.impl.persistence.entity.EntityManager;
+import org.flowable.common.engine.impl.persistence.entity.EntityManager;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.HistoricProcessInstanceQueryImpl;
 
@@ -24,6 +24,9 @@ import org.flowable.engine.impl.HistoricProcessInstanceQueryImpl;
  */
 public interface HistoricProcessInstanceEntityManager extends EntityManager<HistoricProcessInstanceEntity> {
 
+    @Override
+    HistoricProcessInstanceEntity create();
+  
     HistoricProcessInstanceEntity create(ExecutionEntity processInstanceExecutionEntity);
 
     long findHistoricProcessInstanceCountByQueryCriteria(HistoricProcessInstanceQueryImpl historicProcessInstanceQuery);
@@ -32,10 +35,14 @@ public interface HistoricProcessInstanceEntityManager extends EntityManager<Hist
 
     List<HistoricProcessInstance> findHistoricProcessInstancesAndVariablesByQueryCriteria(HistoricProcessInstanceQueryImpl historicProcessInstanceQuery);
 
-    List<HistoricProcessInstance> findHistoricProcessInstancesByNativeQuery(Map<String, Object> parameterMap, int firstResult, int maxResults);
+    List<HistoricProcessInstance> findHistoricProcessInstancesByNativeQuery(Map<String, Object> parameterMap);
 
+    List<HistoricProcessInstance> findHistoricProcessInstancesBySuperProcessInstanceId(String historicProcessInstanceId);
+    
+    List<String> findHistoricProcessInstanceIdsByProcessDefinitionId(String processDefinitionId);
+    
     long findHistoricProcessInstanceCountByNativeQuery(Map<String, Object> parameterMap);
-
-    void deleteHistoricProcessInstanceByProcessDefinitionId(String processDefinitionId);
+    
+    void deleteHistoricProcessInstances(HistoricProcessInstanceQueryImpl historicProcessInstanceQuery);
 
 }

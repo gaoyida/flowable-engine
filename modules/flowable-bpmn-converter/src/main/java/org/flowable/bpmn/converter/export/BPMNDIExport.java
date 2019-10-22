@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class BPMNDIExport implements BpmnXMLConstants {
     
-    private static final Logger logger = LoggerFactory.getLogger(BPMNDIExport.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BPMNDIExport.class);
 
     public static void writeBPMNDI(BpmnModel model, XMLStreamWriter xtw) throws Exception {
         // BPMN DI information
@@ -47,8 +47,8 @@ public class BPMNDIExport implements BpmnXMLConstants {
         }
 
         // keep a tracker of all subprocesses
-        Map<String, SubProcess> collapsedSubProcessMap = new HashMap<String, SubProcess>();
-        Map<String, String> collapsedSubProcessChildren = new HashMap<String, String>();
+        Map<String, SubProcess> collapsedSubProcessMap = new HashMap<>();
+        Map<String, String> collapsedSubProcessChildren = new HashMap<>();
 
         for (String elementId : model.getLocationMap().keySet()) {
             FlowElement flowElement = model.getFlowElement(elementId);
@@ -60,6 +60,12 @@ public class BPMNDIExport implements BpmnXMLConstants {
                 if (isExpanded != null && isExpanded == false) {
                     SubProcess subProcess = (SubProcess) flowElement;
                     for (FlowElement element : subProcess.getFlowElements()) {
+                        // the key is the element. the value is the collapsed subprocess.
+                        collapsedSubProcessChildren.put(element.getId(), elementId);
+                    }
+
+                    // include artifacts
+                    for (Artifact element : subProcess.getArtifacts()) {
                         // the key is the element. the value is the collapsed subprocess.
                         collapsedSubProcessChildren.put(element.getId(), elementId);
                     }
@@ -99,7 +105,7 @@ public class BPMNDIExport implements BpmnXMLConstants {
 
             //if the element is a child of an collapsed subprocess we don't add its info here.
             if (collapsedSubProcessChildren.get(elementId) != null){
-                logger.debug("{} belongs to collapsed subprocess {}", elementId, collapsedSubProcessChildren.get(elementId));
+                LOGGER.debug("{} belongs to collapsed subprocess {}", elementId, collapsedSubProcessChildren.get(elementId));
                 continue;
             }
       
@@ -113,7 +119,7 @@ public class BPMNDIExport implements BpmnXMLConstants {
         for (String elementId : model.getFlowLocationMap().keySet()) {
 
             if (collapsedSubProcessChildren.get(elementId) != null) {
-                logger.info("{} belongs to collapsed subprocess {}", elementId, collapsedSubProcessChildren.get(elementId));
+                LOGGER.info("{} belongs to collapsed subprocess {}", elementId, collapsedSubProcessChildren.get(elementId));
                 continue;
             }
 
@@ -147,6 +153,18 @@ public class BPMNDIExport implements BpmnXMLConstants {
                     }
                 }
             }
+
+            for (Artifact child : collapsedSubProcess.getArtifacts()){
+                
+                if (child instanceof Association){
+                      createBpmnEdge(model,child.getId(),xtw);
+                  } else {
+                      GraphicInfo graphicInfo = model.getGraphicInfo(child.getId());
+                      if (graphicInfo != null) {
+                          createBpmnShape(model, child.getId(), xtw);
+                      }
+                  }
+              }
 
             xtw.writeEndElement();
             xtw.writeEndElement();

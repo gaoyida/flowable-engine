@@ -17,6 +17,8 @@ public interface DynamicBpmnConstants {
     String BPMN_NODE = "bpmn";
     String LOCALIZATION_NODE = "localization";
 
+    String GLOBAL_PROCESS_DEFINITION_PROPERTIES = "_flowableGlobalProcessDefinitionProperties";
+    String ENABLE_SKIP_EXPRESSION = "enableSkipExpression";
     String TASK_SKIP_EXPRESSION = "taskSkipExpression";
 
     String SERVICE_TASK_CLASS_NAME = "serviceTaskClassName";
@@ -35,6 +37,8 @@ public interface DynamicBpmnConstants {
     String USER_TASK_OWNER = "userTaskOwner";
     String USER_TASK_CANDIDATE_USERS = "userTaskCandidateUsers";
     String USER_TASK_CANDIDATE_GROUPS = "userTaskCandidateGroups";
+    
+    String MULTI_INSTANCE_COMPLETION_CONDITION = "multiInstanceCompletionCondition";
 
     String DMN_TASK_DECISION_TABLE_KEY = "dmnTaskDecisionTableKey";
 

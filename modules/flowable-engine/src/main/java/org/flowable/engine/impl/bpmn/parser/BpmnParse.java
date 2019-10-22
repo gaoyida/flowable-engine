@@ -34,19 +34,19 @@ import org.flowable.bpmn.model.GraphicInfo;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.SubProcess;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.impl.util.io.InputStreamSource;
-import org.flowable.engine.common.impl.util.io.StreamSource;
-import org.flowable.engine.common.impl.util.io.StringStreamSource;
-import org.flowable.engine.common.impl.util.io.UrlStreamSource;
-import org.flowable.engine.delegate.event.impl.FlowableEventSupport;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.repository.EngineDeployment;
+import org.flowable.common.engine.impl.event.FlowableEventSupport;
+import org.flowable.common.engine.impl.util.io.InputStreamSource;
+import org.flowable.common.engine.impl.util.io.StreamSource;
+import org.flowable.common.engine.impl.util.io.StringStreamSource;
+import org.flowable.common.engine.impl.util.io.UrlStreamSource;
 import org.flowable.engine.impl.bpmn.parser.factory.ActivityBehaviorFactory;
 import org.flowable.engine.impl.bpmn.parser.factory.ListenerFactory;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.context.Context;
-import org.flowable.engine.impl.persistence.entity.DeploymentEntity;
 import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.impl.util.io.ResourceStreamSource;
 import org.flowable.validation.ProcessValidator;
 import org.flowable.validation.ValidationError;
@@ -88,10 +88,10 @@ public class BpmnParse implements BpmnXMLConstants {
     protected String targetNamespace;
 
     /** The deployment to which the parsed process definitions will be added. */
-    protected DeploymentEntity deployment;
+    protected EngineDeployment deployment;
 
     /** The end result of the parsing: a list of process definition. */
-    protected List<ProcessDefinitionEntity> processDefinitions = new ArrayList<ProcessDefinitionEntity>();
+    protected List<ProcessDefinitionEntity> processDefinitions = new ArrayList<>();
 
     /** A map for storing sequence flow based on their id during parsing. */
     protected Map<String, SequenceFlow> sequenceFlows;
@@ -104,14 +104,14 @@ public class BpmnParse implements BpmnXMLConstants {
 
     protected FlowElement currentFlowElement;
 
-    protected LinkedList<SubProcess> currentSubprocessStack = new LinkedList<SubProcess>();
+    protected LinkedList<SubProcess> currentSubprocessStack = new LinkedList<>();
 
     /**
      * Mapping containing values stored during the first phase of parsing since other elements can reference these messages.
      * 
      * All the map's elements are defined outside the process definition(s), which means that this map doesn't need to be re-initialized for each new process definition.
      */
-    protected Map<String, String> prefixs = new HashMap<String, String>();
+    protected Map<String, String> prefixs = new HashMap<>();
 
     // Factories
     protected ActivityBehaviorFactory activityBehaviorFactory;
@@ -126,7 +126,7 @@ public class BpmnParse implements BpmnXMLConstants {
         this.bpmnParserHandlers = parser.getBpmnParserHandlers();
     }
 
-    public BpmnParse deployment(DeploymentEntity deployment) {
+    public BpmnParse deployment(EngineDeployment deployment) {
         this.deployment = deployment;
         return this;
     }
@@ -134,7 +134,7 @@ public class BpmnParse implements BpmnXMLConstants {
     public BpmnParse execute() {
         try {
 
-            ProcessEngineConfigurationImpl processEngineConfiguration = Context.getProcessEngineConfiguration();
+            ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration();
             BpmnXMLConverter converter = new BpmnXMLConverter();
 
             boolean enableSafeBpmnXml = false;
@@ -164,10 +164,10 @@ public class BpmnParse implements BpmnXMLConstants {
 
                         for (ValidationError error : validationErrors) {
                             if (error.isWarning()) {
-                                warningBuilder.append(error.toString());
+                                warningBuilder.append(error);
                                 warningBuilder.append("\n");
                             } else {
-                                errorBuilder.append(error.toString());
+                                errorBuilder.append(error);
                                 errorBuilder.append("\n");
                             }
                         }
@@ -179,7 +179,7 @@ public class BpmnParse implements BpmnXMLConstants {
 
                         // Write out warnings (if any)
                         if (warningBuilder.length() > 0) {
-                            LOGGER.warn("Following warnings encountered during process validation: {}", warningBuilder.toString());
+                            LOGGER.warn("Following warnings encountered during process validation: {}", warningBuilder);
                         }
 
                     }
@@ -275,7 +275,7 @@ public class BpmnParse implements BpmnXMLConstants {
      * Parses the 'definitions' root element
      */
     protected void applyParseHandlers() {
-        sequenceFlows = new HashMap<String, SequenceFlow>();
+        sequenceFlows = new HashMap<>();
         for (Process process : bpmnModel.getProcesses()) {
             currentProcess = process;
             if (process.isExecutable()) {
@@ -291,11 +291,11 @@ public class BpmnParse implements BpmnXMLConstants {
         // a certain type.
 
         // Using lists as we want to keep the order in which they are defined
-        List<SequenceFlow> sequenceFlowToParse = new ArrayList<SequenceFlow>();
-        List<BoundaryEvent> boundaryEventsToParse = new ArrayList<BoundaryEvent>();
+        List<SequenceFlow> sequenceFlowToParse = new ArrayList<>();
+        List<BoundaryEvent> boundaryEventsToParse = new ArrayList<>();
 
         // Flow elements that depend on other elements are parse after the first run-through
-        List<FlowElement> defferedFlowElementsToParse = new ArrayList<FlowElement>();
+        List<FlowElement> defferedFlowElementsToParse = new ArrayList<>();
 
         // Activities are parsed first
         for (FlowElement flowElement : flowElements) {
@@ -391,7 +391,7 @@ public class BpmnParse implements BpmnXMLConstants {
         FlowElement flowElement = bpmnModel.getFlowElement(key);
         if (flowElement instanceof SequenceFlow) {
             SequenceFlow sequenceFlow = (SequenceFlow) flowElement;
-            List<Integer> waypoints = new ArrayList<Integer>();
+            List<Integer> waypoints = new ArrayList<>();
             for (GraphicInfo waypointInfo : graphicList) {
                 waypoints.add((int) waypointInfo.getX());
                 waypoints.add((int) waypointInfo.getY());
@@ -450,11 +450,11 @@ public class BpmnParse implements BpmnXMLConstants {
         this.bpmnParserHandlers = bpmnParserHandlers;
     }
 
-    public DeploymentEntity getDeployment() {
+    public EngineDeployment getDeployment() {
         return deployment;
     }
 
-    public void setDeployment(DeploymentEntity deployment) {
+    public void setDeployment(EngineDeployment deployment) {
         this.deployment = deployment;
     }
 

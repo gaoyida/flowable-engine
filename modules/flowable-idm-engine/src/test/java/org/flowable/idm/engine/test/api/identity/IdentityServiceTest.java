@@ -13,24 +13,36 @@
 
 package org.flowable.idm.engine.test.api.identity;
 
-import java.util.Arrays;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import java.util.Date;
 import java.util.List;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.FlowableOptimisticLockingException;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.idm.api.Group;
 import org.flowable.idm.api.Picture;
 import org.flowable.idm.api.Token;
 import org.flowable.idm.api.User;
+import org.flowable.idm.engine.impl.authentication.ApacheDigester;
 import org.flowable.idm.engine.test.PluggableFlowableIdmTestCase;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Frederik Heremans
  */
 public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
 
+    @Test
     public void testUserInfo() {
         User user = idmIdentityService.newUser("testuser");
         idmIdentityService.saveUser(user);
@@ -47,6 +59,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser(user.getId());
     }
 
+    @Test
     public void testCreateExistingUser() {
         User user = idmIdentityService.newUser("testuser");
         idmIdentityService.saveUser(user);
@@ -62,6 +75,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser(user.getId());
     }
 
+    @Test
     public void testUpdateUser() {
         // First, create a new user
         User user = idmIdentityService.newUser("johndoe");
@@ -85,6 +99,86 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser(user.getId());
     }
 
+    @Test
+    public void testUpdateUserDeltaOnly() {
+        // First, create a new user
+        User user = idmIdentityService.newUser("testuser");
+        user.setFirstName("John");
+        user.setLastName("Doe");
+        user.setDisplayName("John Doe");
+        user.setEmail("testuser@flowable.com");
+        user.setPassword("test");
+        idmIdentityService.saveUser(user);
+        String initialPassword = user.getPassword();
+
+        // Fetch and update the user
+        user = idmIdentityService.createUserQuery().userId("testuser").singleResult();
+        assertThat(user)
+            .returns("John", User::getFirstName)
+            .returns("Doe", User::getLastName)
+            .returns("John Doe", User::getDisplayName)
+            .returns("testuser@flowable.com", User::getEmail)
+            .returns(initialPassword, User::getPassword);
+
+        user.setFirstName("Jane");
+        idmIdentityService.saveUser(user);
+
+        user = idmIdentityService.createUserQuery().userId("testuser").singleResult();
+        assertThat(user)
+            .returns("Jane", User::getFirstName)
+            .returns("Doe", User::getLastName)
+            .returns("John Doe", User::getDisplayName)
+            .returns("testuser@flowable.com", User::getEmail)
+            .returns(initialPassword, User::getPassword);
+
+        user.setLastName("Doelle");
+        idmIdentityService.saveUser(user);
+
+        user = idmIdentityService.createUserQuery().userId("testuser").singleResult();
+        assertThat(user)
+            .returns("Jane", User::getFirstName)
+            .returns("Doelle", User::getLastName)
+            .returns("John Doe", User::getDisplayName)
+            .returns("testuser@flowable.com", User::getEmail)
+            .returns(initialPassword, User::getPassword);
+
+        user.setDisplayName("Jane Doelle");
+        idmIdentityService.saveUser(user);
+
+        user = idmIdentityService.createUserQuery().userId("testuser").singleResult();
+        assertThat(user)
+            .returns("Jane", User::getFirstName)
+            .returns("Doelle", User::getLastName)
+            .returns("Jane Doelle", User::getDisplayName)
+            .returns("testuser@flowable.com", User::getEmail)
+            .returns(initialPassword, User::getPassword);
+
+        user.setEmail("janedoelle@flowable.com");
+        idmIdentityService.saveUser(user);
+
+        user = idmIdentityService.createUserQuery().userId("testuser").singleResult();
+        assertThat(user)
+            .returns("Jane", User::getFirstName)
+            .returns("Doelle", User::getLastName)
+            .returns("Jane Doelle", User::getDisplayName)
+            .returns("janedoelle@flowable.com", User::getEmail)
+            .returns(initialPassword, User::getPassword);
+
+        user.setPassword("test-pass");
+        idmIdentityService.saveUser(user);
+
+        user = idmIdentityService.createUserQuery().userId("testuser").singleResult();
+        assertThat(user)
+            .returns("Jane", User::getFirstName)
+            .returns("Doelle", User::getLastName)
+            .returns("Jane Doelle", User::getDisplayName)
+            .returns("janedoelle@flowable.com", User::getEmail)
+            .returns(initialPassword, User::getPassword);
+
+        idmIdentityService.deleteUser(user.getId());
+    }
+
+    @Test
     public void testUserPicture() {
         // First, create a new user
         User user = idmIdentityService.newUser("johndoe");
@@ -98,18 +192,19 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
 
         // Fetch and update the user
         user = idmIdentityService.createUserQuery().userId("johndoe").singleResult();
-        assertTrue("byte arrays differ", Arrays.equals("niceface".getBytes(), picture.getBytes()));
+        assertArrayEquals("niceface".getBytes(), picture.getBytes(), "byte arrays differ");
         assertEquals("image/string", picture.getMimeType());
 
         // interface definition states that setting picture to null should delete it
         idmIdentityService.setUserPicture(userId, null);
-        assertNull("it should be possible to nullify user picture", idmIdentityService.getUserPicture(userId));
+        assertNull(idmIdentityService.getUserPicture(userId), "it should be possible to nullify user picture");
         user = idmIdentityService.createUserQuery().userId("johndoe").singleResult();
-        assertNull("it should be possible to delete user picture", idmIdentityService.getUserPicture(userId));
+        assertNull(idmIdentityService.getUserPicture(userId), "it should be possible to delete user picture");
 
         idmIdentityService.deleteUser(user.getId());
     }
 
+    @Test
     public void testUpdateGroup() {
         Group group = idmIdentityService.newGroup("sales");
         group.setName("Sales");
@@ -125,16 +220,19 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteGroup(group.getId());
     }
 
+    @Test
     public void findUserByUnexistingId() {
         User user = idmIdentityService.createUserQuery().userId("unexistinguser").singleResult();
         assertNull(user);
     }
 
+    @Test
     public void findGroupByUnexistingId() {
         Group group = idmIdentityService.createGroupQuery().groupId("unexistinggroup").singleResult();
         assertNull(group);
     }
 
+    @Test
     public void testCreateMembershipUnexistingGroup() {
         User johndoe = idmIdentityService.newUser("johndoe");
         idmIdentityService.saveUser(johndoe);
@@ -149,6 +247,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser(johndoe.getId());
     }
 
+    @Test
     public void testCreateMembershipUnexistingUser() {
         Group sales = idmIdentityService.newGroup("sales");
         idmIdentityService.saveGroup(sales);
@@ -163,6 +262,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteGroup(sales.getId());
     }
 
+    @Test
     public void testCreateMembershipAlreadyExisting() {
         Group sales = idmIdentityService.newGroup("sales");
         idmIdentityService.saveGroup(sales);
@@ -182,6 +282,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser(johndoe.getId());
     }
 
+    @Test
     public void testSaveGroupNullArgument() {
         try {
             idmIdentityService.saveGroup(null);
@@ -191,6 +292,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testSaveUserNullArgument() {
         try {
             idmIdentityService.saveUser(null);
@@ -200,6 +302,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testFindGroupByIdNullArgument() {
         try {
             idmIdentityService.createGroupQuery().groupId(null).singleResult();
@@ -209,6 +312,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testCreateMembershipNullArguments() {
         try {
             idmIdentityService.createMembership(null, "group");
@@ -225,6 +329,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testFindGroupsByUserIdNullArguments() {
         try {
             idmIdentityService.createGroupQuery().groupMember(null).singleResult();
@@ -234,12 +339,14 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testFindUsersByGroupUnexistingGroup() {
         List<User> users = idmIdentityService.createUserQuery().memberOfGroup("unexistinggroup").list();
         assertNotNull(users);
         assertTrue(users.isEmpty());
     }
 
+    @Test
     public void testDeleteGroupNullArguments() {
         try {
             idmIdentityService.deleteGroup(null);
@@ -249,6 +356,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testDeleteMembership() {
         Group sales = idmIdentityService.newGroup("sales");
         idmIdentityService.saveGroup(sales);
@@ -271,6 +379,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser("johndoe");
     }
 
+    @Test
     public void testDeleteMembershipWhenUserIsNoMember() {
         Group sales = idmIdentityService.newGroup("sales");
         idmIdentityService.saveGroup(sales);
@@ -285,6 +394,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser("johndoe");
     }
 
+    @Test
     public void testDeleteMembershipUnexistingGroup() {
         User johndoe = idmIdentityService.newUser("johndoe");
         idmIdentityService.saveUser(johndoe);
@@ -293,6 +403,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser(johndoe.getId());
     }
 
+    @Test
     public void testDeleteMembershipUnexistingUser() {
         Group sales = idmIdentityService.newGroup("sales");
         idmIdentityService.saveGroup(sales);
@@ -301,6 +412,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteGroup(sales.getId());
     }
 
+    @Test
     public void testDeleteMemberschipNullArguments() {
         try {
             idmIdentityService.deleteMembership(null, "group");
@@ -317,6 +429,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testDeleteUserNullArguments() {
         try {
             idmIdentityService.deleteUser(null);
@@ -326,18 +439,51 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         }
     }
 
+    @Test
     public void testDeleteUserUnexistingUserId() {
         // No exception should be thrown. Deleting an unexisting user should
         // be ignored silently
         idmIdentityService.deleteUser("unexistinguser");
     }
 
+    @Test
     public void testCheckPasswordNullSafe() {
         assertFalse(idmIdentityService.checkPassword("userId", null));
         assertFalse(idmIdentityService.checkPassword(null, "passwd"));
         assertFalse(idmIdentityService.checkPassword(null, null));
     }
 
+    @Test
+    public void testChangePassword() {
+
+        idmEngineConfiguration.setPasswordEncoder(new ApacheDigester(ApacheDigester.Digester.MD5));
+
+        User user = idmIdentityService.newUser("johndoe");
+        user.setPassword("xxx");
+        idmIdentityService.saveUser(user);
+
+        user = idmIdentityService.createUserQuery().userId("johndoe").list().get(0);
+        user.setFirstName("John Doe");
+        idmIdentityService.saveUser(user);
+        User johndoe = idmIdentityService.createUserQuery().userId("johndoe").list().get(0);
+        assertNotEquals("xxx", johndoe.getPassword());
+        assertEquals("John Doe", johndoe.getFirstName());
+        assertTrue(idmIdentityService.checkPassword("johndoe", "xxx"));
+
+        user = idmIdentityService.createUserQuery().userId("johndoe").list().get(0);
+        user.setPassword("yyy");
+        idmIdentityService.saveUser(user);
+        assertTrue(idmIdentityService.checkPassword("johndoe", "xxx"));
+
+        user = idmIdentityService.createUserQuery().userId("johndoe").list().get(0);
+        user.setPassword("yyy");
+        idmIdentityService.updateUserPassword(user);
+        assertTrue(idmIdentityService.checkPassword("johndoe", "yyy"));
+
+        idmIdentityService.deleteUser("johndoe");
+    }
+
+    @Test
     public void testUserOptimisticLockingException() {
         User user = idmIdentityService.newUser("kermit");
         idmIdentityService.saveUser(user);
@@ -361,6 +507,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteUser(user.getId());
     }
 
+    @Test
     public void testGroupOptimisticLockingException() {
         Group group = idmIdentityService.newGroup("group");
         idmIdentityService.saveGroup(group);
@@ -384,6 +531,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteGroup(group.getId());
     }
 
+    @Test
     public void testNewToken() {
         Token token = idmIdentityService.newToken("myToken");
         token.setIpAddress("127.0.0.1");
@@ -407,6 +555,7 @@ public class IdentityServiceTest extends PluggableFlowableIdmTestCase {
         idmIdentityService.deleteToken(token1.getId());
     }
 
+    @Test
     public void testTokenOptimisticLockingException() {
         Token token = idmIdentityService.newToken("myToken");
         idmIdentityService.saveToken(token);

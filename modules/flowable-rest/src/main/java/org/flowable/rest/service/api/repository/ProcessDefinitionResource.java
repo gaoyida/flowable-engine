@@ -13,23 +13,43 @@
 
 package org.flowable.rest.service.api.repository;
 
+import java.util.Date;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang3.StringUtils;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.Process;
+import org.flowable.bpmn.model.StartEvent;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.rest.exception.FlowableConflictException;
+import org.flowable.engine.ProcessMigrationService;
+import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.flowable.engine.migration.ProcessInstanceMigrationDocument;
+import org.flowable.engine.migration.ProcessInstanceMigrationDocumentConverter;
+import org.flowable.engine.repository.Deployment;
+import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.form.api.FormInfo;
+import org.flowable.form.api.FormRepositoryService;
+import org.flowable.form.model.SimpleFormModel;
+import org.flowable.rest.service.api.FormHandlerRestApiInterceptor;
+import org.flowable.rest.service.api.FormModelResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.rest.exception.FlowableConflictException;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
-
-import javax.servlet.http.HttpServletRequest;
-import java.util.Date;
 
 /**
  * @author Frederik Heremans
@@ -37,13 +57,25 @@ import java.util.Date;
 @RestController
 @Api(tags = { "Process Definitions" }, description = "Manage Process Definitions", authorizations = { @Authorization(value = "basicAuth") })
 public class ProcessDefinitionResource extends BaseProcessDefinitionResource {
+    
+    @Autowired
+    protected ProcessEngineConfigurationImpl processEngineConfiguration;
+    
+    @Autowired
+    protected ProcessMigrationService processMigrationService;
+    
+    @Autowired(required=false)
+    protected FormRepositoryService formRepositoryService;
+    
+    @Autowired(required=false)
+    protected FormHandlerRestApiInterceptor formHandlerRestApiInterceptor;
 
     @ApiOperation(value = "Get a process definition", tags = { "Process Definitions" })
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates request was successful and the process-definitions are returned"),
             @ApiResponse(code = 404, message = "Indicates the requested process definition was not found.")
     })
-    @RequestMapping(value = "/repository/process-definitions/{processDefinitionId}", method = RequestMethod.GET, produces = "application/json")
+    @GetMapping(value = "/repository/process-definitions/{processDefinitionId}", produces = "application/json")
     public ProcessDefinitionResponse getProcessDefinition(@ApiParam(name = "processDefinitionId") @PathVariable String processDefinitionId, HttpServletRequest request) {
         ProcessDefinition processDefinition = getProcessDefinitionFromRequest(processDefinitionId);
 
@@ -51,22 +83,15 @@ public class ProcessDefinitionResource extends BaseProcessDefinitionResource {
     }
 
     // FIXME Unique endpoint but with multiple actions
-    @ApiOperation(value = "Execute actions for a process definition (Update category, Suspend or Activate)", tags = { "Process Definitions" }, notes = "## Update category for a process definition\n\n"
-            + " ```JSON\n" + "{\n" + "  \"category\" : \"updatedcategory\"\n" + "} ```"
-            + "\n\n\n"
-            + "## Suspend a process definition\n\n"
-            + "```JSON\n {\n" + "  \"action\" : \"suspend\",\n" + "  \"includeProcessInstances\" : \"false\",\n" + "  \"date\" : \"2013-04-15T00:42:12Z\"\n" + "} ```"
-            + "\n\n\n"
-            + "## Activate a process definition\n\n"
-            + "```JSON\n {\n" + "  \"action\" : \"activate\",\n" + "  \"includeProcessInstances\" : \"true\",\n" + "  \"date\" : \"2013-04-15T00:42:12Z\"\n" + "} ```"
-            + "")
+    @ApiOperation(value = "Execute actions for a process definition", tags = { "Process Definitions" },
+            notes = "Execute actions for a process definition (Update category, Suspend or Activate)")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Indicates action has been executed for the specified process. (category altered, activate or suspend)"),
             @ApiResponse(code = 400, message = "Indicates no category was defined in the request body."),
             @ApiResponse(code = 404, message = "Indicates the requested process definition was not found."),
             @ApiResponse(code = 409, message = "Indicates the requested process definition is already suspended or active.")
     })
-    @RequestMapping(value = "/repository/process-definitions/{processDefinitionId}", method = RequestMethod.PUT, produces = "application/json")
+    @PutMapping(value = "/repository/process-definitions/{processDefinitionId}", produces = "application/json")
     public ProcessDefinitionResponse executeProcessDefinitionAction(
             @ApiParam(name = "processDefinitionId") @PathVariable String processDefinitionId,
             @ApiParam(required = true) @RequestBody ProcessDefinitionActionRequest actionRequest,
@@ -101,6 +126,87 @@ public class ProcessDefinitionResource extends BaseProcessDefinitionResource {
 
             throw new FlowableIllegalArgumentException("Invalid action: '" + actionRequest.getAction() + "'.");
         }
+    }
+    
+    @ApiOperation(value = "Get a process definition start form", tags = { "Process Definitions" })
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Indicates request was successful and the process definition form is returned"),
+            @ApiResponse(code = 404, message = "Indicates the requested process definition was not found.")
+    })
+    @GetMapping(value = "/repository/process-definitions/{processDefinitionId}/start-form", produces = "application/json")
+    public String getProcessDefinitionStartForm(@ApiParam(name = "processDefinitionId") @PathVariable String processDefinitionId, HttpServletRequest request) {
+        if (formRepositoryService == null) {
+            return null;
+        }
+        
+        ProcessDefinition processDefinition = getProcessDefinitionFromRequest(processDefinitionId);
+        FormInfo formInfo = getStartForm(processDefinition);
+        if (formHandlerRestApiInterceptor != null) {
+            return formHandlerRestApiInterceptor.convertStartFormInfo(formInfo, processDefinition);
+        } else {
+            SimpleFormModel formModel = (SimpleFormModel) formInfo.getFormModel();
+            return restResponseFactory.getFormModelString(new FormModelResponse(formInfo, formModel));
+        }
+    }
+    
+    @ApiOperation(value = "Migrate all instances of process definition", tags = { "Process Definitions" }, notes = "")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Indicates process instances were found and migration was executed."),
+            @ApiResponse(code = 404, message = "Indicates the requested process definition was not found.")
+    })
+    @PostMapping(value = "/repository/process-definitions/{processDefinitionId}/migrate", produces = "application/json")
+    public void migrateInstancesOfProcessDefinition(@ApiParam(name = "processDefinitionId") @PathVariable String processDefinitionId,
+            @RequestBody String migrationDocumentJson, HttpServletRequest request) {
+        
+        ProcessDefinition processDefinition = getProcessDefinitionFromRequest(processDefinitionId);
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.migrateInstancesOfProcessDefinition(processDefinition, migrationDocumentJson);
+        }
+
+        ProcessInstanceMigrationDocument migrationDocument = ProcessInstanceMigrationDocumentConverter.convertFromJson(migrationDocumentJson);
+        processMigrationService.migrateProcessInstancesOfProcessDefinition(processDefinitionId, migrationDocument);
+    }
+    
+    @ApiOperation(value = "Batch migrate all instances of process definition", tags = { "Process Definitions" }, notes = "")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Indicates process instances were found and batch migration was started."),
+            @ApiResponse(code = 404, message = "Indicates the requested process definition was not found.")
+    })
+    @PostMapping(value = "/repository/process-definitions/{processDefinitionId}/batch-migrate", produces = "application/json")
+    public void batchMigrateInstancesOfProcessDefinition(@ApiParam(name = "processDefinitionId") @PathVariable String processDefinitionId,
+            @RequestBody String migrationDocumentJson, HttpServletRequest request) {
+        
+        ProcessDefinition processDefinition = getProcessDefinitionFromRequest(processDefinitionId);
+        
+        if (restApiInterceptor != null) {
+            restApiInterceptor.migrateInstancesOfProcessDefinition(processDefinition, migrationDocumentJson);
+        }
+
+        ProcessInstanceMigrationDocument migrationDocument = ProcessInstanceMigrationDocumentConverter.convertFromJson(migrationDocumentJson);
+        processMigrationService.batchMigrateProcessInstancesOfProcessDefinition(processDefinitionId, migrationDocument);
+    }
+    
+    protected FormInfo getStartForm(ProcessDefinition processDefinition) {
+        FormInfo formInfo = null;
+        BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinition.getId());
+        Process process = bpmnModel.getProcessById(processDefinition.getKey());
+        FlowElement startElement = process.getInitialFlowElement();
+        if (startElement instanceof StartEvent) {
+            StartEvent startEvent = (StartEvent) startElement;
+            if (StringUtils.isNotEmpty(startEvent.getFormKey())) {
+                Deployment deployment = repositoryService.createDeploymentQuery().deploymentId(processDefinition.getDeploymentId()).singleResult();
+                formInfo = formRepositoryService.getFormModelByKeyAndParentDeploymentId(startEvent.getFormKey(),
+                                deployment.getParentDeploymentId(), processDefinition.getTenantId(), processEngineConfiguration.isFallbackToDefaultTenant());
+            }
+        }
+
+        if (formInfo == null) {
+            // Definition found, but no form attached
+            throw new FlowableObjectNotFoundException("Process definition does not have a form defined: " + processDefinition.getId());
+        }
+        
+        return formInfo;
     }
 
     protected ProcessDefinitionResponse activateProcessDefinition(ProcessDefinition processDefinition, boolean suspendInstances, Date date) {

@@ -1,7 +1,20 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.rest.service.api.management;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Map;
 
@@ -10,6 +23,10 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Test for all REST-operations related to the Table collection and a single table resource.
@@ -21,6 +38,7 @@ public class TableResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting tables. GET management/tables
      */
+    @Test
     public void testGetTables() throws Exception {
         Map<String, Long> tableCounts = managementService.getTableCount();
 
@@ -46,6 +64,7 @@ public class TableResourceTest extends BaseSpringRestTestCase {
     /**
      * Test getting a single table. GET management/tables/{tableName}
      */
+    @Test
     public void testGetTable() throws Exception {
         Map<String, Long> tableCounts = managementService.getTableCount();
 
@@ -62,6 +81,7 @@ public class TableResourceTest extends BaseSpringRestTestCase {
         assertTrue(responseNode.get("url").textValue().endsWith(RestUrls.createRelativeResourceUrl(RestUrls.URL_TABLE, tableNameToGet)));
     }
 
+    @Test
     public void testGetUnexistingTable() throws Exception {
         closeResponse(executeRequest(new HttpGet(SERVER_URL_PREFIX + RestUrls.createRelativeResourceUrl(RestUrls.URL_TABLE, "unexisting")), HttpStatus.SC_NOT_FOUND));
     }

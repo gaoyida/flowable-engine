@@ -13,29 +13,12 @@
 
 package org.flowable.spring;
 
-import org.flowable.engine.impl.asyncexecutor.AsyncExecutor;
-import org.flowable.engine.impl.asyncexecutor.ExecuteAsyncRunnable;
-import org.flowable.engine.impl.persistence.entity.JobEntity;
-import org.flowable.engine.runtime.Job;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * 
  * @author Tijs Rademakers
+ * @deprecated use {@link org.flowable.spring.job.service.SpringCallerRunsRejectedJobsHandler}
  */
-public class SpringCallerRunsRejectedJobsHandler implements SpringRejectedJobsHandler {
-
-    private static Logger log = LoggerFactory.getLogger(SpringCallerRunsRejectedJobsHandler.class);
-
-    public void jobRejected(AsyncExecutor asyncExecutor, Job job) {
-        try {
-            // execute rejected work in caller thread (potentially blocking job
-            // acquisition)
-            new ExecuteAsyncRunnable((JobEntity) job, asyncExecutor.getProcessEngineConfiguration()).run();
-        } catch (Exception e) {
-            log.error("Failed to execute rejected job {}", job.getId(), e);
-        }
-    }
+@Deprecated
+public class SpringCallerRunsRejectedJobsHandler extends org.flowable.spring.job.service.SpringCallerRunsRejectedJobsHandler {
 
 }

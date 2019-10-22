@@ -21,7 +21,7 @@ import org.junit.Test;
 public class NotExecutableConverterTest extends AbstractConverterTest {
 
     @Test
-    public void connvertJsonToModel() throws Exception {
+    public void convertJsonToModel() throws Exception {
         BpmnModel bpmnModel = readJsonFile();
         validateModel(bpmnModel);
     }
@@ -33,6 +33,7 @@ public class NotExecutableConverterTest extends AbstractConverterTest {
         validateModel(bpmnModel);
     }
 
+    @Override
     protected String getResource() {
         return "test.notexecutablemodel.json";
     }

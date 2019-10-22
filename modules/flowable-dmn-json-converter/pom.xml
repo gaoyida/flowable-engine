@@ -7,13 +7,13 @@
 		<groupId>org.flowable</groupId>
 		<artifactId>flowable-root</artifactId>
 		<relativePath>../..</relativePath>
-		<version>6.0.1-SNAPSHOT</version>
+		<version>6.5.0-SNAPSHOT</version>
 	</parent>
 	<packaging>jar</packaging>
 	
 	<properties>
 		<flowable.artifact>
-			org.flowable.dmn.json.converter
+			org.flowable.editor.dmn.converter
 		</flowable.artifact>
 	</properties>
 
@@ -121,7 +121,6 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>
-						<version>2.1.1</version>
 						<executions>
 							<execution>
 								<id>attach-sources</id>

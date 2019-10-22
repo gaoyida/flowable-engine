@@ -23,16 +23,17 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.activiti.engine.impl.test.JobTestHelper;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.runtime.Clock;
 import org.flowable.engine.ProcessEngine;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.runtime.Clock;
-import org.flowable.engine.impl.asyncexecutor.AsyncExecutor;
-import org.flowable.engine.impl.asyncexecutor.DefaultAsyncJobExecutor;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration;
 import org.flowable.engine.repository.DeploymentProperties;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.job.api.Job;
+import org.flowable.job.api.JobInfo;
+import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
+import org.flowable.job.service.impl.asyncexecutor.DefaultAsyncJobExecutor;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -384,16 +385,16 @@ public class AsyncExecutorTest {
 
     static class CountingAsyncExecutor extends DefaultAsyncJobExecutor {
 
-        private static final Logger logger = LoggerFactory.getLogger(CountingAsyncExecutor.class);
+        private static final Logger LOGGER = LoggerFactory.getLogger(CountingAsyncExecutor.class);
 
         private AtomicInteger counter = new AtomicInteger(0);
 
         @Override
-        public boolean executeAsyncJob(Job job) {
-            logger.info("About to execute job {}", job.getId());
+        public boolean executeAsyncJob(JobInfo job) {
+            LOGGER.info("About to execute job {}", job.getId());
             counter.incrementAndGet();
             boolean success = super.executeAsyncJob(job);
-            logger.info("Handed off job {} to async executor (retries={})", job.getId(), job.getRetries());
+            LOGGER.info("Handed off job {} to async executor (retries={})", job.getId(), job.getRetries());
             return success;
         }
 

@@ -13,6 +13,9 @@
 
 package org.flowable.rest.service.api.runtime;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.Calendar;
 import java.util.List;
 
@@ -22,11 +25,12 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.EventSubscription;
-import org.flowable.engine.runtime.Job;
 import org.flowable.engine.test.Deployment;
+import org.flowable.eventsubscription.api.EventSubscription;
+import org.flowable.job.api.Job;
 import org.flowable.rest.service.BaseSpringRestTestCase;
 import org.flowable.rest.service.api.RestUrls;
+import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -37,6 +41,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class SignalsResourceTest extends BaseSpringRestTestCase {
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/SignalsResourceTest.process-signal-start.bpmn20.xml" })
     public void testSignalEventReceivedSync() throws Exception {
 
@@ -93,6 +98,7 @@ public class SignalsResourceTest extends BaseSpringRestTestCase {
         }
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/SignalsResourceTest.process-signal-start.bpmn20.xml" })
     public void testSignalEventReceivedAsync() throws Exception {
 
@@ -144,6 +150,7 @@ public class SignalsResourceTest extends BaseSpringRestTestCase {
         }
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/SignalsResourceTest.process-signal-start.bpmn20.xml" })
     public void testQueryEventSubscriptions() throws Exception {
         Calendar hourAgo = Calendar.getInstance();
@@ -184,6 +191,7 @@ public class SignalsResourceTest extends BaseSpringRestTestCase {
         assertResultsPresentInDataResponse(url, eventSubscription.getId());
     }
 
+    @Test
     @Deployment(resources = { "org/flowable/rest/service/api/runtime/SignalsResourceTest.process-signal-start.bpmn20.xml" })
     public void testGetEventSubscription() throws Exception {
         EventSubscription eventSubscription = runtimeService.createEventSubscriptionQuery().singleResult();

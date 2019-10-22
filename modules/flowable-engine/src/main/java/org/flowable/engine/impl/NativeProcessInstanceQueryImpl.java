@@ -15,8 +15,10 @@ package org.flowable.engine.impl;
 import java.util.List;
 import java.util.Map;
 
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.impl.query.AbstractNativeQuery;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.runtime.NativeProcessInstanceQuery;
 import org.flowable.engine.runtime.ProcessInstance;
 
@@ -34,12 +36,14 @@ public class NativeProcessInstanceQueryImpl extends AbstractNativeQuery<NativePr
 
     // results ////////////////////////////////////////////////////////////////
 
-    public List<ProcessInstance> executeList(CommandContext commandContext, Map<String, Object> parameterMap, int firstResult, int maxResults) {
-        return commandContext.getExecutionEntityManager().findProcessInstanceByNativeQuery(parameterMap, firstResult, maxResults);
+    @Override
+    public List<ProcessInstance> executeList(CommandContext commandContext, Map<String, Object> parameterMap) {
+        return CommandContextUtil.getExecutionEntityManager(commandContext).findProcessInstanceByNativeQuery(parameterMap);
     }
 
+    @Override
     public long executeCount(CommandContext commandContext, Map<String, Object> parameterMap) {
-        return commandContext.getExecutionEntityManager()
+        return CommandContextUtil.getExecutionEntityManager(commandContext)
                 // can use execution count, since the result type doesn't matter
                 .findExecutionCountByNativeQuery(parameterMap);
     }

@@ -12,11 +12,13 @@
  */
 package org.flowable.engine.impl.cmd;
 
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.delegate.event.FlowableEvent;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.engine.impl.util.CommandContextUtil;
 
 /**
  * Command that dispatches an event.
@@ -37,8 +39,9 @@ public class DispatchEventCommand implements Command<Void> {
             throw new FlowableIllegalArgumentException("event is null");
         }
 
-        if (commandContext.getEventDispatcher().isEnabled()) {
-            commandContext.getEventDispatcher().dispatchEvent(event);
+        FlowableEventDispatcher eventDispatcher = CommandContextUtil.getEventDispatcher();
+        if (eventDispatcher != null && eventDispatcher.isEnabled()) {
+            eventDispatcher.dispatchEvent(event);
         } else {
             throw new FlowableException("Message dispatcher is disabled, cannot dispatch event");
         }

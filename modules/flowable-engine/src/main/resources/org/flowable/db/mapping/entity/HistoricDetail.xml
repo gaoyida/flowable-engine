@@ -153,6 +153,21 @@
     delete from ${prefix}ACT_HI_DETAIL where ID_ = #{id}
   </delete>
   
+  <delete id="bulkDeleteHistoricDetailForNonExistingProcessInstances" parameterType="java.util.Map">
+    delete <if test="_databaseId != 'postgres' and _databaseId != 'db2'"> HIDETAIL </if> from ${prefix}ACT_HI_DETAIL HIDETAIL where HIDETAIL.PROC_INST_ID_ is not null and HIDETAIL.PROC_INST_ID_ != '' and
+    NOT EXISTS (select PROCINST.ID_ from ${prefix}ACT_HI_PROCINST PROCINST where HIDETAIL.PROC_INST_ID_ = PROCINST.ID_)
+  </delete>
+  
+  <delete id="bulkDeleteHistoricDetailForNonExistingProcessInstances" parameterType="java.util.Map" databaseId="oracle">
+    delete from ${prefix}ACT_HI_DETAIL HIDETAIL where HIDETAIL.PROC_INST_ID_ is not null and
+    NOT EXISTS (select PROCINST.ID_ from ${prefix}ACT_HI_PROCINST PROCINST where HIDETAIL.PROC_INST_ID_ = PROCINST.ID_)
+  </delete>
+
+  <delete id="bulkDeleteHistoricDetailForNonExistingProcessInstances" databaseId="h2" parameterType="java.util.Map">
+    delete from ${prefix}ACT_HI_DETAIL where PROC_INST_ID_ is not null and PROC_INST_ID_ != '' and 
+    PROC_INST_ID_ NOT IN (select PROCINST.ID_ from ${prefix}ACT_HI_PROCINST PROCINST)
+  </delete>
+  
   <!-- HISTORIC DETAILS RESULTMAP -->
   <resultMap id="historicDetailResultMap" type="org.flowable.engine.impl.persistence.entity.HistoricDetailEntityImpl">
     <id property="id" column="ID_" jdbcType="VARCHAR" />
@@ -170,7 +185,7 @@
   <resultMap id="historicVariableUpdateResultMap" extends="historicDetailResultMap" type="org.flowable.engine.impl.persistence.entity.HistoricDetailVariableInstanceUpdateEntityImpl">
     <result property="name" column="NAME_" javaType="String" jdbcType="VARCHAR" />
     <result property="revision" column="REV_" jdbcType="INTEGER" />
-    <result property="variableType" column="VAR_TYPE_" javaType="org.flowable.engine.impl.variable.VariableType" jdbcType="VARCHAR"/>
+    <result property="variableType" column="VAR_TYPE_" javaType="org.flowable.variable.api.types.VariableType" jdbcType="VARCHAR"/>
     <result property="activityId" column="ACTIVITY_ID_" jdbcType="VARCHAR" />
     <result property="byteArrayRef" column="BYTEARRAY_ID_" typeHandler="ByteArrayRefTypeHandler" />
     <result property="doubleValue" column="DOUBLE_" jdbcType="DOUBLE" />
@@ -186,22 +201,22 @@
 
   <!-- HISTORIC VARIABLE SELECT -->
   
-  <select id="selectHistoricDetailByProcessInstanceId" parameterType="org.flowable.engine.common.impl.db.ListQueryParameterObject" resultMap="historicDetailResultMap">
+  <select id="selectHistoricDetailByProcessInstanceId" parameterType="org.flowable.common.engine.impl.db.ListQueryParameterObject" resultMap="historicDetailResultMap">
     select * from ${prefix}ACT_HI_DETAIL
     where PROC_INST_ID_ = #{parameter}
   </select>
   
-  <select id="selectHistoricDetailByTaskId" parameterType="org.flowable.engine.common.impl.db.ListQueryParameterObject" resultMap="historicDetailResultMap">
+  <select id="selectHistoricDetailByTaskId" parameterType="org.flowable.common.engine.impl.db.ListQueryParameterObject" resultMap="historicDetailResultMap">
     select * from ${prefix}ACT_HI_DETAIL
     where TASK_ID_ = #{parameter}
   </select>
 
   <select id="selectHistoricDetailsByQueryCriteria" parameterType="org.flowable.engine.impl.HistoricDetailQueryImpl" resultMap="historicDetailResultMap">
-  	${limitBefore}
-    select RES.* ${limitBetween}
+  	<if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
+    select RES.* <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
     <include refid="selectHistoricDetailsByQueryCriteriaSql"/>
     ${orderBy}
-    ${limitAfter}
+    <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
   </select>
   
   <select id="selectHistoricDetailCountByQueryCriteria" parameterType="org.flowable.engine.impl.HistoricDetailQueryImpl" resultType="long">

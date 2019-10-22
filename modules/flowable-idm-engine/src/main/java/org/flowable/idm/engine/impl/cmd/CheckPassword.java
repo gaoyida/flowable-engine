@@ -14,8 +14,11 @@ package org.flowable.idm.engine.impl.cmd;
 
 import java.io.Serializable;
 
-import org.flowable.idm.engine.impl.interceptor.Command;
-import org.flowable.idm.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.idm.api.PasswordEncoder;
+import org.flowable.idm.api.PasswordSalt;
+import org.flowable.idm.engine.impl.util.CommandContextUtil;
 
 /**
  * @author Tom Baeyens
@@ -24,16 +27,20 @@ public class CheckPassword implements Command<Boolean>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    String userId;
-    String password;
+    protected String userId;
+    protected String password;
 
     public CheckPassword(String userId, String password) {
         this.userId = userId;
         this.password = password;
     }
 
+    @Override
     public Boolean execute(CommandContext commandContext) {
-        return commandContext.getUserEntityManager().checkPassword(userId, password);
+        PasswordEncoder passwordEncoder = CommandContextUtil.getIdmEngineConfiguration().getPasswordEncoder();
+        PasswordSalt passwordSalt = CommandContextUtil.getIdmEngineConfiguration().getPasswordSalt();
+        
+        return CommandContextUtil.getUserEntityManager(commandContext).checkPassword(userId, password, passwordEncoder, passwordSalt);
     }
 
 }

@@ -1,8 +1,21 @@
+/* Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.flowable.engine.test.api.v6;
 
 import java.sql.SQLException;
 import java.util.List;
 
+import org.flowable.common.engine.impl.EngineConfigurator;
 import org.flowable.engine.FormService;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
@@ -12,7 +25,6 @@ import org.flowable.engine.ProcessEngineLifecycleListener;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
-import org.flowable.engine.cfg.ProcessEngineConfigurator;
 import org.flowable.engine.impl.ProcessEngineImpl;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.test.FlowableRule;
@@ -35,9 +47,9 @@ import org.slf4j.LoggerFactory;
  */
 public class AbstractFlowable6Test {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractFlowable6Test.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractFlowable6Test.class);
 
-    public static String H2_TEST_JDBC_URL = "jdbc:h2:mem:activiti;DB_CLOSE_DELAY=1000";
+    public static final String H2_TEST_JDBC_URL = "jdbc:h2:mem:activiti;DB_CLOSE_DELAY=1000";
 
     @Rule
     public FlowableRule activitiRule = new FlowableRule();
@@ -82,9 +94,9 @@ public class AbstractFlowable6Test {
     public void logCommandInvokerDebugInfo() {
 
         ProcessExecutionLoggerConfigurator loggerConfigurator = null;
-        List<ProcessEngineConfigurator> configurators = ((ProcessEngineImpl) cachedProcessEngine).getProcessEngineConfiguration().getConfigurators();
+        List<EngineConfigurator> configurators = ((ProcessEngineImpl) cachedProcessEngine).getProcessEngineConfiguration().getConfigurators();
         if (configurators != null && configurators.size() > 0) {
-            for (ProcessEngineConfigurator configurator : configurators) {
+            for (EngineConfigurator configurator : configurators) {
                 if (configurator instanceof ProcessExecutionLoggerConfigurator) {
                     loggerConfigurator = (ProcessExecutionLoggerConfigurator) configurator;
                     break;
@@ -123,7 +135,7 @@ public class AbstractFlowable6Test {
             server.start();
 
         } catch (SQLException e) {
-            logger.warn("Could not start H2 webapp", e);
+            LOGGER.warn("Could not start H2 webapp", e);
         }
     }
 

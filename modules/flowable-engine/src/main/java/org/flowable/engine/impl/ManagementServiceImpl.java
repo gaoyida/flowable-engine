@@ -16,42 +16,69 @@ import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.batch.api.Batch;
+import org.flowable.batch.api.BatchBuilder;
+import org.flowable.batch.api.BatchPart;
+import org.flowable.batch.api.BatchQuery;
+import org.flowable.batch.service.impl.BatchBuilderImpl;
+import org.flowable.batch.service.impl.BatchQueryImpl;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.management.TableMetaData;
+import org.flowable.common.engine.api.management.TablePageQuery;
+import org.flowable.common.engine.impl.cmd.CustomSqlExecution;
+import org.flowable.common.engine.impl.db.DbSqlSession;
+import org.flowable.common.engine.impl.db.DbSqlSessionFactory;
+import org.flowable.common.engine.impl.interceptor.Command;
+import org.flowable.common.engine.impl.interceptor.CommandConfig;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.service.CommonEngineServiceImpl;
 import org.flowable.engine.ManagementService;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
-import org.flowable.engine.common.api.management.TableMetaData;
-import org.flowable.engine.common.api.management.TablePageQuery;
-import org.flowable.engine.common.impl.cmd.CustomSqlExecution;
-import org.flowable.engine.common.impl.interceptor.CommandConfig;
 import org.flowable.engine.event.EventLogEntry;
-import org.flowable.engine.impl.cmd.DeleteDeadLetterJobCmd;
+import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.flowable.engine.impl.cmd.DeleteBatchCmd;
 import org.flowable.engine.impl.cmd.DeleteEventLogEntry;
-import org.flowable.engine.impl.cmd.DeleteJobCmd;
-import org.flowable.engine.impl.cmd.DeleteTimerJobCmd;
 import org.flowable.engine.impl.cmd.ExecuteCustomSqlCmd;
-import org.flowable.engine.impl.cmd.ExecuteJobCmd;
+import org.flowable.engine.impl.cmd.FindBatchPartsByBatchIdCmd;
+import org.flowable.engine.impl.cmd.FindBatchesBySearchKeyCmd;
+import org.flowable.engine.impl.cmd.GetAllBatchesCmd;
+import org.flowable.engine.impl.cmd.GetBatchDocumentCmd;
+import org.flowable.engine.impl.cmd.GetBatchPartCmd;
+import org.flowable.engine.impl.cmd.GetBatchPartDocumentCmd;
 import org.flowable.engine.impl.cmd.GetEventLogEntriesCmd;
-import org.flowable.engine.impl.cmd.GetJobExceptionStacktraceCmd;
 import org.flowable.engine.impl.cmd.GetPropertiesCmd;
 import org.flowable.engine.impl.cmd.GetTableCountCmd;
 import org.flowable.engine.impl.cmd.GetTableMetaDataCmd;
 import org.flowable.engine.impl.cmd.GetTableNameCmd;
-import org.flowable.engine.impl.cmd.JobType;
-import org.flowable.engine.impl.cmd.MoveDeadLetterJobToExecutableJobCmd;
-import org.flowable.engine.impl.cmd.MoveJobToDeadLetterJobCmd;
-import org.flowable.engine.impl.cmd.MoveTimerToExecutableJobCmd;
+import org.flowable.engine.impl.cmd.HandleHistoryCleanupTimerJobCmd;
 import org.flowable.engine.impl.cmd.RescheduleTimerJobCmd;
-import org.flowable.engine.impl.cmd.SetJobRetriesCmd;
-import org.flowable.engine.impl.cmd.SetTimerJobRetriesCmd;
-import org.flowable.engine.impl.db.DbSqlSession;
-import org.flowable.engine.impl.db.DbSqlSessionFactory;
-import org.flowable.engine.impl.interceptor.Command;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.runtime.DeadLetterJobQuery;
-import org.flowable.engine.runtime.Job;
-import org.flowable.engine.runtime.JobQuery;
-import org.flowable.engine.runtime.SuspendedJobQuery;
-import org.flowable.engine.runtime.TimerJobQuery;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.job.api.DeadLetterJobQuery;
+import org.flowable.job.api.HistoryJobQuery;
+import org.flowable.job.api.Job;
+import org.flowable.job.api.JobQuery;
+import org.flowable.job.api.SuspendedJobQuery;
+import org.flowable.job.api.TimerJobQuery;
+import org.flowable.job.service.impl.DeadLetterJobQueryImpl;
+import org.flowable.job.service.impl.HistoryJobQueryImpl;
+import org.flowable.job.service.impl.JobQueryImpl;
+import org.flowable.job.service.impl.SuspendedJobQueryImpl;
+import org.flowable.job.service.impl.TimerJobQueryImpl;
+import org.flowable.job.service.impl.cmd.DeleteDeadLetterJobCmd;
+import org.flowable.job.service.impl.cmd.DeleteHistoryJobCmd;
+import org.flowable.job.service.impl.cmd.DeleteJobCmd;
+import org.flowable.job.service.impl.cmd.DeleteSuspendedJobCmd;
+import org.flowable.job.service.impl.cmd.DeleteTimerJobCmd;
+import org.flowable.job.service.impl.cmd.ExecuteHistoryJobCmd;
+import org.flowable.job.service.impl.cmd.ExecuteJobCmd;
+import org.flowable.job.service.impl.cmd.GetJobExceptionStacktraceCmd;
+import org.flowable.job.service.impl.cmd.JobType;
+import org.flowable.job.service.impl.cmd.MoveDeadLetterJobToExecutableJobCmd;
+import org.flowable.job.service.impl.cmd.MoveJobToDeadLetterJobCmd;
+import org.flowable.job.service.impl.cmd.MoveSuspendedJobToExecutableJobCmd;
+import org.flowable.job.service.impl.cmd.MoveTimerToExecutableJobCmd;
+import org.flowable.job.service.impl.cmd.SetJobRetriesCmd;
+import org.flowable.job.service.impl.cmd.SetTimerJobRetriesCmd;
 
 /**
  * @author Tom Baeyens
@@ -59,25 +86,30 @@ import org.flowable.engine.runtime.TimerJobQuery;
  * @author Falko Menge
  * @author Saeid Mizaei
  */
-public class ManagementServiceImpl extends ServiceImpl implements ManagementService {
-
+public class ManagementServiceImpl extends CommonEngineServiceImpl<ProcessEngineConfigurationImpl> implements ManagementService {
+    
+    @Override
     public Map<String, Long> getTableCount() {
         return commandExecutor.execute(new GetTableCountCmd());
     }
 
+    @Override
     public String getTableName(Class<?> entityClass) {
         return commandExecutor.execute(new GetTableNameCmd(entityClass));
     }
 
+    @Override
+    public String getTableName(Class<?> entityClass, boolean includePrefix) {
+        return commandExecutor.execute(new GetTableNameCmd(entityClass, includePrefix));
+    }
+
+    @Override
     public TableMetaData getTableMetaData(String tableName) {
         return commandExecutor.execute(new GetTableMetaDataCmd(tableName));
     }
 
+    @Override
     public void executeJob(String jobId) {
-        if (jobId == null) {
-            throw new FlowableIllegalArgumentException("JobId is null");
-        }
-
         try {
             commandExecutor.execute(new ExecuteJobCmd(jobId));
 
@@ -89,11 +121,18 @@ public class ManagementServiceImpl extends ServiceImpl implements ManagementServ
             }
         }
     }
+    
+    @Override
+    public void executeHistoryJob(String historyJobId) {
+        commandExecutor.execute(new ExecuteHistoryJobCmd(historyJobId));
+    }
 
+    @Override
     public Job moveTimerToExecutableJob(String jobId) {
         return commandExecutor.execute(new MoveTimerToExecutableJobCmd(jobId));
     }
 
+    @Override
     public Job moveJobToDeadLetterJob(String jobId) {
         return commandExecutor.execute(new MoveJobToDeadLetterJobCmd(jobId));
     }
@@ -103,22 +142,42 @@ public class ManagementServiceImpl extends ServiceImpl implements ManagementServ
         return commandExecutor.execute(new MoveDeadLetterJobToExecutableJobCmd(jobId, retries));
     }
 
+    @Override
+    public Job moveSuspendedJobToExecutableJob(String jobId) {
+        return commandExecutor.execute(new MoveSuspendedJobToExecutableJobCmd(jobId));
+    }
+
+    @Override
     public void deleteJob(String jobId) {
         commandExecutor.execute(new DeleteJobCmd(jobId));
     }
 
+    @Override
     public void deleteTimerJob(String jobId) {
         commandExecutor.execute(new DeleteTimerJobCmd(jobId));
     }
+    
+    @Override
+    public void deleteSuspendedJob(String jobId) {
+        commandExecutor.execute(new DeleteSuspendedJobCmd(jobId));
+    }
 
+    @Override
     public void deleteDeadLetterJob(String jobId) {
         commandExecutor.execute(new DeleteDeadLetterJobCmd(jobId));
     }
+    
+    @Override
+    public void deleteHistoryJob(String jobId) {
+        commandExecutor.execute(new DeleteHistoryJobCmd(jobId));
+    }
 
+    @Override
     public void setJobRetries(String jobId, int retries) {
         commandExecutor.execute(new SetJobRetriesCmd(jobId, retries));
     }
 
+    @Override
     public void setTimerJobRetries(String jobId, int retries) {
         commandExecutor.execute(new SetTimerJobRetriesCmd(jobId, retries));
     }
@@ -143,58 +202,131 @@ public class ManagementServiceImpl extends ServiceImpl implements ManagementServ
         return commandExecutor.execute(new RescheduleTimerJobCmd(jobId, timeDate, timeDuration, timeCycle, endDate, calendarName));
     }
 
+    @Override
     public TablePageQuery createTablePageQuery() {
         return new TablePageQueryImpl(commandExecutor);
     }
 
+    @Override
     public JobQuery createJobQuery() {
         return new JobQueryImpl(commandExecutor);
     }
 
+    @Override
     public TimerJobQuery createTimerJobQuery() {
         return new TimerJobQueryImpl(commandExecutor);
     }
 
+    @Override
     public SuspendedJobQuery createSuspendedJobQuery() {
         return new SuspendedJobQueryImpl(commandExecutor);
     }
 
+    @Override
     public DeadLetterJobQuery createDeadLetterJobQuery() {
         return new DeadLetterJobQueryImpl(commandExecutor);
     }
+    
+    @Override
+    public HistoryJobQuery createHistoryJobQuery() {
+        return new HistoryJobQueryImpl(commandExecutor);
+    }
 
+    @Override
     public String getJobExceptionStacktrace(String jobId) {
         return commandExecutor.execute(new GetJobExceptionStacktraceCmd(jobId, JobType.ASYNC));
     }
 
+    @Override
     public String getTimerJobExceptionStacktrace(String jobId) {
         return commandExecutor.execute(new GetJobExceptionStacktraceCmd(jobId, JobType.TIMER));
     }
 
+    @Override
     public String getSuspendedJobExceptionStacktrace(String jobId) {
         return commandExecutor.execute(new GetJobExceptionStacktraceCmd(jobId, JobType.SUSPENDED));
     }
 
+    @Override
     public String getDeadLetterJobExceptionStacktrace(String jobId) {
         return commandExecutor.execute(new GetJobExceptionStacktraceCmd(jobId, JobType.DEADLETTER));
     }
+    
+    @Override
+    public void handleHistoryCleanupTimerJob() {
+        commandExecutor.execute(new HandleHistoryCleanupTimerJobCmd());
+    }
+    
+    @Override
+    public List<Batch> getAllBatches() {
+        return commandExecutor.execute(new GetAllBatchesCmd());
+    }
+    
+    @Override
+    public List<Batch> findBatchesBySearchKey(String searchKey) {
+        return commandExecutor.execute(new FindBatchesBySearchKeyCmd(searchKey));
+    }
+    
+    @Override
+    public String getBatchDocument(String batchId) {
+        return commandExecutor.execute(new GetBatchDocumentCmd(batchId));
+    }
+    
+    @Override
+    public BatchPart getBatchPart(String batchPartId) {
+        return commandExecutor.execute(new GetBatchPartCmd(batchPartId));
+    }
+    
+    @Override
+    public List<BatchPart> findBatchPartsByBatchId(String batchId) {
+        return commandExecutor.execute(new FindBatchPartsByBatchIdCmd(batchId));
+    }
+    
+    @Override
+    public List<BatchPart> findBatchPartsByBatchIdAndStatus(String batchId, String status) {
+        return commandExecutor.execute(new FindBatchPartsByBatchIdCmd(batchId, status));
+    }
+    
+    @Override
+    public String getBatchPartDocument(String batchPartId) {
+        return commandExecutor.execute(new GetBatchPartDocumentCmd(batchPartId));
+    }
+    
+    @Override
+    public BatchQuery createBatchQuery() {
+        return new BatchQueryImpl(commandExecutor);
+    }
+    
+    @Override
+    public BatchBuilder createBatchBuilder() {
+        return new BatchBuilderImpl(commandExecutor);
+    }
+    
+    @Override
+    public void deleteBatch(String batchId) {
+        commandExecutor.execute(new DeleteBatchCmd(batchId));
+    }
 
+    @Override
     public Map<String, String> getProperties() {
         return commandExecutor.execute(new GetPropertiesCmd());
     }
 
+    @Override
     public String databaseSchemaUpgrade(final Connection connection, final String catalog, final String schema) {
         CommandConfig config = commandExecutor.getDefaultConfig().transactionNotSupported();
         return commandExecutor.execute(config, new Command<String>() {
+            @Override
             public String execute(CommandContext commandContext) {
                 DbSqlSessionFactory dbSqlSessionFactory = (DbSqlSessionFactory) commandContext.getSessionFactories().get(DbSqlSession.class);
-                DbSqlSession dbSqlSession = new DbSqlSession(dbSqlSessionFactory, commandContext.getEntityCache(), connection, catalog, schema);
+                DbSqlSession dbSqlSession = new DbSqlSession(dbSqlSessionFactory, CommandContextUtil.getEntityCache(commandContext), connection, catalog, schema);
                 commandContext.getSessions().put(DbSqlSession.class, dbSqlSession);
-                return dbSqlSession.dbSchemaUpdate();
+                return CommandContextUtil.getProcessEngineConfiguration(commandContext).getSchemaManager().schemaUpdate();
             }
         });
     }
 
+    @Override
     public <T> T executeCommand(Command<T> command) {
         if (command == null) {
             throw new FlowableIllegalArgumentException("The command is null");
@@ -202,6 +334,7 @@ public class ManagementServiceImpl extends ServiceImpl implements ManagementServ
         return commandExecutor.execute(command);
     }
 
+    @Override
     public <T> T executeCommand(CommandConfig config, Command<T> command) {
         if (config == null) {
             throw new FlowableIllegalArgumentException("The config is null");
@@ -215,7 +348,7 @@ public class ManagementServiceImpl extends ServiceImpl implements ManagementServ
     @Override
     public <MapperType, ResultType> ResultType executeCustomSql(CustomSqlExecution<MapperType, ResultType> customSqlExecution) {
         Class<MapperType> mapperClass = customSqlExecution.getMapperClass();
-        return commandExecutor.execute(new ExecuteCustomSqlCmd<MapperType, ResultType>(mapperClass, customSqlExecution));
+        return commandExecutor.execute(new ExecuteCustomSqlCmd<>(mapperClass, customSqlExecution));
     }
 
     @Override

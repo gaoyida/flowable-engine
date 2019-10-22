@@ -36,11 +36,11 @@ import org.activiti.engine.impl.persistence.entity.JobEntity;
 import org.activiti.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.activiti.engine.impl.persistence.entity.TimerJobEntity;
 import org.activiti.engine.impl.pvm.process.ActivityImpl;
-import org.flowable.engine.common.api.delegate.event.FlowableEventDispatcher;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
-import org.flowable.engine.impl.calendar.DurationHelper;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEventDispatcher;
+import org.flowable.common.engine.impl.calendar.DurationHelper;
 import org.flowable.engine.repository.ProcessDefinition;
-import org.flowable.engine.runtime.Job;
+import org.flowable.job.api.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 
 public class JobRetryCmd implements Command<Object> {
 
-    private static final Logger log = LoggerFactory.getLogger(JobRetryCmd.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobRetryCmd.class.getName());
 
     protected String jobId;
     protected Throwable exception;
@@ -60,6 +60,7 @@ public class JobRetryCmd implements Command<Object> {
         this.exception = exception;
     }
 
+    @Override
     public Object execute(CommandContext commandContext) {
         JobEntity job = commandContext.getJobEntityManager().findJobById(jobId);
         if (job == null) {
@@ -71,7 +72,7 @@ public class JobRetryCmd implements Command<Object> {
 
         AbstractJobEntity newJobEntity = null;
         if (activity == null || activity.getFailedJobRetryTimeCycleValue() == null) {
-            log.debug("activity or FailedJobRetryTimerCycleValue is null in job '{}'. Only decrementing retries.", jobId);
+            LOGGER.debug("activity or FailedJobRetryTimerCycleValue is null in job '{}'. Only decrementing retries.", jobId);
 
             if (job.getRetries() <= 1) {
                 DeadLetterJobEntity deadLetterJob = new DeadLetterJobEntity(job);
@@ -115,10 +116,10 @@ public class JobRetryCmd implements Command<Object> {
                 newJobEntity.setDuedate(durationHelper.getDateAfter());
 
                 if (job.getExceptionMessage() == null) { // is it the first exception
-                    log.debug("Applying JobRetryStrategy '{}' the first time for job {} with {} retries", failedJobRetryTimeCycle, job.getId(), durationHelper.getTimes());
+                    LOGGER.debug("Applying JobRetryStrategy '{}' the first time for job {} with {} retries", failedJobRetryTimeCycle, job.getId(), durationHelper.getTimes());
 
                 } else {
-                    log.debug("Decrementing retries of JobRetryStrategy '{}' for job {}", failedJobRetryTimeCycle, job.getId());
+                    LOGGER.debug("Decrementing retries of JobRetryStrategy '{}' for job {}", failedJobRetryTimeCycle, job.getId());
                 }
                 newJobEntity.setRetries(jobRetries - 1);
 

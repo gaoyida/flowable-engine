@@ -12,6 +12,8 @@
  */
 package org.flowable.dmn.engine;
 
+import org.flowable.common.engine.impl.FlowableVersions;
+import org.flowable.dmn.api.DmnHistoryService;
 import org.flowable.dmn.api.DmnManagementService;
 import org.flowable.dmn.api.DmnRepositoryService;
 import org.flowable.dmn.api.DmnRuleService;
@@ -21,10 +23,10 @@ public interface DmnEngine {
     /**
      * the version of the flowable dmn library
      */
-    public static String VERSION = "6.0.1.0"; // Note the extra .x at the end. To cater for snapshot releases with different database changes
+    public static String VERSION = FlowableVersions.CURRENT_VERSION;
 
     /**
-     * The name as specified in 'dmn-engine-name' in the flowable.dmn.cfg.xml configuration file. The default name for a process engine is 'default
+     * The name as specified in 'dmn-engine-name' in the flowable.dmn.cfg.xml configuration file. The default name for a dmn engine is 'default
      */
     String getName();
 
@@ -35,6 +37,8 @@ public interface DmnEngine {
     DmnRepositoryService getDmnRepositoryService();
 
     DmnRuleService getDmnRuleService();
+    
+    DmnHistoryService getDmnHistoryService();
 
     DmnEngineConfiguration getDmnEngineConfiguration();
 }

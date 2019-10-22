@@ -1,9 +1,9 @@
 /* Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,25 +12,20 @@
  */
 package org.flowable.engine.impl.cmd;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
-import org.flowable.content.api.ContentItem;
-import org.flowable.content.api.ContentService;
-import org.flowable.engine.common.api.FlowableIllegalArgumentException;
+import org.flowable.bpmn.model.UserTask;
+import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.flowable.engine.impl.interceptor.CommandContext;
-import org.flowable.engine.impl.persistence.entity.TaskEntity;
+import org.flowable.engine.impl.util.CommandContextUtil;
+import org.flowable.engine.impl.util.ProcessDefinitionUtil;
 import org.flowable.engine.impl.util.TaskHelper;
+import org.flowable.form.api.FormFieldHandler;
+import org.flowable.form.api.FormInfo;
 import org.flowable.form.api.FormRepositoryService;
 import org.flowable.form.api.FormService;
-import org.flowable.form.model.FormField;
-import org.flowable.form.model.FormFieldTypes;
-import org.flowable.form.model.FormModel;
+import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 
 /**
  * @author Tijs Rademakers
@@ -65,68 +60,55 @@ public class CompleteTaskWithFormCmd extends NeedsActiveTaskCmd<Void> {
         this.transientVariables = transientVariables;
     }
 
+    @Override
     protected Void execute(CommandContext commandContext, TaskEntity task) {
-        ProcessEngineConfigurationImpl processEngineConfiguration = commandContext.getProcessEngineConfiguration();
-        if (!processEngineConfiguration.isFormEngineInitialized()) {
+        FormService formService = CommandContextUtil.getFormService();
+        if (formService == null) {
             throw new FlowableIllegalArgumentException("Form engine is not initialized");
         }
 
-        FormRepositoryService formRepositoryService = processEngineConfiguration.getFormEngineRepositoryService();
-        FormModel formModel = formRepositoryService.getFormModelById(formDefinitionId);
+        FormRepositoryService formRepositoryService = CommandContextUtil.getFormRepositoryService();
+        FormInfo formInfo = formRepositoryService.getFormModelById(formDefinitionId);
 
-        if (formModel != null) {
+        if (formInfo != null) {
+            ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
+            FormFieldHandler formFieldHandler = processEngineConfiguration.getFormFieldHandler();
+            if (isFormFieldValidationEnabled(task, processEngineConfiguration, task.getProcessDefinitionId(), task.getTaskDefinitionKey())) {
+                formService.validateFormFields(formInfo, variables);
+            }
+
             // Extract raw variables and complete the task
-            FormService formService = processEngineConfiguration.getFormEngineFormService();
-            Map<String, Object> formVariables = formService.getVariablesFromFormSubmission(formModel, variables, outcome);
+            Map<String, Object> taskVariables = formService.getVariablesFromFormSubmission(formInfo, variables, outcome);
 
-            formService.createFormInstance(formVariables, formModel, task.getId(), task.getProcessInstanceId());
+            // The taskVariables are the variables that should be used when completing the task
+            // the actual variables should instead be used when saving the form instances
+            if (task.getProcessInstanceId() != null) {
+                formService.saveFormInstance(variables, formInfo, task.getId(), task.getProcessInstanceId(),
+                                task.getProcessDefinitionId(), task.getTenantId(), outcome);
+            } else {
+                formService.saveFormInstanceWithScopeId(variables, formInfo, task.getId(), task.getScopeId(), task.getScopeType(),
+                                task.getScopeDefinitionId(), task.getTenantId(), outcome);
+            }
 
-            processUploadFieldsIfNeeded(formModel, task, commandContext);
+            formFieldHandler.handleFormFieldsOnSubmit(formInfo, task.getId(), task.getProcessInstanceId(), null, null, taskVariables, task.getTenantId());
 
-            TaskHelper.completeTask(task, formVariables, transientVariables, localScope, commandContext);
+            TaskHelper.completeTask(task, taskVariables, transientVariables, localScope, commandContext);
 
         } else {
             TaskHelper.completeTask(task, variables, transientVariables, localScope, commandContext);
         }
+
         return null;
     }
 
-    /**
-     * When content is uploaded for a field, it is uploaded as a 'temporary related content'. Now that the task is completed, we need to associate the field/taskId/processInstanceId with the related
-     * content so we can retrieve it later.
-     */
-    protected void processUploadFieldsIfNeeded(FormModel formModel, TaskEntity task, CommandContext commandContext) {
-        ProcessEngineConfigurationImpl processEngineConfiguration = commandContext.getProcessEngineConfiguration();
-        if (!processEngineConfiguration.isContentEngineInitialized()) {
-            return;
+    protected boolean isFormFieldValidationEnabled(TaskEntity task, ProcessEngineConfigurationImpl processEngineConfiguration, String processDefinitionId,
+        String taskDefinitionKey) {
+        if (processEngineConfiguration.isFormFieldValidationEnabled()) {
+            UserTask userTask = (UserTask) ProcessDefinitionUtil.getBpmnModel(processDefinitionId).getFlowElement(taskDefinitionKey);
+            String formFieldValidationExpression = userTask.getValidateFormFields();
+            return TaskHelper.isFormFieldValidationEnabled(task, processEngineConfiguration, formFieldValidationExpression);
         }
-
-        if (formModel != null && formModel.getFields() != null) {
-            for (FormField formField : formModel.getFields()) {
-                if (FormFieldTypes.UPLOAD.equals(formField.getType())) {
-
-                    String variableName = formField.getId();
-                    if (variables.containsKey(variableName)) {
-                        String variableValue = (String) variables.get(variableName);
-                        if (StringUtils.isNotEmpty(variableValue)) {
-                            String[] contentItemIds = StringUtils.split(variableValue, ",");
-                            Set<String> contentItemIdSet = new HashSet<>();
-                            Collections.addAll(contentItemIdSet, contentItemIds);
-
-                            ContentService contentService = processEngineConfiguration.getContentService();
-                            List<ContentItem> contentItems = contentService.createContentItemQuery().ids(contentItemIdSet).list();
-
-                            for (ContentItem contentItem : contentItems) {
-                                contentItem.setTaskId(task.getId());
-                                contentItem.setProcessInstanceId(task.getProcessInstanceId());
-                                contentItem.setField(formField.getId());
-                                contentService.saveContentItem(contentItem);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        return false;
     }
 
     @Override

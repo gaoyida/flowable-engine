@@ -26,7 +26,6 @@ import org.activiti.engine.impl.pvm.process.ActivityImpl;
 import org.activiti.engine.impl.pvm.process.ScopeImpl;
 import org.activiti.engine.impl.pvm.process.TransitionImpl;
 import org.activiti.engine.parse.BpmnParseHandler;
-import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Activity;
 import org.flowable.bpmn.model.Artifact;
 import org.flowable.bpmn.model.Association;
@@ -36,6 +35,7 @@ import org.flowable.bpmn.model.DataSpec;
 import org.flowable.bpmn.model.EventDefinition;
 import org.flowable.bpmn.model.EventGateway;
 import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Gateway;
 import org.flowable.bpmn.model.ImplementationType;
 import org.flowable.bpmn.model.IntermediateCatchEvent;
@@ -54,8 +54,6 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractBpmnParseHandler<T extends BaseElement> implements BpmnParseHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(AbstractBpmnParseHandler.class);
-
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractBpmnParseHandler.class);
 
     public static final String PROPERTYNAME_IS_FOR_COMPENSATION = "isForCompensation";
@@ -66,14 +64,16 @@ public abstract class AbstractBpmnParseHandler<T extends BaseElement> implements
 
     public static final String PROPERTYNAME_TIMER_DECLARATION = "timerDeclarations";
 
+    @Override
     public Set<Class<? extends BaseElement>> getHandledTypes() {
-        Set<Class<? extends BaseElement>> types = new HashSet<Class<? extends BaseElement>>();
+        Set<Class<? extends BaseElement>> types = new HashSet<>();
         types.add(getHandledType());
         return types;
     }
 
     protected abstract Class<? extends BaseElement> getHandledType();
 
+    @Override
     @SuppressWarnings("unchecked")
     public void parse(BpmnParse bpmnParse, BaseElement element) {
         T baseElement = (T) element;
@@ -143,7 +143,7 @@ public abstract class AbstractBpmnParseHandler<T extends BaseElement> implements
     protected void addEventSubscriptionDeclaration(BpmnParse bpmnParse, EventSubscriptionDeclaration subscription, EventDefinition parsedEventDefinition, ScopeImpl scope) {
         List<EventSubscriptionDeclaration> eventDefinitions = (List<EventSubscriptionDeclaration>) scope.getProperty(PROPERTYNAME_EVENT_SUBSCRIPTION_DECLARATION);
         if (eventDefinitions == null) {
-            eventDefinitions = new ArrayList<EventSubscriptionDeclaration>();
+            eventDefinitions = new ArrayList<>();
             scope.setProperty(PROPERTYNAME_EVENT_SUBSCRIPTION_DECLARATION, eventDefinitions);
         } else {
             // if this is a message event, validate that it is the only one with the provided name for this scope
@@ -153,7 +153,7 @@ public abstract class AbstractBpmnParseHandler<T extends BaseElement> implements
                             && eventDefinition.getEventName().equals(subscription.getEventName())
                             && eventDefinition.isStartEvent() == subscription.isStartEvent()) {
 
-                        logger.warn("Cannot have more than one message event subscription with name '{}' for scope '{}'", subscription.getEventName(), scope.getId());
+                        LOGGER.warn("Cannot have more than one message event subscription with name '{}' for scope '{}'", subscription.getEventName(), scope.getId());
                     }
                 }
             }
@@ -233,7 +233,7 @@ public abstract class AbstractBpmnParseHandler<T extends BaseElement> implements
             if (sourceActivity.getProperty("type").equals("compensationBoundaryCatch")) {
                 Object isForCompensation = targetActivity.getProperty(PROPERTYNAME_IS_FOR_COMPENSATION);
                 if (isForCompensation == null || !(Boolean) isForCompensation) {
-                    logger.warn("compensation boundary catch must be connected to element with isForCompensation=true");
+                    LOGGER.warn("compensation boundary catch must be connected to element with isForCompensation=true");
                 } else {
                     ActivityImpl compensatedActivity = sourceActivity.getParentActivity();
                     compensatedActivity.setProperty(BpmnParse.PROPERTYNAME_COMPENSATION_HANDLER_ID, targetActivity.getId());
@@ -243,7 +243,7 @@ public abstract class AbstractBpmnParseHandler<T extends BaseElement> implements
     }
 
     protected Map<String, Object> processDataObjects(BpmnParse bpmnParse, Collection<ValuedDataObject> dataObjects, ScopeImpl scope) {
-        Map<String, Object> variablesMap = new HashMap<String, Object>();
+        Map<String, Object> variablesMap = new HashMap<>();
         // convert data objects to process variables
         if (dataObjects != null) {
             for (ValuedDataObject dataObject : dataObjects) {

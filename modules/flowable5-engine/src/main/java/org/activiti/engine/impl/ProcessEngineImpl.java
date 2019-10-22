@@ -30,7 +30,7 @@ import org.activiti.engine.impl.cfg.TransactionContextFactory;
 import org.activiti.engine.impl.el.ExpressionManager;
 import org.activiti.engine.impl.interceptor.CommandExecutor;
 import org.activiti.engine.impl.interceptor.SessionFactory;
-import org.flowable.engine.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ProcessEngineImpl implements ProcessEngine {
 
-    private static Logger log = LoggerFactory.getLogger(ProcessEngineImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProcessEngineImpl.class);
 
     protected String name;
     protected RepositoryService repositoryService;
@@ -73,9 +73,9 @@ public class ProcessEngineImpl implements ProcessEngine {
         this.transactionContextFactory = processEngineConfiguration.getTransactionContextFactory();
 
         if (name == null) {
-            log.info("default activiti ProcessEngine created");
+            LOGGER.info("default activiti ProcessEngine created");
         } else {
-            log.info("ProcessEngine {} created", name);
+            LOGGER.info("ProcessEngine {} created", name);
         }
 
         ProcessEngines.registerProcessEngine(this);
@@ -88,6 +88,7 @@ public class ProcessEngineImpl implements ProcessEngine {
                 ActivitiEventBuilder.createGlobalEvent(FlowableEngineEventType.ENGINE_CREATED));
     }
 
+    @Override
     public void close() {
         ProcessEngines.unregister(this);
 
@@ -101,42 +102,52 @@ public class ProcessEngineImpl implements ProcessEngine {
 
     // getters and setters //////////////////////////////////////////////////////
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public IdentityService getIdentityService() {
         return identityService;
     }
 
+    @Override
     public ManagementService getManagementService() {
         return managementService;
     }
 
+    @Override
     public TaskService getTaskService() {
         return taskService;
     }
 
+    @Override
     public HistoryService getHistoryService() {
         return historicDataService;
     }
 
+    @Override
     public RuntimeService getRuntimeService() {
         return runtimeService;
     }
 
+    @Override
     public RepositoryService getRepositoryService() {
         return repositoryService;
     }
 
+    @Override
     public FormService getFormService() {
         return formService;
     }
 
+    @Override
     public DynamicBpmnService getDynamicBpmnService() {
         return dynamicBpmnService;
     }
 
+    @Override
     public ProcessEngineConfigurationImpl getProcessEngineConfiguration() {
         return processEngineConfiguration;
     }

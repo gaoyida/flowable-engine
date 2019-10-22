@@ -19,7 +19,7 @@ import java.util.Map;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.CommentEntity;
 import org.flowable.engine.impl.persistence.entity.CommentEntityImpl;
-import org.flowable.engine.impl.persistence.entity.data.AbstractDataManager;
+import org.flowable.engine.impl.persistence.entity.data.AbstractProcessDataManager;
 import org.flowable.engine.impl.persistence.entity.data.CommentDataManager;
 import org.flowable.engine.task.Comment;
 import org.flowable.engine.task.Event;
@@ -27,7 +27,7 @@ import org.flowable.engine.task.Event;
 /**
  * @author Joram Barrez
  */
-public class MybatisCommentDataManager extends AbstractDataManager<CommentEntity> implements CommentDataManager {
+public class MybatisCommentDataManager extends AbstractProcessDataManager<CommentEntity> implements CommentDataManager {
 
     public MybatisCommentDataManager(ProcessEngineConfigurationImpl processEngineConfiguration) {
         super(processEngineConfiguration);
@@ -52,10 +52,10 @@ public class MybatisCommentDataManager extends AbstractDataManager<CommentEntity
     @Override
     @SuppressWarnings("unchecked")
     public List<Comment> findCommentsByTaskIdAndType(String taskId, String type) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("taskId", taskId);
         params.put("type", type);
-        return getDbSqlSession().selectListWithRawParameter("selectCommentsByTaskIdAndType", params, 0, Integer.MAX_VALUE);
+        return getDbSqlSession().selectListWithRawParameter("selectCommentsByTaskIdAndType", params);
     }
 
     @Override
@@ -95,10 +95,10 @@ public class MybatisCommentDataManager extends AbstractDataManager<CommentEntity
     @Override
     @SuppressWarnings("unchecked")
     public List<Comment> findCommentsByProcessInstanceId(String processInstanceId, String type) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("processInstanceId", processInstanceId);
         params.put("type", type);
-        return getDbSqlSession().selectListWithRawParameter("selectCommentsByProcessInstanceIdAndType", params, 0, Integer.MAX_VALUE);
+        return getDbSqlSession().selectListWithRawParameter("selectCommentsByProcessInstanceIdAndType", params);
     }
 
     @Override

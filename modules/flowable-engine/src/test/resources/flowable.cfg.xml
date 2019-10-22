@@ -6,11 +6,11 @@
 
   <bean id="processEngineConfiguration" class="org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration">
 
-    <property name="jdbcUrl" value="jdbc:h2:mem:flowable;DB_CLOSE_DELAY=1000;MVCC=TRUE" />
-    <property name="jdbcDriver" value="org.h2.Driver" />
-    <property name="jdbcUsername" value="sa" />
-    <property name="jdbcPassword" value="" />
-    
+    <property name="jdbcUrl" value="${jdbc.url:jdbc:h2:mem:flowable;DB_CLOSE_DELAY=1000;MVCC=TRUE}" />
+    <property name="jdbcDriver" value="${jdbc.driver:org.h2.Driver}" />
+    <property name="jdbcUsername" value="${jdbc.username:sa}" />
+    <property name="jdbcPassword" value="${jdbc.password:}" />
+
     <!-- Database configurations -->
     <property name="databaseSchemaUpdate" value="drop-create" />
 
@@ -24,12 +24,12 @@
     <!-- job executor configurations -->
     <property name="asyncExecutor" ref="asyncExecutor" />
     <property name="asyncExecutorActivate" value="false" />
-    
+
     <property name="asyncFailedJobWaitTime" value="1" />
 
     <!-- mail server configurations -->
     <property name="mailServerPort" value="5025" />
-    
+
     <property name="mailServers">
       <map>
         <entry key="myEmailTenant">
@@ -45,17 +45,27 @@
         </entry>
       </map>
     </property>
-    
+
     <property name="history" value="full" />
+    <property name="asyncHistoryEnabled" value="false" />
+    <property name="enableEntityLinks" value="true" />
+    <property name="enableProcessDefinitionHistoryLevel" value="true" />
     
     <property name="enableProcessDefinitionInfoCache" value="true" />
+
+    <property name="clock">
+        <bean class="org.flowable.common.engine.impl.util.TestClockImpl" />
+    </property>
+
+    <property name="enableHistoricTaskLogging" value="true"/>
+
   </bean>
   
-  <bean id="asyncExecutor" class="org.flowable.engine.impl.asyncexecutor.DefaultAsyncJobExecutor">
+  <bean id="asyncExecutor" class="org.flowable.job.service.impl.asyncexecutor.DefaultAsyncJobExecutor">
     <property name="defaultAsyncJobAcquireWaitTimeInMillis" value="1000" />
     <property name="defaultTimerJobAcquireWaitTimeInMillis" value="1000" />
   </bean>
-  
+    
   <bean id="throwCustomExceptionBean" class="org.flowable.engine.test.bpmn.event.error.mapError.ThrowCustomExceptionBean" />
   <bean id="throwCustomExceptionDelegate" class="org.flowable.engine.test.bpmn.event.error.mapError.ThrowCustomExceptionDelegate" />
 

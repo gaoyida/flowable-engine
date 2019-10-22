@@ -16,7 +16,7 @@ package org.flowable.idm.api;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.flowable.engine.common.api.query.QueryProperty;
+import org.flowable.common.engine.api.query.QueryProperty;
 
 /**
  * Contains the possible properties that can be used by the {@link UserQuery}.
@@ -27,11 +27,12 @@ public class UserQueryProperty implements QueryProperty {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Map<String, UserQueryProperty> properties = new HashMap<String, UserQueryProperty>();
+    private static final Map<String, UserQueryProperty> properties = new HashMap<>();
 
     public static final UserQueryProperty USER_ID = new UserQueryProperty("RES.ID_");
     public static final UserQueryProperty FIRST_NAME = new UserQueryProperty("RES.FIRST_");
     public static final UserQueryProperty LAST_NAME = new UserQueryProperty("RES.LAST_");
+    public static final UserQueryProperty DISPLAY_NAME = new UserQueryProperty("RES.DISPLAY_NAME_");
     public static final UserQueryProperty EMAIL = new UserQueryProperty("RES.EMAIL_");
 
     private String name;
@@ -41,6 +42,7 @@ public class UserQueryProperty implements QueryProperty {
         properties.put(name, this);
     }
 
+    @Override
     public String getName() {
         return name;
     }

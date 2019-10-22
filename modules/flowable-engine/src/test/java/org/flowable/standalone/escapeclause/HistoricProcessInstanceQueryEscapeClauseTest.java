@@ -17,11 +17,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.history.HistoricProcessInstanceQuery;
-import org.flowable.engine.impl.history.HistoryLevel;
+import org.flowable.engine.impl.test.HistoryTestHelper;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.task.Task;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class HistoricProcessInstanceQueryEscapeClauseTest extends AbstractEscapeClauseTestCase {
 
@@ -33,7 +36,7 @@ public class HistoricProcessInstanceQueryEscapeClauseTest extends AbstractEscape
 
     private ProcessInstance processInstance2;
 
-    @Override
+    @BeforeEach
     protected void setUp() throws Exception {
         deploymentOneId = repositoryService
                 .createDeployment()
@@ -49,45 +52,44 @@ public class HistoricProcessInstanceQueryEscapeClauseTest extends AbstractEscape
                 .deploy()
                 .getId();
 
-        Map<String, Object> vars = new HashMap<String, Object>();
+        Map<String, Object> vars = new HashMap<>();
         vars.put("var1", "One%");
         processInstance1 = runtimeService.startProcessInstanceByKeyAndTenantId("oneTaskProcess", vars, "One%");
         runtimeService.setProcessInstanceName(processInstance1.getId(), "One%");
 
-        vars = new HashMap<String, Object>();
+        vars = new HashMap<>();
         vars.put("var1", "Two_");
         processInstance2 = runtimeService.startProcessInstanceByKeyAndTenantId("oneTaskProcess", vars, "Two_");
         runtimeService.setProcessInstanceName(processInstance2.getId(), "Two_");
 
-        Task task = taskService.createTaskQuery().processInstanceId(processInstance1.getId()).singleResult();
+        org.flowable.task.api.Task task = taskService.createTaskQuery().processInstanceId(processInstance1.getId()).singleResult();
         taskService.complete(task.getId());
 
         task = taskService.createTaskQuery().processInstanceId(processInstance2.getId()).singleResult();
         taskService.complete(task.getId());
 
-        super.setUp();
     }
 
-    @Override
+    @AfterEach
     protected void tearDown() throws Exception {
-        super.tearDown();
         repositoryService.deleteDeployment(deploymentOneId, true);
         repositoryService.deleteDeployment(deploymentTwoId, true);
     }
 
+    @Test
     public void testQueryByProcessKeyNotIn() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             // processKeyNotIn
-            List<String> processDefinitionKeyNotIn1 = new ArrayList<String>();
-            processDefinitionKeyNotIn1.add("%\\%%");
+            List<String> processDefinitionKeyNotIn1 = new ArrayList<>();
+            processDefinitionKeyNotIn1.add("%|%%");
 
-            List<String> processDefinitionKeyNotIn2 = new ArrayList<String>();
-            processDefinitionKeyNotIn2.add("%\\_%");
+            List<String> processDefinitionKeyNotIn2 = new ArrayList<>();
+            processDefinitionKeyNotIn2.add("%|_%");
 
-            List<String> processDefinitionKeyNotIn3 = new ArrayList<String>();
+            List<String> processDefinitionKeyNotIn3 = new ArrayList<>();
             processDefinitionKeyNotIn3.add("%");
 
-            List<String> processDefinitionKeyNotIn4 = new ArrayList<String>();
+            List<String> processDefinitionKeyNotIn4 = new ArrayList<>();
             processDefinitionKeyNotIn4.add("______________");
 
             HistoricProcessInstanceQuery query = historyService.createHistoricProcessInstanceQuery().processDefinitionKeyNotIn(processDefinitionKeyNotIn1);
@@ -125,111 +127,116 @@ public class HistoricProcessInstanceQueryEscapeClauseTest extends AbstractEscape
         }
     }
 
+    @Test
     public void testQueryByTenantIdLike() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             // tenantIdLike
-            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceTenantIdLike("%\\%%").singleResult();
+            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceTenantIdLike("%|%%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceTenantIdLike("%\\_%").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceTenantIdLike("%|_%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
 
             // orQuery
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceTenantIdLike("%\\%%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceTenantIdLike("%|%%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceTenantIdLike("%\\_%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceTenantIdLike("%|_%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
         }
     }
 
+    @Test
     public void testQueryByProcessInstanceNameLike() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             // processInstanceNameLike
-            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLike("%\\%%").singleResult();
+            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLike("%|%%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLike("%\\_%").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLike("%|_%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
 
             // orQuery
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLike("%\\%%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLike("%|%%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLike("%\\_%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLike("%|_%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
         }
     }
 
+    @Test
     public void testQueryByProcessInstanceNameLikeIgnoreCase() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             // processInstanceNameLike
-            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLikeIgnoreCase("%\\%%").singleResult();
+            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLikeIgnoreCase("%|%%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLikeIgnoreCase("%\\_%").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().processInstanceNameLikeIgnoreCase("%|_%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
 
             // orQuery
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLikeIgnoreCase("%\\%%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLikeIgnoreCase("%|%%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLikeIgnoreCase("%\\_%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().processInstanceNameLikeIgnoreCase("%|_%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
         }
     }
 
+    @Test
     public void testQueryLikeByQueryVariableValue() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             // queryVariableValue
-            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLike("var1", "%\\%%").singleResult();
+            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLike("var1", "%|%%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLike("var1", "%\\_%").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLike("var1", "%|_%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
 
             // orQuery
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLike("var1", "%\\%%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLike("var1", "%|%%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLike("var1", "%\\_%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLike("var1", "%|_%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
         }
     }
 
+    @Test
     public void testQueryLikeIgnoreCaseByQueryVariableValue() {
-        if (processEngineConfiguration.getHistoryLevel().isAtLeast(HistoryLevel.ACTIVITY)) {
+        if (HistoryTestHelper.isHistoryLevelAtLeast(HistoryLevel.ACTIVITY, processEngineConfiguration)) {
             // queryVariableValueIgnoreCase
-            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLikeIgnoreCase("var1", "%\\%%").singleResult();
+            HistoricProcessInstance historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLikeIgnoreCase("var1", "%|%%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLikeIgnoreCase("var1", "%\\_%").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().variableValueLikeIgnoreCase("var1", "%|_%").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
 
             // orQuery
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLikeIgnoreCase("var1", "%\\%%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLikeIgnoreCase("var1", "%|%%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance1.getId(), historicProcessInstance.getId());
 
-            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLikeIgnoreCase("var1", "%\\_%").processDefinitionId("undefined").singleResult();
+            historicProcessInstance = historyService.createHistoricProcessInstanceQuery().or().variableValueLikeIgnoreCase("var1", "%|_%").processDefinitionId("undefined").singleResult();
             assertNotNull(historicProcessInstance);
             assertEquals(processInstance2.getId(), historicProcessInstance.getId());
         }

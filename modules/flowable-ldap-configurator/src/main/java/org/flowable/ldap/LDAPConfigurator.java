@@ -12,13 +12,15 @@
  */
 package org.flowable.ldap;
 
-import org.flowable.engine.cfg.AbstractProcessEngineConfigurator;
-import org.flowable.engine.cfg.ProcessEngineConfigurator;
-import org.flowable.engine.common.api.FlowableException;
-import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.flowable.common.engine.api.FlowableException;
+import org.flowable.common.engine.impl.AbstractEngineConfiguration;
+import org.flowable.common.engine.impl.EngineConfigurator;
+import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
+import org.flowable.idm.engine.IdmEngineConfiguration;
+import org.flowable.idm.engine.configurator.IdmEngineConfigurator;
 
 /**
- * A {@link ProcessEngineConfigurator} that integrates a LDAP system with the Flowable process engine. The LDAP system will be consulted primarily for getting user information and in particular for
+ * A {@link EngineConfigurator} that integrates a LDAP system with the Flowable process engine. The LDAP system will be consulted primarily for getting user information and in particular for
  * fetching groups of a user.
  * 
  * This class is extensible and many methods can be overridden when the default behavior is not fitting your use case.
@@ -27,17 +29,19 @@ import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
  * 
  * @author Joram Barrez
  */
-public class LDAPConfigurator extends AbstractProcessEngineConfigurator {
+public class LDAPConfigurator extends IdmEngineConfigurator {
 
     protected LDAPConfiguration ldapConfiguration;
 
     @Override
-    public void beforeInit(ProcessEngineConfigurationImpl processEngineConfiguration) {
+    public void beforeInit(AbstractEngineConfiguration engineConfiguration) {
         // Nothing to do
     }
 
     @Override
-    public void configure(ProcessEngineConfigurationImpl processEngineConfiguration) {
+    public void configure(AbstractEngineConfiguration engineConfiguration) {
+        
+        this.idmEngineConfiguration = new LdapIdmEngineConfiguration();
         
         if (ldapConfiguration == null) {
             throw new FlowableException("ldapConfiguration is not set");
@@ -46,14 +50,17 @@ public class LDAPConfigurator extends AbstractProcessEngineConfigurator {
         LDAPGroupCache ldapGroupCache = null;
         if (ldapConfiguration.getGroupCacheSize() > 0) {
             ldapGroupCache = new LDAPGroupCache(ldapConfiguration.getGroupCacheSize(), 
-                    ldapConfiguration.getGroupCacheExpirationTime(), processEngineConfiguration.getClock());
+                    ldapConfiguration.getGroupCacheExpirationTime(), engineConfiguration.getClock());
             
             if (ldapConfiguration.getGroupCacheListener() != null) {
                 ldapGroupCache.setLdapCacheListener(ldapConfiguration.getGroupCacheListener());
             }
         }
-
-        processEngineConfiguration.setIdmIdentityService(new LDAPIdentityServiceImpl(ldapConfiguration, ldapGroupCache));
+        
+        super.configure(engineConfiguration);
+        
+        getIdmEngineConfiguration(engineConfiguration)
+                .setIdmIdentityService(new LDAPIdentityServiceImpl(ldapConfiguration, ldapGroupCache));
     }
 
     // Getters and Setters //////////////////////////////////////////////////
@@ -64,6 +71,10 @@ public class LDAPConfigurator extends AbstractProcessEngineConfigurator {
 
     public void setLdapConfiguration(LDAPConfiguration ldapConfiguration) {
         this.ldapConfiguration = ldapConfiguration;
+    }
+
+    protected static IdmEngineConfiguration getIdmEngineConfiguration(AbstractEngineConfiguration engineConfiguration) {
+        return (IdmEngineConfiguration) engineConfiguration.getEngineConfigurations().get(EngineConfigurationConstants.KEY_IDM_ENGINE_CONFIG);
     }
 
 }
